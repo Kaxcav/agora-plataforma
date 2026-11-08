@@ -17,7 +17,8 @@ function titulosAncestrais(origem: HTMLElement): HTMLElement[] {
     const rotulo = el.getAttribute('aria-labelledby');
     if (!rotulo || !el.matches('section, form, [role="region"]')) continue;
     const titulo = document.getElementById(rotulo.split(' ')[0] ?? '');
-    if (titulo) titulos.push(titulo);
+    // A legenda (<caption>) da tabela rolável não recebe foco: com tabindex ela quebra a estrutura da tabela (ARIA).
+    if (titulo && titulo.tagName !== 'CAPTION') titulos.push(titulo);
   }
   return titulos;
 }

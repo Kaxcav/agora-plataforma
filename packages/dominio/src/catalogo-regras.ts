@@ -865,6 +865,42 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'interpretarLocalizacaoPncp, numeroControlePncp, codigosContratacaoPncp, tituloDocumentoPncp, prazoDivulgacaoContratoPncp; api: POST /processos/:id/publicar; GET /processos/:id/publicacao-pncp; POST /processos/:id/contrato/publicar-pncp',
   },
+  {
+    id: 'RN-34',
+    tipo: 'RN',
+    titulo: 'Recebimento provisório e definitivo, liquidação e prazo de pagamento',
+    descricao:
+      'Cada entrega da contratada é recebida em dois termos gerados em PDF, nos prazos em dias úteis definidos no contrato. O provisório é lavrado pelo fiscal ou pelo gestor designado, por termo detalhado nas obras e serviços e sumário nas compras; o definitivo, pelo gestor ou por membro da comissão de recebimento, nunca por quem lavrou o provisório da mesma entrega. Ressalva ou rejeição exigem a descrição do que está em desacordo, abrem prazo de correção ou substituição às custas da contratada e notificam a contratada pela central de notificações; depois da correção, o mesmo exame é refeito. Só o definitivo aceito libera a liquidação: a nota fiscal ligada à entrega é atestada no mesmo ato, com o recheque de regularidade do contratado, e o atesto direto da nota fica bloqueado enquanto a entrega não for recebida. O prazo de pagamento conta do recebimento definitivo ou da liquidação, conforme o contrato; vencido por atraso imputável à Administração, a Ágora calcula a atualização monetária pelo índice e pelos juros do contrato, pro rata die, como apoio à decisão.',
+    fundamento: 'Lei 14.133/2021, art. 92, V, VI e VII, e § 7º; art. 117; art. 119; art. 140; art. 141',
+    etapa: 7,
+    telas: ['contratos.detalhe', 'pagamentos.prazos'],
+    implementacao:
+      'prazoRecebimentoProvisorio, avaliarTermoRecebimento, calcularGarantiaObjeto, calcularPrazoPagamento, calcularAtualizacaoMonetaria, corrigirPorIndice; api: POST /contratos/:id/recebimentos; POST /recebimentos/:id/termos; GET /recebimentos/termos/:id/termo.pdf; POST /pagamentos/:id/atestar; GET /pagamentos/prazos',
+  },
+  {
+    id: 'RN-35',
+    tipo: 'RN',
+    titulo: 'Garantias contratuais: exigência, validade, liberação, execução e desconto de multa',
+    descricao:
+      'A garantia de execução é exigida em até 5% do valor inicial do contrato (ou do valor anual, nos contínuos com mais de um ano), em até 10% com justificativa da complexidade técnica e dos riscos e em até 30% só nas obras e serviços de engenharia de grande vulto, em seguro-garantia com cláusula de retomada; a garantia adicional de pagamento antecipado vai até 100% do valor antecipado. A contratada escolhe a modalidade: caução em dinheiro ou em títulos da dívida pública, seguro-garantia, fiança bancária ou título de capitalização. A Ágora controla o prazo de apresentação, a validade e a renovação, e avisa o vencimento pela central de notificações com 30 dias de antecedência. A liberação só ocorre depois da fiel execução, sem entrega pendente nem multa por descontar, com a caução em dinheiro atualizada. A multa aplicada é descontada primeiro dos pagamentos devidos, depois da garantia, e o restante segue para cobrança judicial, sempre por decisão registrada da autoridade competente, com a contratada notificada para recompor a garantia.',
+    fundamento: 'Lei 14.133/2021, arts. 96 a 102; art. 139, III; art. 145, § 2º; art. 156, § 8º',
+    etapa: 7,
+    telas: ['contratos.detalhe'],
+    implementacao:
+      'baseCalculoGarantia, avaliarPercentualGarantia, validarApresentacaoGarantia, situacaoGarantia, avaliarLiberacaoGarantia, atualizarCaucaoDinheiro, avaliarExecucaoGarantia, planejarDescontoMulta, validarDecisaoAutoridade; api: POST /contratos/:id/garantias; POST /garantias/:id/apresentacao; POST /garantias/:id/renovacao; POST /garantias/:id/liberacao; POST /garantias/:id/execucao; POST /sancoes/:id/descontos',
+  },
+  {
+    id: 'RF-28',
+    tipo: 'RF',
+    titulo: 'Execução do contrato: fiscalização, recebimentos, garantias e prazos de pagamento',
+    descricao:
+      'No contrato, a aba Fiscalização registra a designação do gestor e dos fiscais técnico, administrativo e requisitante e da comissão de recebimento, com o ato e a data, e o livro de ocorrências, que notifica a contratada quando há prazo de regularização. A aba Recebimentos define os prazos do contrato e registra as entregas e os termos provisório e definitivo, com o PDF de cada termo. A aba Garantias registra a exigência, a apresentação, a renovação, a liberação, a execução e o desconto de multa. No financeiro, a tela Prazos de pagamento mostra o limite de cada parcela, a atualização estimada das atrasadas e o registro da alteração justificada da ordem cronológica, com a autoridade, o ato e as comunicações ao controle interno e ao tribunal de contas, que aparece como exceção justificada no painel da 2ª linha de defesa.',
+    fundamento: 'Lei 14.133/2021, arts. 92, 96 a 102, 117, 119, 140, 141 e 156, § 8º',
+    etapa: 7,
+    telas: ['contratos.detalhe', 'pagamentos.prazos'],
+    implementacao:
+      'verificarDesignacoesContrato, validarOcorrencia, validarAlteracaoOrdemCronologica, classificarPreteridosComAlteracoes; api: GET /contratos/:id/execucao; GET /contratos/:id/designaveis; POST /contratos/:id/designacoes; POST /designacoes/:id/encerrar; POST /contratos/:id/ocorrencias; POST /ocorrencias/:id/regularizar; PUT /contratos/:id/parametros-execucao; GET /alteracoes-ordem; POST /pagamentos/:id/alteracoes-ordem; POST /alteracoes-ordem/:id/comunicacoes',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

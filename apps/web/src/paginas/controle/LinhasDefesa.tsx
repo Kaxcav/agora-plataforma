@@ -314,7 +314,7 @@ function ConteudoSegundaLinha({ painel }: { painel: PainelSegundaLinha }) {
       <Secao
         titulo="Exceções justificadas"
         id="segunda-excecoes"
-        descricao="Exceções às regras registradas com justificativa nos processos: fora do catálogo, artigo de luxo, ETP sem algum elemento e cotações expurgadas."
+        descricao="Exceções às regras registradas com justificativa: fora do catálogo, artigo de luxo, ETP sem algum elemento, cotações expurgadas e alterações da ordem cronológica de pagamentos."
       >
         {painel.excecoes.length === 0 ? (
           <EstadoVazio icone={ShieldCheck} titulo="Nenhuma exceção registrada" />

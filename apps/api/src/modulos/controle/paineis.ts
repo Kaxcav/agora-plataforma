@@ -4,7 +4,7 @@
  * (avaliados pelas mesmas regras do avanço), sanções, contratos, medidas de controle, revisões da matriz de riscos e
  * a trilha de auditoria. Os achados são sinais para conferência humana, nunca conclusão de irregularidade.
  */
-import { avaliarLimiteAditivos, pagamentosPreteridos, situacaoDivulgacaoPncp, type OpcoesCalendario } from '@agora/dominio';
+import { avaliarLimiteAditivos, classificarPreteridosComAlteracoes, situacaoDivulgacaoPncp, type OpcoesCalendario } from '@agora/dominio';
 import type {
   AchadoPreventivo,
   AtestoAtrasadoControle,
@@ -33,6 +33,7 @@ import { listarPendencias } from '../pendencias/repositorio.ts';
 import { listarSancoes } from '../sancoes/repositorio.ts';
 import { carregarMedidas, referenciaContrato, referenciaProcesso } from './medidas.ts';
 import { revisoesRiscosPendentes } from './riscos.ts';
+import { listarAlteracoesOrdem } from '../execucao/pagamentos.ts';
 
 export interface ContextoPainel {
   executor: Executor;
@@ -320,7 +321,11 @@ async function achadosCeisCnep(ctx: ContextoPainel): Promise<AchadoPreventivo[]>
   }));
 }
 
-/** Art. 141: a ordem cronológica é por fonte de recurso no órgão inteiro; o resultado é filtrado pelo escopo. */
+/**
+ * Art. 141: a ordem cronológica é por fonte de recurso no órgão inteiro; o resultado é filtrado pelo escopo. A nota
+ * preterida deixa de ser achado de risco quando todas as notas pagas antes dela têm alteração justificada registrada
+ * (art. 141, § 1º; frente L); sem as comunicações ao controle, vira achado de atenção.
+ */
 async function achadosOrdemCronologica(ctx: ContextoPainel): Promise<AchadoPreventivo[]> {
   const linhas = await ctx.executor.consultar<{
     id: string;
@@ -338,8 +343,15 @@ async function achadosOrdemCronologica(ctx: ContextoPainel): Promise<AchadoPreve
        JOIN contratos c ON c.id = p.contrato_id`,
   );
   const porId = new Map(linhas.map((l) => [l.id, l]));
-  const preteridos = pagamentosPreteridos(
+  const alteracoes = await listarAlteracoesOrdem(ctx.executor, { escopo: null });
+  const preteridos = classificarPreteridosComAlteracoes(
     linhas.map((l) => ({ id: l.id, fonteRecurso: l.fonte_recurso, vencimento: l.vencimento, pagoEm: l.pago_em, exigivel: l.situacao !== 'previsto' })),
+    alteracoes.map((a) => ({
+      id: a.id,
+      pagamentoId: a.pagamento.id,
+      comunicadaControleInterno: a.comunicacoes.some((m) => m.orgao === 'controle_interno'),
+      comunicadaTribunal: a.comunicacoes.some((m) => m.orgao === 'tribunal_contas'),
+    })),
     ctx.hoje,
   );
   return preteridos.flatMap((p): AchadoPreventivo[] => {
@@ -347,23 +359,59 @@ async function achadosOrdemCronologica(ctx: ContextoPainel): Promise<AchadoPreve
     if (!l) return [];
     if (ctx.escopo !== null && !ctx.escopo.includes(l.uasg)) return [];
     if (ctx.uasg !== null && l.uasg !== ctx.uasg) return [];
+    if (p.situacao === 'justificado') return [];
     const vencimento = p.vencimento.split('-').reverse().join('/');
+    const referencia: ReferenciaControle = {
+      tipo: 'pagamento',
+      id: l.id,
+      identificador: `Nota fiscal ${l.nota_fiscal} — ${identificadorInstrumento('contrato', l.numero)}`,
+      caminho: `/contratos/${l.contrato_id}?aba=pagamentos`,
+    };
+    if (p.situacao === 'comunicacao_pendente') {
+      return [
+        {
+          tipo: 'ordem_cronologica',
+          nivel: 'atencao',
+          titulo: 'Alteração da ordem cronológica sem comunicação ao controle',
+          descricao: `Nota fiscal ${l.nota_fiscal}, exigível desde ${vencimento} na fonte ${l.fonte_recurso}: as notas pagas antes dela têm alteração justificada registrada, mas falta registrar a comunicação ao controle interno ou ao tribunal de contas.`,
+          fundamento: 'Lei 14.133/2021, art. 141, § 1º',
+          referencia,
+        },
+      ];
+    }
+    const semJustificativa = p.posterioresPagos - p.posterioresJustificados;
     return [
       {
         tipo: 'ordem_cronologica',
         nivel: 'risco',
         titulo: 'Pagamento preterido na ordem cronológica',
-        descricao: `Nota fiscal ${l.nota_fiscal}, exigível desde ${vencimento} na fonte ${l.fonte_recurso}: ${p.posterioresPagos} nota(s) de vencimento posterior foram pagas antes${p.pagoEm === null ? ' e ela segue sem pagamento' : ''}. A alteração da ordem exige justificativa prévia da autoridade competente e comunicação ao controle interno e ao tribunal de contas; confira se ela existe.`,
+        descricao: `Nota fiscal ${l.nota_fiscal}, exigível desde ${vencimento} na fonte ${l.fonte_recurso}: ${semJustificativa} nota(s) de vencimento posterior foram pagas antes${p.pagoEm === null ? ' e ela segue sem pagamento' : ''}, sem alteração justificada registrada na Ágora. A alteração da ordem exige justificativa prévia da autoridade competente e comunicação ao controle interno e ao tribunal de contas; confira se ela existe.`,
         fundamento: p.fundamento,
-        referencia: {
-          tipo: 'pagamento',
-          id: l.id,
-          identificador: `Nota fiscal ${l.nota_fiscal} — ${identificadorInstrumento('contrato', l.numero)}`,
-          caminho: `/contratos/${l.contrato_id}?aba=pagamentos`,
-        },
+        referencia,
       },
     ];
   });
+}
+
+/** Alterações justificadas da ordem cronológica registradas (art. 141, § 1º; frente L), como exceções justificadas. */
+async function excecoesOrdemCronologica(ctx: ContextoPainel): Promise<ExcecaoJustificada[]> {
+  const alteracoes = await listarAlteracoesOrdem(ctx.executor, { escopo: ctx.escopo, uasg: ctx.uasg });
+  return alteracoes.map((a) => ({
+    tipo: 'ordem_cronologica',
+    titulo: 'Alteração justificada da ordem cronológica de pagamentos',
+    justificativa: resumir(
+      `${a.hipotese} — ${a.justificativa} Decisão de ${a.autoridade} (${a.ato}, ${a.decididaEm.split('-').reverse().join('/')}). ${
+        a.comunicacaoPendente ? 'Comunicação ao controle interno e ao tribunal de contas pendente.' : 'Comunicada ao controle interno e ao tribunal de contas.'
+      }`,
+    ),
+    fundamento: `Lei 14.133/2021, art. 141, § 1º, ${a.inciso}`,
+    referencia: {
+      tipo: 'pagamento',
+      id: a.pagamento.id,
+      identificador: `Nota fiscal ${a.pagamento.notaFiscal} — ${identificadorInstrumento('contrato', a.contrato.numero)}`,
+      caminho: '/financeiro/prazos',
+    },
+  }));
 }
 
 function excecoesDosProcessos(processos: readonly ProcessoAvaliado[]): ExcecaoJustificada[] {
@@ -465,7 +513,7 @@ export async function montarSegundaLinha(ctx: ContextoPainel, processos: readonl
     ...revisoes,
   ].sort((a, b) => Number(a.nivel === 'atencao') - Number(b.nivel === 'atencao'));
 
-  const excecoes = excecoesDosProcessos(processos);
+  const excecoes = [...excecoesDosProcessos(processos), ...(await excecoesOrdemCronologica(ctx))];
   const sancoes = await sancoesEmAndamento(ctx);
   const medidas = (await carregarMedidas(ctx.executor, { escopo: ctx.escopo, uasg: ctx.uasg }, ctx.hoje, ctx.calendario)).filter(
     (m) => m.situacao !== 'revogada',

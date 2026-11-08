@@ -45,6 +45,9 @@ import { ProrrogacaoContrato } from './ProrrogacaoContrato';
 import { SimuladorAditivo } from './SimuladorAditivo';
 import { BotaoNotificar } from '../notificacoes/DialogoNotificar';
 import { AbaRiscosContrato } from '../controle/AbaRiscosContrato';
+import { AbaFiscalizacao } from './execucao/AbaFiscalizacao';
+import { AbaGarantias } from './execucao/AbaGarantias';
+import { AbaRecebimentos } from './execucao/AbaRecebimentos';
 
 const DIVULGACAO: Record<DadosContrato['divulgacaoPncp']['situacao'], { rotulo: string; tom: TomEtiqueta }> = {
   divulgado_no_prazo: { rotulo: 'Divulgado no prazo', tom: 'sucesso' },
@@ -451,6 +454,9 @@ function ConteudoContrato({ contrato }: { contrato: DadosContrato }) {
           { id: 'aditivos', rotulo: 'Aditivos', conteudo: () => <AbaAditivos contrato={contrato} /> },
           { id: 'historico', rotulo: 'Histórico', conteudo: () => <AbaHistorico id={contrato.id} /> },
           { id: 'riscos', rotulo: 'Matriz de riscos', conteudo: () => <AbaRiscosContrato contrato={contrato} /> },
+          { id: 'fiscalizacao', rotulo: 'Fiscalização', conteudo: () => <AbaFiscalizacao contrato={contrato} /> },
+          { id: 'recebimentos', rotulo: 'Recebimentos', conteudo: () => <AbaRecebimentos contrato={contrato} /> },
+          { id: 'garantias', rotulo: 'Garantias', conteudo: () => <AbaGarantias contrato={contrato} /> },
         ]}
       />
     </>

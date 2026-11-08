@@ -226,3 +226,29 @@ describe('CATALOGO_REGRAS — frente C (CEIS, CNEP e certidões)', () => {
     assert.match(d, /protocolo/);
   });
 });
+
+describe('CATALOGO_REGRAS — frente L (recebimentos, garantias e prazos de pagamento)', () => {
+  const casos: [string, number, string[], string, RegExp][] = [
+    ['RN-34', 7, ['contratos.detalhe', 'pagamentos.prazos'], 'avaliarTermoRecebimento', /art\. 140/],
+    ['RN-35', 7, ['contratos.detalhe'], 'planejarDescontoMulta', /arts\. 96 a 102/],
+    ['RF-28', 7, ['contratos.detalhe', 'pagamentos.prazos'], 'validarAlteracaoOrdemCronologica', /141/],
+  ];
+  for (const [id, etapa, telas, implementacao, fundamento] of casos) {
+    it(`${id}: etapa ${etapa}, telas ${telas.join(', ')} e ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, etapa);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+    });
+  }
+
+  it('RN-34 separa provisório e definitivo e liga o definitivo à liquidação; RN-35 traz os limites e a ordem do desconto', () => {
+    assert.match(regra('RN-34').descricao, /nunca por quem lavrou o provisório/);
+    assert.match(regra('RN-34').descricao, /Só o definitivo aceito libera a liquidação/);
+    assert.match(regra('RN-35').descricao, /até 5%/);
+    assert.match(regra('RN-35').descricao, /até 30%/);
+    assert.match(regra('RN-35').descricao, /primeiro dos pagamentos devidos, depois da garantia/);
+    assert.match(regra('RF-28').descricao, /fiscais técnico, administrativo e requisitante/);
+  });
+});

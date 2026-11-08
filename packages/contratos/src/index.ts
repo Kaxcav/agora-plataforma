@@ -125,7 +125,13 @@ export type Permissao =
   | 'impedimentos:registrar'
   | 'impedimentos:parecer'
   | 'impedimentos:decidir'
-  | 'agentes:declarar';
+  | 'agentes:declarar'
+  | 'fiscalizacao:designar'
+  | 'fiscalizacao:registrar'
+  | 'recebimentos:registrar'
+  | 'garantias:registrar'
+  | 'garantias:executar'
+  | 'pagamentos:ordem_cronologica';
 
 export interface UsuarioSessao {
   id: Id;
@@ -1734,7 +1740,7 @@ export interface AchadoPreventivo {
 }
 
 export interface ExcecaoJustificada {
-  tipo: 'nao_padronizacao' | 'artigo_luxo' | 'etp_ausencia' | 'expurgo_cotacao';
+  tipo: 'nao_padronizacao' | 'artigo_luxo' | 'etp_ausencia' | 'expurgo_cotacao' | 'ordem_cronologica';
   titulo: string;
   justificativa: string;
   fundamento: string;
@@ -2564,3 +2570,405 @@ export interface PublicacaoPncp {
 // GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
 // POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)
+
+// ───────────────────────── Execução contratual: fiscalização, recebimentos, garantias e prazos de pagamento (F22, frente L) ─────────────────────────
+
+export type PapelFiscalizacao = 'gestor' | 'fiscal_tecnico' | 'fiscal_administrativo' | 'fiscal_requisitante' | 'comissao_recebimento';
+
+/** Designação de gestor, fiscal ou membro da comissão de recebimento (art. 117). `fim` preenchido = encerrada. */
+export interface DesignacaoContrato {
+  id: Id;
+  papel: PapelFiscalizacao;
+  usuario: UsuarioResumo;
+  substituto: boolean;
+  /** Portaria ou ato de designação (número no SEI). */
+  ato: string;
+  inicio: DataISO;
+  fim: DataISO | null;
+  motivoEncerramento: string | null;
+  designadoPor: UsuarioResumo | null;
+  designadoEm: InstanteISO;
+}
+
+export type TipoOcorrenciaContrato = 'falha_execucao' | 'atraso' | 'inconformidade' | 'comunicacao' | 'outra';
+
+/** Registro no livro de ocorrências do contrato (art. 117, § 1º). */
+export interface OcorrenciaContrato {
+  id: Id;
+  numero: number;
+  tipo: TipoOcorrenciaContrato;
+  dataFato: DataISO;
+  relato: string;
+  providencia: string | null;
+  prazoRegularizacao: DataISO | null;
+  situacao: 'aberta' | 'regularizada';
+  registradaPor: UsuarioResumo | null;
+  registradaEm: InstanteISO;
+  /** Aviso enviado à contratada pela central de notificações. */
+  notificacaoId: Id | null;
+  recebimentoId: Id | null;
+  regularizadaEm: DataISO | null;
+  observacaoRegularizacao: string | null;
+}
+
+/** Prazos e critérios de execução definidos no contrato (art. 92, V a VII, e art. 140, § 3º). */
+export interface ParametrosExecucaoContrato {
+  prazoProvisorioDiasUteis: number;
+  prazoDefinitivoDiasUteis: number;
+  prazoCorrecaoDiasUteis: number;
+  prazoLiquidacaoDiasUteis: number;
+  /** Dias corridos (art. 183: vencendo em dia sem expediente, passa ao dia útil seguinte). */
+  prazoPagamentoDias: number;
+  marcoPagamento: 'recebimento_definitivo' | 'liquidacao';
+  indiceAtualizacao: string;
+  /** Juros de mora por atraso imputável à Administração, % ao mês (0 = sem juros). */
+  jurosMoraMensal: number;
+  /** Prazo de garantia técnica do objeto contado do recebimento definitivo (0 = sem). */
+  garantiaObjetoMeses: number;
+  atualizadoEm: InstanteISO | null;
+  atualizadoPor: UsuarioResumo | null;
+}
+export type EntradaParametrosExecucao = Omit<ParametrosExecucaoContrato, 'atualizadoEm' | 'atualizadoPor'>;
+
+export type SituacaoRecebimento = 'aguardando_provisorio' | 'aguardando_definitivo' | 'em_correcao' | 'recebido';
+export type TipoTermoRecebimento = 'provisorio' | 'definitivo';
+export type ResultadoTermoRecebimento = 'aceito' | 'com_ressalva' | 'rejeitado';
+
+export interface TermoRecebimento {
+  id: Id;
+  tipo: TipoTermoRecebimento;
+  resultado: ResultadoTermoRecebimento;
+  data: DataISO;
+  observacoes: string | null;
+  prazoCorrecao: DataISO | null;
+  responsavel: UsuarioResumo;
+  papelResponsavel: PapelFiscalizacao;
+  foraDoPrazo: boolean;
+  /** SHA-256 do PDF do termo (o mesmo arquivo é gerado de novo a cada download). */
+  hashPdf: string;
+  registradoEm: InstanteISO;
+}
+
+export interface RecebimentoContrato {
+  id: Id;
+  numero: number;
+  descricao: string;
+  valor: Centavos;
+  entregueEm: DataISO;
+  notaFiscal: { pagamentoId: Id; numero: string; situacao: SituacaoPagamento } | null;
+  situacao: SituacaoRecebimento;
+  etapaCorrecao: TipoTermoRecebimento | null;
+  /** Limite do próximo termo (provisório, definitivo ou novo exame depois da correção). */
+  prazoAtual: DataISO | null;
+  situacaoPrazo: 'no_prazo' | 'vence_hoje' | 'vencido' | null;
+  prazoCorrecao: DataISO | null;
+  definitivoEm: DataISO | null;
+  garantiaObjetoAte: DataISO | null;
+  termos: TermoRecebimento[];
+  registradoPor: UsuarioResumo | null;
+  registradoEm: InstanteISO;
+}
+
+export type ModalidadeGarantia = 'caucao_dinheiro' | 'caucao_titulos' | 'seguro_garantia' | 'fianca_bancaria' | 'titulo_capitalizacao';
+export type FinalidadeGarantia = 'execucao' | 'antecipacao';
+export type SituacaoGarantiaContrato = 'aguardando_apresentacao' | 'apresentacao_vencida' | 'vigente' | 'vence_em_breve' | 'vencida' | 'liberada' | 'executada';
+export type TipoMovimentoGarantia = 'exigencia' | 'apresentacao' | 'renovacao' | 'desconto_multa' | 'execucao' | 'liberacao';
+
+export interface MovimentoGarantia {
+  id: Id;
+  tipo: TipoMovimentoGarantia;
+  data: DataISO;
+  valor: Centavos | null;
+  descricao: string;
+  registradoPor: UsuarioResumo | null;
+  registradoEm: InstanteISO;
+}
+
+export interface GarantiaContrato {
+  id: Id;
+  finalidade: FinalidadeGarantia;
+  percentual: number;
+  valorBase: Centavos;
+  baseAnual: boolean;
+  valorExigido: Centavos;
+  justificativaPercentual: string | null;
+  grandeVultoEngenharia: boolean;
+  clausulaRetomada: boolean;
+  modalidadeExigida: ModalidadeGarantia | null;
+  prazoApresentacao: DataISO | null;
+  modalidade: ModalidadeGarantia | null;
+  /** Valor apresentado pela contratada. */
+  valor: Centavos | null;
+  /** Valor apresentado menos descontos e execuções. */
+  saldo: Centavos;
+  emissor: string | null;
+  documento: string | null;
+  apresentadaEm: DataISO | null;
+  validaAte: DataISO | null;
+  situacao: SituacaoGarantiaContrato;
+  rotuloSituacao: string;
+  diasParaVencer: number | null;
+  alertas: string[];
+  liberadaEm: DataISO | null;
+  valorRestituido: Centavos | null;
+  movimentos: MovimentoGarantia[];
+}
+
+export interface DescontoMulta {
+  id: Id;
+  origem: 'pagamento' | 'garantia';
+  valor: Centavos;
+  pagamento: { id: Id; notaFiscal: string } | null;
+  garantiaId: Id | null;
+  autoridade: string;
+  ato: string;
+  decididaEm: DataISO;
+  justificativa: string;
+  registradoPor: UsuarioResumo | null;
+  registradoEm: InstanteISO;
+}
+
+/** Multa aplicada no contrato, com o que já foi descontado (art. 156, § 8º). */
+export interface MultaContrato {
+  sancaoId: Id;
+  incisoInfracao: string;
+  aplicadaEm: DataISO | null;
+  valorMulta: Centavos;
+  descontado: Centavos;
+  saldo: Centavos;
+  descontos: DescontoMulta[];
+}
+
+export interface NotaFiscalExecucao {
+  pagamentoId: Id;
+  notaFiscal: string;
+  competencia: string;
+  valor: Centavos;
+  situacao: SituacaoPagamento;
+}
+
+/** GET /contratos/:id/execucao → ExecucaoContrato (contratos:ler): abas Fiscalização, Recebimentos e Garantias. */
+export interface ExecucaoContrato {
+  contratoId: Id;
+  parametros: ParametrosExecucaoContrato | null;
+  designacoes: DesignacaoContrato[];
+  equipe: { completa: boolean; temFiscal: boolean; faltantes: PapelFiscalizacao[] };
+  ocorrencias: OcorrenciaContrato[];
+  recebimentos: RecebimentoContrato[];
+  garantias: GarantiaContrato[];
+  multas: MultaContrato[];
+  /** Notas fiscais "previstas" do contrato ainda sem entrega ligada. */
+  notasDisponiveis: NotaFiscalExecucao[];
+  /** Pagamentos devidos (atestados ou liquidados e não pagos), com o valor ainda disponível para retenção. */
+  pagamentosDevidos: { pagamentoId: Id; notaFiscal: string; disponivel: Centavos }[];
+  /** Papéis ativos do usuário da sessão neste contrato (orienta a tela; o servidor decide). */
+  meusPapeis: PapelFiscalizacao[];
+  /** Base de cálculo sugerida para a garantia de execução (art. 98). */
+  baseGarantia: { valorBase: Centavos; anual: boolean; fundamento: string };
+}
+
+/** GET /contratos/:id/designaveis → servidores que podem ser designados (perfil de gestão ou fiscalização e UASG no escopo). */
+export interface ServidorDesignavel {
+  id: Id;
+  nome: string;
+  perfis: CodigoPerfil[];
+}
+
+export interface EntradaDesignacao {
+  papel: PapelFiscalizacao;
+  usuarioId: Id;
+  substituto?: boolean;
+  ato: string;
+  inicio: DataISO;
+}
+export interface EntradaEncerrarDesignacao {
+  fim: DataISO;
+  motivo: string;
+}
+export interface EntradaOcorrencia {
+  tipo: TipoOcorrenciaContrato;
+  dataFato: DataISO;
+  relato: string;
+  providencia?: string | null;
+  prazoRegularizacao: DataISO | null;
+  notificarContratada: boolean;
+}
+export interface EntradaRegularizarOcorrencia {
+  data: DataISO;
+  observacao: string;
+}
+export interface EntradaRecebimento {
+  descricao: string;
+  valor: Centavos;
+  entregueEm: DataISO;
+  pagamentoId: Id | null;
+}
+export interface EntradaTermoRecebimento {
+  tipo: TipoTermoRecebimento;
+  resultado: ResultadoTermoRecebimento;
+  data: DataISO;
+  observacoes: string | null;
+}
+export interface RespostaTermoRecebimento {
+  recebimento: RecebimentoContrato;
+  termo: TermoRecebimento;
+  avisos: string[];
+  /** Atesto da nota fiscal ligada, feito no recebimento definitivo (com o recheque de regularidade, RN-23). */
+  atesto: { pagamentoId: Id; notaFiscal: string; regular: boolean; pendenciaAberta: boolean } | null;
+  /** Limite de pagamento quando o marco é o recebimento definitivo. */
+  limitePagamento: DataISO | null;
+  notificacaoId: Id | null;
+}
+export interface EntradaExigenciaGarantia {
+  finalidade: FinalidadeGarantia;
+  percentual: number;
+  /** Na antecipação, o valor antecipado; na execução, omitido (a base vem do contrato). */
+  valorBase?: Centavos | null;
+  justificativa: string | null;
+  grandeVultoEngenharia: boolean;
+  clausulaRetomada: boolean;
+  modalidadeExigida: ModalidadeGarantia | null;
+  prazoApresentacao: DataISO;
+}
+export interface EntradaApresentacaoGarantia {
+  modalidade: ModalidadeGarantia;
+  valor: Centavos;
+  apresentadaEm: DataISO;
+  validaAte: DataISO;
+  emissor: string | null;
+  documento: string | null;
+}
+export interface EntradaRenovacaoGarantia {
+  data: DataISO;
+  validaAte: DataISO;
+  documento: string | null;
+  /** Complementação do valor (recomposição), quando houver. */
+  valor: Centavos | null;
+}
+export interface EntradaLiberacaoGarantia {
+  data: DataISO;
+  extincaoCulpaAdministracao: boolean;
+  observacao: string;
+}
+export type MotivoExecucaoGarantia = 'ressarcimento_prejuizos' | 'verbas_trabalhistas' | 'retomada_seguradora';
+export interface EntradaDecisaoAutoridade {
+  autoridade: string;
+  ato: string;
+  decididaEm: DataISO;
+  justificativa: string;
+}
+export interface EntradaExecucaoGarantia extends EntradaDecisaoAutoridade {
+  motivo: MotivoExecucaoGarantia;
+  valor: Centavos;
+}
+export interface EntradaDescontoMulta extends EntradaDecisaoAutoridade {
+  valor: Centavos;
+}
+export interface RespostaGarantia {
+  garantia: GarantiaContrato;
+  avisos: string[];
+  notificacaoId: Id | null;
+}
+export interface RespostaDescontoMulta {
+  plano: { pagamentos: { pagamentoId: Id; notaFiscal: string; valor: Centavos }[]; garantia: Centavos; remanescente: Centavos; memoria: string[] };
+  descontos: DescontoMulta[];
+  notificacaoId: Id | null;
+}
+
+export type SituacaoPrazoPagamento = 'aguardando_marco' | 'no_prazo' | 'vence_hoje' | 'vencido' | 'pago_no_prazo' | 'pago_com_atraso';
+
+export interface ComunicacaoAlteracaoOrdem {
+  orgao: 'controle_interno' | 'tribunal_contas';
+  data: DataISO;
+  protocolo: string;
+  registradoPor: UsuarioResumo | null;
+  registradoEm: InstanteISO;
+}
+
+/** Alteração justificada da ordem cronológica de pagamentos (art. 141, § 1º). */
+export interface AlteracaoOrdemCronologica {
+  id: Id;
+  pagamento: { id: Id; notaFiscal: string; valor: Centavos; fonteRecurso: string; pagoEm: DataISO | null };
+  contrato: { id: Id; numero: string; uasg: string };
+  inciso: 'I' | 'II' | 'III' | 'IV' | 'V';
+  hipotese: string;
+  justificativa: string;
+  autoridade: string;
+  ato: string;
+  decididaEm: DataISO;
+  registradoPor: UsuarioResumo | null;
+  registradoEm: InstanteISO;
+  comunicacoes: ComunicacaoAlteracaoOrdem[];
+  comunicacaoPendente: boolean;
+}
+
+export interface PrazoPagamento {
+  pagamento: {
+    id: Id;
+    notaFiscal: string;
+    competencia: string;
+    valor: Centavos;
+    situacao: SituacaoPagamento;
+    pagoEm: DataISO | null;
+    fonteRecurso: string;
+    posicaoOrdemCronologica: number | null;
+    /** Atestada ou liquidada e ainda não paga: na fila da ordem cronológica. */
+    exigivel: boolean;
+  };
+  contrato: { id: Id; numero: string; uasg: string };
+  fornecedor: string;
+  parametrosDefinidos: boolean;
+  marco: 'recebimento_definitivo' | 'liquidacao' | null;
+  dataMarco: DataISO | null;
+  /** De onde veio a data do marco: termo de recebimento definitivo, atesto (nota anterior ao registro dos termos) ou liquidação. */
+  origemMarco: 'recebimento_definitivo' | 'atesto' | 'liquidacao' | null;
+  limiteLiquidacao: DataISO | null;
+  liquidacaoAtrasada: boolean;
+  limitePagamento: DataISO | null;
+  situacao: SituacaoPrazoPagamento;
+  diasAtraso: number;
+  explicacao: string;
+  /** Atualização monetária estimada quando o limite passou (art. 92, V); requer confirmação humana. */
+  atualizacao: {
+    indice: string;
+    percentualIndice: number;
+    valorCorrecao: Centavos;
+    valorJuros: Centavos;
+    valorTotal: Centavos;
+    competenciasSemIndice: string[];
+    memoriaCalculo: string[];
+    aviso: string;
+  } | null;
+  descontosMulta: Centavos;
+  alteracoesOrdem: number;
+}
+
+export interface FiltroPrazosPagamento extends ParametrosLista {
+  situacao?: SituacaoPrazoPagamento;
+  uasg?: string;
+}
+
+/** GET /pagamentos/prazos → PaginaPrazosPagamento (pagamentos:ler). */
+export interface PaginaPrazosPagamento extends Pagina<PrazoPagamento> {
+  resumo: { vencidos: number; venceHoje: number; noPrazo: number; aguardandoMarco: number; atualizacaoEstimada: Centavos };
+}
+
+export interface EntradaAlteracaoOrdem extends EntradaDecisaoAutoridade {
+  inciso: 'I' | 'II' | 'III' | 'IV' | 'V';
+}
+export interface EntradaComunicacaoAlteracao {
+  orgao: 'controle_interno' | 'tribunal_contas';
+  data: DataISO;
+  protocolo: string;
+}
+// GET /contratos/:id/execucao → ExecucaoContrato (contratos:ler)
+// PUT /contratos/:id/parametros-execucao → ParametrosExecucaoContrato (recebimentos:registrar)
+// POST /contratos/:id/designacoes → DesignacaoContrato (fiscalizacao:designar); POST /designacoes/:id/encerrar
+// POST /contratos/:id/ocorrencias → OcorrenciaContrato (fiscalizacao:registrar); POST /ocorrencias/:id/regularizar
+// POST /contratos/:id/recebimentos → RecebimentoContrato (recebimentos:registrar)
+// POST /recebimentos/:id/termos → RespostaTermoRecebimento (recebimentos:registrar); GET /recebimentos/termos/:id.pdf (contratos:ler)
+// POST /contratos/:id/garantias → RespostaGarantia (garantias:registrar); POST /garantias/:id/apresentacao | renovacao | liberacao
+// POST /garantias/:id/execucao → RespostaGarantia (garantias:executar); POST /sancoes/:id/descontos → RespostaDescontoMulta (garantias:executar)
+// GET /pagamentos/prazos → PaginaPrazosPagamento (pagamentos:ler); GET /alteracoes-ordem → AlteracaoOrdemCronologica[] (pagamentos:ler)
+// POST /pagamentos/:id/alteracoes-ordem → AlteracaoOrdemCronologica (pagamentos:ordem_cronologica)
+// POST /alteracoes-ordem/:id/comunicacoes → AlteracaoOrdemCronologica (pagamentos:ordem_cronologica)

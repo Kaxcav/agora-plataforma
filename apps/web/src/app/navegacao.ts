@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   FileSignature,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -78,6 +79,7 @@ export const MENU: readonly SecaoMenu[] = [
       { rotulo: 'Empenhos', caminho: '/financeiro/empenhos', icone: Wallet, permissao: 'empenhos:ler' },
       { rotulo: 'Pagamentos', caminho: '/financeiro/pagamentos', icone: Receipt, permissao: 'pagamentos:ler' },
       { rotulo: 'Previsão', caminho: '/financeiro/previsao', icone: ChartColumn, permissao: 'pagamentos:ler' },
+      { rotulo: 'Prazos de pagamento', caminho: '/financeiro/prazos', icone: CalendarClock, permissao: 'pagamentos:ler' },
     ],
   },
   {

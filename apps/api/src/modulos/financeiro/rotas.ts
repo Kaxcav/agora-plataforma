@@ -2,12 +2,12 @@ import type { Pagamento, Pagina, PaginaEmpenhos, PrevisaoPagamentos, RespostaAte
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { escopoUasgs, exigir, sessaoDe } from '../../autorizacao/exigir.ts';
-import { auditar } from '../../http/auditar.ts';
 import { conflito, naoEncontrado } from '../../http/erros.ts';
 import { booleanoQuery, camposPaginacao, codigoUasg, deslocamento, idDaRota, pagina, textoBusca } from '../../http/validacao.ts';
 import { carregarProveniencias, provenienciaDe } from '../../integracoes/servico.ts';
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
-import { abrirPendenciaRegularidade, verificarRegularidade } from '../regularidade/servico.ts';
+import { verificarRegularidade } from '../regularidade/servico.ts';
+import { exigirRecebimentoDefinitivo, pagamentoParaAtesto, registrarAtesto } from './atesto.ts';
 import { listarEmpenhos, listarPagamentos, obterPagamento } from './repositorio.ts';
 
 const esquemaEmpenhos = z.object({
@@ -76,20 +76,17 @@ export async function rotasFinanceiro(app: FastifyInstance): Promise<void> {
   /**
    * Atesto da nota fiscal pelo fiscal: só de 'previsto' para 'atestado'. Antes, o recheque de regularidade (RN-23):
    * nova consulta ao CEIS/CNEP e conferência das certidões, registrada. Irregularidade não impede o atesto do que foi
-   * executado: abre pendência para notificar o contratado (art. 92, XVI).
+   * executado: abre pendência para notificar o contratado (art. 92, XVI). Nota ligada a entrega ainda sem recebimento
+   * definitivo é recusada: o atesto sai com o termo definitivo (RN-34, `./atesto.ts`).
    */
   app.post('/pagamentos/:id/atestar', { preHandler: exigir('pagamentos:atestar') }, async (request): Promise<RespostaAtesto> => {
     const id = idDaRota(request.params);
     const sessao = sessaoDe(request);
     const escopo = escopoUasgs(sessao);
-    const [previo] = await ctx.banco.consultar<{ situacao: string; contrato_id: string; fornecedor_id: string; nota_fiscal: string }>(
-      `SELECT p.situacao, p.contrato_id, c.fornecedor_id, p.nota_fiscal
-         FROM pagamentos p JOIN contratos c ON c.id = p.contrato_id
-        WHERE p.id = $1 AND ($2::text[] IS NULL OR c.uasg = ANY($2::text[]))`,
-      [id, escopo],
-    );
+    const previo = await pagamentoParaAtesto(ctx.banco, id, escopo);
     if (!previo) throw naoEncontrado('Pagamento não encontrado.');
     if (previo.situacao !== 'previsto') throw conflito('Somente pagamentos na situação "previsto" podem ser atestados.');
+    await exigirRecebimentoDefinitivo(ctx.banco, id);
     const verificacao = await verificarRegularidade(ctx, request, {
       fornecedorId: previo.fornecedor_id,
       momento: 'atesto',
@@ -98,39 +95,8 @@ export async function rotasFinanceiro(app: FastifyInstance): Promise<void> {
     });
     let pendenciaAberta = false;
     await ctx.banco.transacao(async (tx) => {
-      const [alvo] = await tx.consultar<{ situacao: string; contrato_id: string; nota_fiscal: string }>(
-        `SELECT p.situacao, p.contrato_id, p.nota_fiscal
-           FROM pagamentos p
-           JOIN contratos c ON c.id = p.contrato_id
-          WHERE p.id = $1 AND ($2::text[] IS NULL OR c.uasg = ANY($2::text[]))
-          FOR UPDATE OF p`,
-        [id, escopo],
-      );
-      if (!alvo) throw naoEncontrado('Pagamento não encontrado.');
-      if (alvo.situacao !== 'previsto') throw conflito('Somente pagamentos na situação "previsto" podem ser atestados.');
-      await tx.executar(`UPDATE pagamentos SET situacao = 'atestado', atestado_por = $2, atestado_em = $3 WHERE id = $1`, [
-        id,
-        sessao.usuario.id,
-        ctx.relogio().toISOString(),
-      ]);
-      const pendenciaId = verificacao.regular
-        ? null
-        : await abrirPendenciaRegularidade(tx, ctx, { contratoId: alvo.contrato_id, notaFiscal: alvo.nota_fiscal, momento: 'atesto', verificacao });
+      const { pendenciaId } = await registrarAtesto(tx, ctx, request, { pagamentoId: id, escopo, verificacao, usuarioId: sessao.usuario.id });
       pendenciaAberta = pendenciaId !== null;
-      await auditar(tx, request, {
-        acao: 'pagamento.atestar',
-        recurso: 'pagamento',
-        recursoId: id,
-        resumo: verificacao.regular
-          ? `Atestou a nota fiscal ${alvo.nota_fiscal}`
-          : `Atestou a nota fiscal ${alvo.nota_fiscal} com ressalva de regularidade do contratado (RN-23)`,
-        dados: {
-          instrumentoTipo: 'contrato',
-          instrumentoId: alvo.contrato_id,
-          situacao: { de: 'previsto', para: 'atestado' },
-          regularidade: { verificacaoId: verificacao.id, regular: verificacao.regular, motivos: verificacao.motivos, pendenciaId },
-        },
-      });
     });
     const pagamento = await obterPagamento(ctx.banco, id, escopo, ctx.hoje());
     if (!pagamento) throw naoEncontrado('Pagamento não encontrado.');

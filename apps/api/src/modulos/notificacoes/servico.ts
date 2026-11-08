@@ -150,7 +150,7 @@ export async function carregarInstrumento(
   return linha ? mapearInstrumento(tipo, linha) : null;
 }
 
-interface Destinatario {
+export interface Destinatario {
   papel: PapelDestinatario;
   usuarioId: string | null;
   fornecedorId: string | null;
@@ -190,7 +190,7 @@ async function contratadasDe(executor: Executor, instrumento: InstrumentoNotific
 }
 
 /** Destinatários dos papéis pedidos; o mesmo servidor em dois papéis recebe uma vez só. */
-async function resolverDestinatarios(
+export async function resolverDestinatarios(
   executor: Executor,
   instrumento: InstrumentoNotificavel,
   papeis: readonly PapelDestinatario[],

@@ -73,6 +73,12 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'impedimentos:parecer': 'Emitir a análise jurídica da extensão de sanção',
   'impedimentos:decidir': 'Decidir a extensão de sanção (autoridade competente)',
   'agentes:declarar': 'Assinar a própria declaração de inexistência de impedimento',
+  'fiscalizacao:designar': 'Designar o gestor, os fiscais e a comissão de recebimento do contrato',
+  'fiscalizacao:registrar': 'Registrar ocorrências no livro do contrato',
+  'recebimentos:registrar': 'Registrar entregas e termos de recebimento provisório e definitivo',
+  'garantias:registrar': 'Registrar a exigência, a apresentação, a renovação e a liberação de garantias',
+  'garantias:executar': 'Registrar a execução da garantia e o desconto de multa (decisão da autoridade)',
+  'pagamentos:ordem_cronologica': 'Registrar a alteração justificada da ordem cronológica de pagamentos',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);
