@@ -3,7 +3,7 @@ import { after, before, describe, test } from 'node:test';
 import type { ConfiguracaoMetasEtp, JanelaManutencaoPncp, Pagina, PainelMetasEtp, ProcessoDetalhe, ProcessoResumo, RelatorioDisponibilidade, SituacaoOperacao } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
 import { construirApp } from '../src/app.ts';
-import { carregarConfig } from '../src/config.ts';
+import { carregarConfig, ErroConfiguracao } from '../src/config.ts';
 import { chamar, criarAppTeste, entrar, INICIO_TESTES, obterJson, relogioManual, type Credenciais } from './apoio.ts';
 import { concluirSelecao } from './apoio-selecao.ts';
 
@@ -110,6 +110,19 @@ describe('operação: sonda, disponibilidade (IMR-01) e janelas do PNCP', () => 
     const sondada = await chamar(app, admin, 'POST', '/api/v1/operacao/sondar');
     assert.equal(sondada.statusCode, 200);
     assert.equal((await eventos(app, 'operacao.sondar')).length, 1);
+  });
+});
+
+describe('configuração da operação (AGORA_OPERACAO_*)', () => {
+  test('padrões, meta e limite de sincronização opcionais, e validação', () => {
+    const base = { AGORA_DADOS_DIR: 'memory://' };
+    assert.deepEqual(carregarConfig(base).operacao, { sondaSegundos: 60, filaAtrasoMaximoMinutos: 15, sincronizacaoAtrasoMaximoHoras: null, metaDisponibilidade: null });
+    const definida = carregarConfig({ ...base, AGORA_OPERACAO_META_DISPONIBILIDADE: '99.9', AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS: '24', AGORA_OPERACAO_SONDA_SEGUNDOS: '0' }).operacao;
+    assert.equal(definida.metaDisponibilidade, 99.9);
+    assert.equal(definida.sincronizacaoAtrasoMaximoHoras, 24);
+    assert.equal(definida.sondaSegundos, 0);
+    assert.throws(() => carregarConfig({ ...base, AGORA_OPERACAO_META_DISPONIBILIDADE: '101' }), ErroConfiguracao);
+    assert.throws(() => carregarConfig({ ...base, AGORA_OPERACAO_SONDA_SEGUNDOS: '-1' }), ErroConfiguracao);
   });
 });
 
