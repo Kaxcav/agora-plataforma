@@ -19,6 +19,15 @@ export interface Config {
   webDir: string | null;
   confiarProxy: boolean;
   limiteRequisicoesPorMinuto: number;
+  /** Fila de integrações (RNF-07): RabbitMQ quando `url` existe; senão a fila durável em PostgreSQL. */
+  fila: {
+    url: string | null;
+    trabalhador: 'embutido' | 'separado';
+    trabalhadorPorta: number;
+    politica: { maximoTentativas: number; esperaBaseMs: number; esperaMaximaMs: number };
+  };
+  /** Publicação no PNCP (RF-19): API de manutenção e login do sistema credenciado. */
+  pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
 }
 
 export class ErroConfiguracao extends Error {
@@ -75,6 +84,15 @@ const esquemaAmbiente = z.object({
   AGORA_WEB_DIR: textoOpcional,
   AGORA_CONFIAR_PROXY: booleanoOpcional,
   AGORA_LIMITE_REQUISICOES_MINUTO: z.coerce.number().int().min(10).max(100_000).default(300),
+  AGORA_FILA_URL: textoOpcional,
+  AGORA_TRABALHADOR: z.enum(['embutido', 'separado']).optional(),
+  AGORA_TRABALHADOR_PORTA: z.coerce.number().int().min(1).max(65535).default(3001),
+  AGORA_FILA_TENTATIVAS: z.coerce.number().int().min(1).max(100).default(10),
+  AGORA_FILA_ESPERA_MS: z.coerce.number().int().min(0).max(86_400_000).default(30_000),
+  AGORA_FILA_ESPERA_MAXIMA_MS: z.coerce.number().int().min(0).max(86_400_000).default(3_600_000),
+  AGORA_PNCP_PUBLICACAO_URL: textoOpcional,
+  AGORA_PNCP_USUARIO: textoOpcional,
+  AGORA_PNCP_SENHA: textoOpcional,
 });
 
 function urlValida(valor: string): boolean {
@@ -133,6 +151,18 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_ORGAO_CNPJ !== null && !/^\d{14}$/.test(e.AGORA_ORGAO_CNPJ.replace(/\D/g, ''))) {
     problemas.push('AGORA_ORGAO_CNPJ: informe os 14 dígitos do CNPJ do órgão');
   }
+  if (e.AGORA_FILA_URL !== null && !/^amqps?:\/\/[^\s]+$/.test(e.AGORA_FILA_URL)) {
+    problemas.push('AGORA_FILA_URL: use o formato amqp://usuario:senha@host:5672/vhost (RabbitMQ)');
+  }
+  if (e.AGORA_FILA_ESPERA_MAXIMA_MS < e.AGORA_FILA_ESPERA_MS) {
+    problemas.push('AGORA_FILA_ESPERA_MAXIMA_MS: deve ser maior ou igual a AGORA_FILA_ESPERA_MS');
+  }
+  if (e.AGORA_PNCP_PUBLICACAO_URL !== null && !urlValida(e.AGORA_PNCP_PUBLICACAO_URL)) {
+    problemas.push('AGORA_PNCP_PUBLICACAO_URL: URL inválida (ex.: https://treina.pncp.gov.br/api/pncp)');
+  }
+  if ((e.AGORA_PNCP_USUARIO === null) !== (e.AGORA_PNCP_SENHA === null)) {
+    problemas.push('AGORA_PNCP_USUARIO e AGORA_PNCP_SENHA: defina os dois juntos (ou nenhum)');
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -158,5 +188,19 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     webDir: e.AGORA_WEB_DIR,
     confiarProxy: e.AGORA_CONFIAR_PROXY ?? false,
     limiteRequisicoesPorMinuto: e.AGORA_LIMITE_REQUISICOES_MINUTO,
+    fila: {
+      url: e.AGORA_FILA_URL,
+      // Os manifestos de deploy/ (compose e Kubernetes) rodam o trabalhador à parte (AGORA_TRABALHADOR=separado).
+      // Sem a variável, ele roda embutido na API: um contêiner único nunca fica com tarefas sem quem as execute.
+      trabalhador: e.AGORA_TRABALHADOR ?? 'embutido',
+      trabalhadorPorta: e.AGORA_TRABALHADOR_PORTA,
+      politica: { maximoTentativas: e.AGORA_FILA_TENTATIVAS, esperaBaseMs: e.AGORA_FILA_ESPERA_MS, esperaMaximaMs: e.AGORA_FILA_ESPERA_MAXIMA_MS },
+    },
+    pncpPublicacao: {
+      // Sem URL explícita: ambiente de treinamento do PNCP, salvo em produção.
+      url: (e.AGORA_PNCP_PUBLICACAO_URL ?? (producao ? 'https://pncp.gov.br/api/pncp' : 'https://treina.pncp.gov.br/api/pncp')).replace(/\/+$/, ''),
+      usuario: e.AGORA_PNCP_USUARIO,
+      senha: e.AGORA_PNCP_SENHA,
+    },
   };
 }

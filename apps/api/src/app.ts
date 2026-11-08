@@ -18,6 +18,8 @@ import { MODULOS_API } from './modulos/registro.ts';
 import { rotasSaude } from './modulos/saude/rotas.ts';
 import { bancoVazio, executarSeed } from './seed/index.ts';
 import { lerVersao } from './versao.ts';
+import { criarServicoFila } from './fila/servico.ts';
+import { MANIPULADORES } from './modulos/fila/manipuladores.ts';
 
 export interface OpcoesApp {
   /** Relógio da aplicação (testes fixam "hoje"). */
@@ -26,6 +28,8 @@ export interface OpcoesApp {
   fetch?: FuncaoFetch;
   /** Banco já aberto (senão é aberto conforme a configuração). */
   banco?: Banco;
+  /** Intervalo da varredura do trabalhador embutido (testes usam 0 e acionam a fila explicitamente). */
+  filaVarreduraMs?: number;
 }
 
 const TAMANHO_MAXIMO_CORPO = 1024 * 1024;
@@ -92,6 +96,7 @@ export async function construirApp(config: Config, opcoes: OpcoesApp = {}): Prom
   });
 
   const banco = opcoes.banco ?? (await abrirBanco(config, (erro) => app.log.error({ err: erro }, 'erro na conexão com o banco')));
+  let filaAberta: { fechar(): Promise<void> } | null = null;
   try {
     await aplicarMigracoes(banco);
     const relogio = opcoes.relogio ?? (() => new Date());
@@ -128,6 +133,20 @@ export async function construirApp(config: Config, opcoes: OpcoesApp = {}): Prom
     });
     await limpeza.executarAgora();
 
+    // Fila de integrações (RNF-07): a API publica as tarefas; o trabalhador roda embutido (demonstração de contêiner
+    // único) ou à parte (src/trabalhador.ts). O gancho de encerramento roda antes do fechamento do banco.
+    const fila = await criarServicoFila(ctx, {
+      manipuladores: MANIPULADORES,
+      executarTarefas: config.fila.trabalhador === 'embutido',
+      ...(opcoes.filaVarreduraMs === undefined ? {} : { intervaloMs: opcoes.filaVarreduraMs }),
+      registrar: (nivel, mensagem, dados) => app.log[nivel]({ fila: dados }, mensagem),
+    });
+    filaAberta = fila;
+    app.decorate('fila', fila);
+    app.addHook('onClose', async () => {
+      await fila.fechar();
+    });
+
     // Corpo JSON vazio (ex.: POST de ação sem parâmetros) é aceito como ausente.
     const parserJson = app.getDefaultJsonParser('error', 'error');
     app.removeContentTypeParser('application/json');
@@ -160,6 +179,7 @@ export async function construirApp(config: Config, opcoes: OpcoesApp = {}): Prom
       return reply.status(404).send(corpoErro('NAO_ENCONTRADO', 'Recurso não encontrado.', request.id));
     });
   } catch (erro) {
+    await filaAberta?.fechar();
     await banco.fechar();
     throw erro;
   }

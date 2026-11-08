@@ -9,6 +9,7 @@ import { ehResultadoDesempate, useContratar } from '../../../api/jornada';
 import { Alerta, Botao, ConfirmarAcao, LinkBotao, ListaDefinicoes, Secao, useAvisos } from '../../../componentes';
 import { ErroOperacao } from '../comum';
 import type { PropsEtapa } from './tipos';
+import DivulgacaoContratoPncp from './DivulgacaoContratoPncp';
 
 export default function Etapa7Contrato({ processo, editavel }: PropsEtapa) {
   const { avisar } = useAvisos();
@@ -45,6 +46,7 @@ export default function Etapa7Contrato({ processo, editavel }: PropsEtapa) {
             </p>
           </Alerta>
         </div>
+        <DivulgacaoContratoPncp processo={processo} />
         <p className="texto-secundario">
           A partir daqui, a execução é acompanhada no detalhe do contrato: plano de gestão, empenhos, pagamentos em ordem cronológica e
           aditivos (art. 125).

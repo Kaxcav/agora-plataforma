@@ -31,6 +31,8 @@ data:
   AGORA_LOG_NIVEL: "info"
   AGORA_CONFIAR_PROXY: "true"
   AGORA_ORGAO_CNPJ: "00000000000000"
+  # A API só publica as tarefas na fila; o serviço trabalhador (fila-trabalhador.yaml) as executa (RNF-07).
+  AGORA_TRABALHADOR: "separado"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -123,7 +125,7 @@ spec:
   selector:
     matchLabels: { app: agora }
 ---
-# Saída liberada só para DNS, o banco e HTTPS (APIs públicas do governo: PNCP etc.).
+# Saída liberada só para DNS, o banco, a fila de integrações (RabbitMQ) e HTTPS (APIs públicas do governo: PNCP etc.).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -139,5 +141,7 @@ spec:
         - { protocol: TCP, port: 53 }
     - ports:
         - { protocol: TCP, port: 5432 }
+    - ports:
+        - { protocol: TCP, port: 5672 }
     - ports:
         - { protocol: TCP, port: 443 }

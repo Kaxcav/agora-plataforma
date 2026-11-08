@@ -81,3 +81,21 @@ Fonte: Manual de Integração PNCP, versão 2.2.7 (gov.br/pncp, "versões anteri
 - **O que o servidor guarda:** o `location`, o `numeroControlePNCP` e o hash de cada arquivo enviado, com proveniência na trilha de auditoria.
 - **Robustez:** idempotência por processo (não publicar duas vezes) e novas tentativas com espera crescente.
 - **Link público do portal:** a confirmar no manual vigente (o formato usual é `https://pncp.gov.br/app/editais/{cnpj}/{ano}/{sequencial}`).
+
+## Situação da implementação (frente B, RF-19 e RNF-07)
+
+Conferido no Manual de Integração PNCP 2.2.9:
+
+- a inclusão da compra devolve `location` e o corpo `{ compraUri, documentoUri }`;
+- a parte multipart do documento principal se chama `documento`; a dos anexos, `arquivo`;
+- o contrato (6.5.1) e a ata (6.4.1) são incluídos em JSON;
+- o arquivo tem no máximo 30 MB (5.15).
+
+Onde está cada parte:
+
+- **Cliente:** `apps/api/src/integracoes/pncp-publicacao.ts`.
+- **Tarefas da fila:** `apps/api/src/modulos/publicacao-pncp/tarefas.ts`.
+- **Prova de cada envio:** tabela `pncp_envios` (migração 012).
+- **Detalhes da entrega:** `docs/entregas/frente-b-integracoes.md`.
+
+O código da unidade compradora é a UASG do processo, sem variável própria.
