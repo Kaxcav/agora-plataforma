@@ -4,6 +4,7 @@ import {
   mascararNome,
   prazoDivulgacaoContratoPncp,
   verificarSegregacao,
+  type AvaliacaoSelecao,
   type OpcoesCalendario,
   type PapelProcesso,
 } from '@agora/dominio';
@@ -40,6 +41,8 @@ import {
   type SocioFornecedor,
 } from './regras.ts';
 import { geradoComParametrosAnteriores } from './parametros-edital.ts';
+import { avaliarSelecaoProcesso, editalCompleto, montarSelecao, vencedorDoProcesso } from './selecao.ts';
+import { criteriosDoProcesso, politicaSustentabilidadeAtiva, sustentabilidadeDoProcesso } from './sustentabilidade.ts';
 import type {
   AnaliseCesta,
   CargaProcesso,
@@ -57,7 +60,7 @@ const SELECAO_PROCESSO = `
          p.responsavel_id, r.nome AS responsavel_nome, p.modalidade_prevista, p.dfd, p.etp, p.riscos, p.cesta, p.edital,
          p.parecer, p.publicacao, p.disputa, p.contrato_id, c.numero AS contrato_numero,
          c.assinatura_em AS contrato_assinatura_em, c.divulgacao_pncp_em AS contrato_divulgacao_em,
-         pj.nome AS parecerista_nome, p.criado_em, p.atualizado_em
+         pj.nome AS parecerista_nome, p.criado_em, p.atualizado_em, p.selecao, p.sustentabilidade
     FROM processos p
     JOIN uasgs u ON u.codigo = p.uasg
     LEFT JOIN usuarios r ON r.id = p.responsavel_id
@@ -314,6 +317,10 @@ function situacaoDfdSei(carga: CargaProcesso): SituacaoDfdSei {
 export interface AvaliacaoProcesso extends ResultadoRegras {
   analise: AnaliseCesta | null;
   valorEstimado: number | null;
+  /** Política de sustentabilidade do órgão ligada (RN-21). */
+  politicaSustentabilidade: boolean;
+  /** Atos da seleção por `avaliarSelecao` (RN-20, RN-22, RF-18). */
+  selecao: AvaliacaoSelecao;
 }
 
 /** Bloqueios e sinais da etapa atual, a partir das regras de @agora/dominio. */
@@ -327,6 +334,8 @@ export async function avaliarProcesso(
   const { linha } = carga;
   const analise = analisarCesta(linha.cesta, hoje);
   const valorEstimado = valorEstimadoProcesso(linha.dfd, analise);
+  const politicaSustentabilidade = await politicaSustentabilidadeAtiva(executor);
+  const selecao = avaliarSelecaoProcesso(linha, hoje, calendario);
   let resultado: ResultadoRegras;
   switch (linha.etapa_atual) {
     case 1:
@@ -340,25 +349,36 @@ export async function avaliarProcesso(
       });
       break;
     case 3:
-      resultado = regrasEtapa3({ etp: linha.etp, riscos: linha.riscos, cesta: linha.cesta, analise });
+      resultado = regrasEtapa3({
+        etp: linha.etp,
+        riscos: linha.riscos,
+        cesta: linha.cesta,
+        analise,
+        sustentabilidade: sustentabilidadeDoProcesso(linha, politicaSustentabilidade, 'etp'),
+      });
       break;
     case 4:
-      resultado = regrasEtapa4({ documentos: carga.documentos, edital: linha.edital });
+      resultado = regrasEtapa4({
+        documentos: carga.documentos,
+        edital: linha.edital,
+        sustentabilidade: sustentabilidadeDoProcesso(linha, politicaSustentabilidade, 'tr'),
+      });
       break;
     case 5:
       resultado = regrasEtapa5({ parecer: linha.parecer, publicacao: linha.publicacao, hoje });
       break;
     case 6: {
-      const vencedor = primeiroClassificado(linha.disputa);
+      const vencedor = selecao.vencedorProvisorio;
       resultado = regrasEtapa6({
         disputa: linha.disputa,
         sancoesVencedor: vencedor ? await sancoesImpeditivasVigentes(executor, vencedor, hoje) : [],
         vinculosLicitantes: await vinculosEntreLicitantes(executor, linha.disputa),
+        selecao,
       });
       break;
     }
     case 7: {
-      const vencedor = primeiroClassificado(linha.disputa);
+      const vencedor = vencedorDoProcesso(linha);
       const contrato =
         linha.contrato_numero !== null && linha.contrato_assinatura_em !== null
           ? {
@@ -375,7 +395,14 @@ export async function avaliarProcesso(
       break;
     }
   }
-  return { bloqueios: resultado.bloqueios, sinais: [...resultado.sinais, ...sinaisDocumentos(carga.documentos)], analise, valorEstimado };
+  return {
+    bloqueios: resultado.bloqueios,
+    sinais: [...resultado.sinais, ...sinaisDocumentos(carga.documentos)],
+    analise,
+    valorEstimado,
+    politicaSustentabilidade,
+    selecao,
+  };
 }
 
 export function montarResumo(linha: LinhaProcesso, bloqueios: readonly Bloqueio[], valorEstimado: number | null): ProcessoResumo {
@@ -425,7 +452,7 @@ export function montarDetalhe(carga: CargaProcesso, avaliacao: AvaliacaoProcesso
       assinadoPor: a.assinadoPor,
       assinadoEm: a.assinadoEm,
     })),
-    parametrosEdital: linha.edital,
+    parametrosEdital: editalCompleto(linha.edital),
     etp: linha.etp,
     riscos: linha.riscos,
     cestaPrecos: {
@@ -463,6 +490,8 @@ export function montarDetalhe(carga: CargaProcesso, avaliacao: AvaliacaoProcesso
     contratoGerado: linha.contrato_id !== null && linha.contrato_numero !== null ? { id: linha.contrato_id, numero: linha.contrato_numero } : null,
     bloqueiosDetalhe: avaliacao.bloqueios,
     sinais,
+    selecao: montarSelecao(linha, avaliacao.selecao),
+    sustentabilidade: { ...criteriosDoProcesso(linha), politicaObrigatoria: avaliacao.politicaSustentabilidade },
   };
 }
 

@@ -56,6 +56,8 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/admin/integracoes', permissao: ['integracoes:executar', 'admin:usuarios'], pagina: lazy(() => import('../paginas/admin/Integracoes')) },
   { caminho: '/auditoria', permissao: 'auditoria:ler', pagina: lazy(() => import('../paginas/auditoria/TrilhaAuditoria')) },
   { caminho: '/auditoria/lgpd', permissao: 'lgpd:relatorio', pagina: lazy(() => import('../paginas/auditoria/AcessosLgpd')) },
+  // Políticas do órgão (RN-21): leitura para qualquer sessão; alteração só com ajustes:editar (a API decide).
+  { caminho: '/ajustes/politicas', pagina: lazy(() => import('../paginas/ajustes/Politicas')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

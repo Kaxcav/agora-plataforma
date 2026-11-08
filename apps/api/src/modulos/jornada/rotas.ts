@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { INCISOS_ETP, type IncisoEtp } from '@agora/dominio';
+import { INCISOS_ETP, PRAZO_MAXIMO_PROVA_CONCEITO_DIAS_UTEIS, type IncisoEtp } from '@agora/dominio';
 import type { EtapaJornada, Pagina, PreviaImportacaoCesta, ProcessoDetalhe, ProcessoResumo, UsuarioDesignavel } from '@agora/contratos';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -36,6 +36,8 @@ import {
   primeiroClassificado,
 } from './repositorio.ts';
 import { analisarCesta, avaliarSegregacao } from './regras.ts';
+import { INVERSAO_FASES_PADRAO, PROVA_CONCEITO_PADRAO, selecaoIniciada, vencedorDoProcesso } from './selecao.ts';
+import { documentoTrazSustentabilidade, politicaSustentabilidadeAtiva, sustentabilidadeDoProcesso } from './sustentabilidade.ts';
 import {
   aprovarDocumento,
   assinarNaArvore,
@@ -47,6 +49,7 @@ import {
   exigirEtapa,
   exigirEtapaAte,
   exigirEtapaDocumento,
+  exigirSemArtigoLuxoPendente,
   gravarEquipe,
   gravarJson,
   inserirDocumento,
@@ -166,7 +169,23 @@ const esquemaParametrosEdital = z.object({
   exigeFaturamentoMinimo: z.boolean(),
   patrimonioLiquidoMinimoPercentual: z.number().min(0).max(100).nullable(),
   exigeRegistroCadastralComplementar: z.boolean(),
+  // RN-20 e RN-22: ausentes = prova de conceito não exigida e inversão de fases não adotada.
+  provaConceito: z
+    .object({
+      exigencia: z.enum(['nenhuma', 'prova_conceito', 'amostra']),
+      roteiro: textoOpcional,
+      justificativa: textoOpcional,
+      prazoDiasUteis: z.number().int().min(1).max(PRAZO_MAXIMO_PROVA_CONCEITO_DIAS_UTEIS).nullable(),
+    })
+    .optional()
+    .transform((v) => v ?? PROVA_CONCEITO_PADRAO),
+  inversaoFases: z
+    .object({ adotada: z.boolean(), motivacao: textoOpcional })
+    .optional()
+    .transform((v) => v ?? INVERSAO_FASES_PADRAO),
 });
+
+const esquemaSustentabilidade = z.object({ criteriosAmbientais: textoOpcional, logisticaReversa: textoOpcional });
 
 const esquemaGerar = z.object({ tipo: z.enum(TIPOS_DOCUMENTO as [TipoDocumento, ...TipoDocumento[]]) });
 
@@ -240,7 +259,12 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
 
   async function contexto(): Promise<ContextoJornada> {
     const agora = ctx.relogio();
-    return { agora, hoje: ctx.hoje(), calendario: await opcoesCalendario(ctx.banco) };
+    return {
+      agora,
+      hoje: ctx.hoje(),
+      calendario: await opcoesCalendario(ctx.banco),
+      politicaSustentabilidade: await politicaSustentabilidadeAtiva(ctx.banco),
+    };
   }
 
   async function responder(request: FastifyRequest, id: string): Promise<ProcessoDetalhe> {
@@ -569,6 +593,8 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     if (preparado.falhaIa) request.log.warn({ tipo: entrada.tipo, falha: preparado.falhaIa }, 'redação por IA falhou; usado o modelo de texto');
     return alterar(request, async (tx, atual) => {
       exigirEtapaDocumento(atual, entrada.tipo);
+      // O DFD pode ter mudado durante a redação: a trava do artigo de luxo (RN-01) vale também para o que se grava.
+      exigirSemArtigoLuxoPendente(atual);
       const doc = await inserirDocumento(tx, atual.id, preparado, { id: randomUUID(), geradoEm: c.agora.toISOString(), usuarioId: sessaoDe(request).usuario.id });
       return {
         acao: 'documento.gerar',
@@ -597,6 +623,19 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
         const mensagem = `O documento "${doc.titulo}" (versão ${doc.versao}) foi gerado com parâmetros anteriores — gere novamente e aprove.`;
         throw regraNegocio(mensagem, [{ campo: 'RN-06', mensagem }]);
       }
+      // RN-21: com a política do órgão ligada, o ETP e o TR só se concluem com os critérios de sustentabilidade.
+      if (doc.tipo === 'etp' || doc.tipo === 'tr') {
+        const verificacao = sustentabilidadeDoProcesso(linha, c.politicaSustentabilidade ?? true, doc.tipo);
+        const pendencias = verificacao.pendencias.map((p) => p.mensagem);
+        if (verificacao.exigida && pendencias.length === 0 && !documentoTrazSustentabilidade(doc.conteudo)) {
+          pendencias.push(`A versão ${doc.versao} de "${doc.titulo}" foi gerada sem os critérios de sustentabilidade e de logística reversa: gere nova versão.`);
+        }
+        if (pendencias.length > 0) {
+          throw regraNegocio(`"${doc.titulo}" não pode ser aprovado sem os critérios de sustentabilidade exigidos pela política do órgão (RN-21).`, [
+            ...pendencias.map((mensagem) => ({ campo: 'RN-21', mensagem })),
+          ]);
+        }
+      }
       const aprovado = await aprovarDocumento(tx, linha.id, doc, { id: sessao.usuario.id, nome: sessao.usuario.nome }, c.agora, c.hoje, randomUUID());
       return {
         acao: 'documento.aprovar',
@@ -615,8 +654,27 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       await gravarJson(tx, linha.id, 'edital', parametros, c.agora);
       return {
         acao: 'edital.parametros',
-        resumo: 'Atualizou os parâmetros do edital (critério, regime e habilitação econômico-financeira)',
+        resumo: 'Atualizou os parâmetros do edital (critério, regime, habilitação econômico-financeira e prova de conceito)',
         dados: { antes: linha.edital, depois: parametros },
+      };
+    });
+  });
+
+  // ───────── etapas 3 e 4: critérios de sustentabilidade do ETP e do TR (RN-21) ─────────
+
+  app.put('/processos/:id/sustentabilidade', edicao, async (request) => {
+    const entrada = esquemaSustentabilidade.parse(request.body);
+    return alterar(request, async (tx, linha, c) => {
+      exigirEtapaAte(linha, 4, 'Os critérios de sustentabilidade do ETP e do TR');
+      await gravarJson(tx, linha.id, 'sustentabilidade', entrada, c.agora);
+      return {
+        acao: 'sustentabilidade.atualizar',
+        resumo: 'Atualizou os critérios de sustentabilidade ambiental e a logística reversa do ETP e do TR',
+        dados: {
+          criteriosAmbientais: entrada.criteriosAmbientais !== null,
+          logisticaReversa: entrada.logisticaReversa !== null,
+          politicaObrigatoria: c.politicaSustentabilidade ?? true,
+        },
       };
     });
   });
@@ -687,6 +745,11 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     const { licitantes } = esquemaDisputa.parse(request.body);
     return alterar(request, async (tx, linha, c) => {
       exigirEtapa(linha, 6, 'O registro da disputa');
+      if (selecaoIniciada(linha.selecao)) {
+        throw regraNegocio('A disputa já tem atos da seleção registrados (prova de conceito, habilitação ou recursos) e não pode ser alterada.', [
+          { campo: 'RN-22', mensagem: 'O resultado da disputa fica fixo depois do primeiro ato da seleção (art. 17).' },
+        ]);
+      }
       const disputa = await montarDisputa(tx, licitantes, c.agora);
       await gravarJson(tx, linha.id, 'disputa', disputa, c.agora);
       const resultado = disputa.resultado;
@@ -733,8 +796,13 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     alterar(request, async (tx, linha, c) => {
       exigirEtapa(linha, 7, 'A geração do contrato');
       if (linha.contrato_id !== null) throw regraNegocio(`O processo já gerou o contrato ${linha.contrato_numero ?? ''}.`.trim());
-      const vencedor = primeiroClassificado(linha.disputa);
-      if (!vencedor) throw regraNegocio('Não há licitante vencedor registrado na disputa.');
+      // O contrato é celebrado com o adjudicatário, depois da homologação (art. 71, IV; RF-18).
+      const vencedor = vencedorDoProcesso(linha);
+      if (!vencedor) {
+        throw regraNegocio('Não há licitante adjudicatário com a licitação homologada.', [
+          { campo: 'RF-18', mensagem: 'Registre a adjudicação e a homologação pela autoridade competente (art. 71, IV).' },
+        ]);
+      }
       // RN-09 (art. 91, § 4º): sem impedimento/inidoneidade vigentes e com regularidade fiscal e trabalhista.
       const regularidade = await avaliarRegularidade(tx, vencedor, c.hoje, c.agora);
       if (!regularidade.regular) {

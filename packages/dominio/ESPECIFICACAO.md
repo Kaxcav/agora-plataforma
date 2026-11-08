@@ -379,3 +379,41 @@ Conteúdo mínimo do catálogo (escreva descrições completas em pt-BR):
 - RNF-06 IA nunca decide sanção, habilitação ou fraude; human-in-the-loop
 - RF para as telas de operação: painel, atas, contratos, itens, empenhos, pagamentos, vínculos, ajustes, administração, auditoria, transparência (um RF por tela, ids RF-01…)
 ```
+
+## lei14133/luxo.ts — trava de minutas (roteiro PoC-01)
+
+```ts
+export function avaliarBloqueioLuxoMinutas(itens: readonly { descricao: string }[], justificativa: string | null, minimoCaracteres?: number): { bloqueado: boolean; itens: { item: number; termos: string[] }[]; mensagem: string; fundamento: string }
+// bloqueado = algum item com indício (sinalizarArtigoLuxo) e justificativa com menos de minimoCaracteres (padrão 30).
+// A API chama antes de redigir qualquer minuta e antes de chamar o provedor de IA (RN-01).
+```
+
+## lei14133/sustentabilidade.ts — art. 5º, art. 11, IV, e art. 18, § 1º, XII (RN-21)
+
+```ts
+export interface CriteriosSustentabilidade { criteriosAmbientais: string | null; logisticaReversa: string | null }
+export function verificarSustentabilidade(e: { politicaAtiva: boolean; criterios: CriteriosSustentabilidade; documento: 'etp' | 'tr' }, minimoCaracteres?: number): { exigida: boolean; completa: boolean; pendencias: { campo: 'criteriosAmbientais' | 'logisticaReversa'; mensagem: string }[]; orientacao: string; fundamento: string }
+// política ligada: cada critério com menos de minimoCaracteres (padrão 30) vira pendência; desligada: sem pendências.
+```
+
+## lei14133/selecao.ts — arts. 17, 41, 71 e 165 (RN-20, RN-22, RF-18)
+
+```ts
+export type ExigenciaProvaConceito = 'nenhuma' | 'prova_conceito' | 'amostra';
+export const PRAZO_MAXIMO_PROVA_CONCEITO_DIAS_UTEIS = 30;
+export function validarProvaConceito(p: ParametrosProvaConceito, minimoCaracteres?: number): { exigida; completa; pendencias: { campo: 'roteiro' | 'justificativa' | 'prazoDiasUteis'; mensagem }[]; fundamento }
+export function prazoProvaConceito(convocacao: DataISO, prazoDiasUteis: number, opcoes?: OpcoesCalendario): { limite: DataISO; fundamento } // art. 183
+export function validarInversaoFases(p: { adotada: boolean; motivacao: string | null }, minimoCaracteres?: number): { pendencias: string[]; fundamento } // art. 17, § 1º
+export const PRAZOS_RECURSAIS_DIAS_UTEIS = { razoes: 3, contrarrazoes: 3, reconsideracao: 3, decisaoSuperior: 10 };
+export function prazosRecursoSelecao(dataAto: DataISO, encaminhamento: DataISO | null, opcoes?): { razoes; contrarrazoes; reconsideracao; decisaoSuperior: DataISO | null; fundamento }
+// razões = ato + 3 du; contrarrazões = fim das razões + 3 du; reconsideração = fim das contrarrazões + 3 du; decisão superior = encaminhamento + 10 du.
+export function avaliarSelecao(e: EstadoSelecao, hoje: DataISO, opcoes?): AvaliacaoSelecao
+// ordem: disputa → prova de conceito do vencedor provisório (se exigida) → habilitação (invertidas com inversão de fases) →
+// intenção de recurso no dia do ato (preclusão no dia seguinte) → razões → contrarrazões → reconsideração → decisão superior →
+// adjudicação → homologação. Reprovação, inabilitação ou reforma em recurso excluem o licitante; o próximo classificado vira
+// vencedor provisório (convocacaoAutomatica = true quando há prova a refazer). Reforma pode reintegrar licitante excluído.
+export function validarAtoSelecao(e: EstadoSelecao, ato: AtoSelecao, hoje: DataISO, opcoes?): AvaliacaoSelecao
+// lança ErroDominio ATO_SELECAO_FORA_DE_ORDEM (ato fora da vez ou do prazo) ou ATO_SELECAO_INVALIDO (licitante ilegítimo).
+```
+
+Regras novas no catálogo: RN-20 (prova de conceito ou amostra), RN-21 (sustentabilidade obrigatória), RN-22 (fase recursal única e prazos), RF-18 (adjudicação, homologação e divulgação dos documentos preparatórios). RN-01 passa a citar `avaliarBloqueioLuxoMinutas`.

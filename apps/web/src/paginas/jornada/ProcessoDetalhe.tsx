@@ -120,11 +120,17 @@ function ResultadoAvanco({ falha, aoFechar }: { falha: FalhaAvanco; aoFechar: ()
   );
 }
 
-function motivoConsulta(processo: DadosProcesso, etapa: EtapaJornada, podeEditar: boolean, podeAtuarNaEtapa5: boolean): MotivoSomenteConsulta | null {
+function motivoConsulta(
+  processo: DadosProcesso,
+  etapa: EtapaJornada,
+  podeEditar: boolean,
+  podeAtuarNaEtapa5: boolean,
+  podeAtuarNaEtapa6 = false,
+): MotivoSomenteConsulta | null {
   if (processo.contratoGerado !== null) return 'encerrado';
   if (etapa < processo.etapaAtual) return 'concluida';
   if (etapa > processo.etapaAtual) return 'futura';
-  if (podeEditar || (etapa === 5 && podeAtuarNaEtapa5)) return null;
+  if (podeEditar || (etapa === 5 && podeAtuarNaEtapa5) || (etapa === 6 && podeAtuarNaEtapa6)) return null;
   return 'sem_permissao';
 }
 
@@ -138,13 +144,21 @@ interface PropsConteudo {
 }
 
 function ConteudoProcesso({ processo, etapa, endereco, falha, aoFecharFalha, focoPainel }: PropsConteudo) {
-  const { temPermissao } = useSessao();
+  const { temPermissao, usuario } = useSessao();
   const { ativo: modoEspecificacao } = useModoEspecificacao();
   const tituloPainel = useRef<HTMLHeadingElement>(null);
   const encerrado = processo.contratoGerado !== null;
   const podeEditar = temPermissao('jornada:editar');
   const atual = etapa === processo.etapaAtual && !encerrado;
-  const motivo = motivoConsulta(processo, etapa, podeEditar, temPermissao(['jornada:aprovar_juridico', 'jornada:publicar']));
+  // Na etapa 6, a autoridade competente designada decide recursos, adjudica e homologa (jornada:homologar).
+  const autoridadeDesignada = processo.equipe.some((e) => e.papel === 'autoridade_competente' && e.usuario.id === usuario?.id);
+  const motivo = motivoConsulta(
+    processo,
+    etapa,
+    podeEditar,
+    temPermissao(['jornada:aprovar_juridico', 'jornada:publicar']),
+    temPermissao('jornada:homologar') && autoridadeDesignada,
+  );
   const Painel = PAINEIS[etapa];
   const situacao = encerrado || etapa < processo.etapaAtual ? 'Concluída' : etapa === processo.etapaAtual ? 'Etapa atual' : 'Não iniciada';
 

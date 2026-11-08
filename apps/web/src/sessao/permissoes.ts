@@ -51,6 +51,7 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'auditoria:ler': 'Consultar a trilha de auditoria',
   'lgpd:revelar': 'Revelar dado pessoal (com finalidade)',
   'lgpd:relatorio': 'Relatório de acessos a dados pessoais',
+  'jornada:homologar': 'Decidir recursos, adjudicar e homologar (autoridade competente designada)',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

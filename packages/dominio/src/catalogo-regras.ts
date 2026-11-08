@@ -28,11 +28,11 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     tipo: 'RN',
     titulo: 'Vedação à aquisição de artigos de luxo',
     descricao:
-      'Os itens de consumo devem ser de qualidade comum, não superior à necessária para a finalidade a que se destinam. Ao descrever cada item do Documento de Formalização da Demanda (DFD), a Ágora compara a descrição com uma lista de termos indicativos de artigo de luxo (por palavra ou expressão inteira, sem distinção de acentos e de maiúsculas). Havendo indício, o processo só avança da etapa 1 com justificativa de que o bem é de qualidade comum ou de que se enquadra em exceção prevista no Decreto 10.818/2021. O sistema apenas sinaliza; a classificação final é do agente responsável.',
+      'Os itens de consumo devem ser de qualidade comum, não superior à necessária para a finalidade a que se destinam. Ao descrever cada item do Documento de Formalização da Demanda (DFD), a Ágora compara a descrição com uma lista de termos indicativos de artigo de luxo (por palavra ou expressão inteira, sem distinção de acentos e de maiúsculas). Havendo indício, o processo só avança da etapa 1 com justificativa de que o bem é de qualidade comum ou de que se enquadra em exceção prevista no Decreto 10.818/2021. O sistema apenas sinaliza; a classificação final é do agente responsável. Enquanto houver indício sem justificativa aceita, o servidor também recusa a geração de qualquer minuta, inclusive com a redação por IA ligada.',
     fundamento: 'Lei 14.133/2021, art. 20; Decreto 10.818/2021',
     etapa: 1,
     telas: ['jornada.dfd', 'jornada.detalhe'],
-    implementacao: 'sinalizarArtigoLuxo',
+    implementacao: 'sinalizarArtigoLuxo, avaliarBloqueioLuxoMinutas; api: POST /processos/:id/documentos/gerar',
   },
   {
     id: 'RN-02',
@@ -567,6 +567,53 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     etapa: 5,
     telas: [],
     implementacao: 'api: GET /publico/editais; GET /publico/editais/:id; GET /publico/editais/:id/documentos/:tipo; mascararCpf',
+  },
+  {
+    id: 'RN-20',
+    tipo: 'RN',
+    titulo: 'Prova de conceito ou amostra do licitante provisoriamente vencedor',
+    descricao:
+      'Quando o edital exigir prova de conceito ou amostra, com a necessidade justificada, o roteiro de testes e o prazo em dias úteis contados da convocação, o licitante provisoriamente vencedor é convocado e a prova ocorre em sessão pública gravada, cujo link fica no processo. O resultado é registrado por servidor, aprovado ou reprovado, sempre com motivação. Reprovado o licitante, o próximo colocado é convocado automaticamente. Sem resultado aprovado, o processo não segue para a habilitação, a fase recursal e a adjudicação.',
+    fundamento: 'Lei 14.133/2021, art. 17, § 3º, e art. 41, II',
+    etapa: 6,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'validarProvaConceito, prazoProvaConceito, avaliarSelecao; api: PUT /processos/:id/parametros-edital; POST /processos/:id/selecao/prova-conceito/convocacao; POST /processos/:id/selecao/prova-conceito/resultado',
+  },
+  {
+    id: 'RN-21',
+    tipo: 'RN',
+    titulo: 'Critérios de sustentabilidade e logística reversa obrigatórios',
+    descricao:
+      'Com a política de sustentabilidade do órgão ligada (padrão), o Estudo Técnico Preliminar e o termo de referência só se concluem com os critérios de sustentabilidade ambiental e a logística reversa de bens e refugos preenchidos: sem eles, o processo não avança das etapas 3 e 4 e os documentos não podem ser aprovados. O TR gerado traz a seção correspondente. Só o administrador altera a política, com justificativa registrada na trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, art. 5º, art. 11, IV, e art. 18, § 1º, XII',
+    etapa: 3,
+    telas: ['jornada.detalhe', 'ajustes'],
+    implementacao: 'verificarSustentabilidade; api: PUT /processos/:id/sustentabilidade; GET e PUT /politicas-orgao/sustentabilidade',
+  },
+  {
+    id: 'RN-22',
+    tipo: 'RN',
+    titulo: 'Fase recursal única e prazos dos atos da seleção',
+    descricao:
+      'Depois do julgamento e da habilitação do vencedor, abre-se uma fase recursal única (com inversão de fases, ela segue o julgamento). A intenção de recorrer é registrada logo após o ato, sob pena de preclusão. As razões têm 3 dias úteis, e as contrarrazões, o mesmo prazo. Quem praticou o ato pode reconsiderá-lo em 3 dias úteis; mantido o ato, a autoridade superior decide em até 10 dias úteis. Os prazos seguem o calendário de dias úteis do órgão, e as decisões são sempre humanas e motivadas.',
+    fundamento: 'Lei 14.133/2021, art. 165, I, §§ 1º, 2º e 4º, e art. 17, § 1º',
+    etapa: 6,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'prazosRecursoSelecao, avaliarSelecao, validarAtoSelecao, validarInversaoFases; api: POST /processos/:id/selecao/habilitacao; POST /processos/:id/selecao/recurso/*',
+  },
+  {
+    id: 'RF-18',
+    tipo: 'RF',
+    titulo: 'Adjudicação, homologação e divulgação dos documentos preparatórios',
+    descricao:
+      'Exauridos os recursos, a autoridade competente designada no processo adjudica o objeto ao vencedor e homologa a licitação, em atos registrados na trilha de auditoria. Com a homologação, os documentos da fase preparatória que não integraram o edital (DFD, ETP, matriz de riscos, nota técnica de preços e checklist jurídico) passam a aparecer na página pública do edital, em PDF e sem login. A nota técnica de orçamento sigiloso não é divulgada.',
+    fundamento: 'Lei 14.133/2021, art. 71, IV, e art. 54, § 3º',
+    etapa: 6,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'avaliarSelecao; api: POST /processos/:id/selecao/adjudicacao; POST /processos/:id/selecao/homologacao; GET /publico/editais/:id/preparatorios/:tipo',
   },
 ]);
 

@@ -9,7 +9,7 @@ import { aplicarPercentual, formatarMoeda } from '@agora/dominio';
 import { useSalvarParametrosEdital, type TipoDocumento } from '../../../api/jornada';
 import { Alerta, Alternador, Botao, CampoTexto, Etiqueta, ListaDefinicoes, Selecao, useAvisos } from '../../../componentes';
 import { opcoesDe } from '../../compartilhado/rotulos';
-import { ErroOperacao, mesmoConteudo, Requisitos, type Requisito } from '../comum';
+import { ErroOperacao, mesmoConteudo, Requisitos, textoOuNulo, type Requisito } from '../comum';
 import { DocumentosEtapa, ultimaVersao } from '../Documentos';
 import {
   CRITERIOS_JULGAMENTO,
@@ -19,6 +19,8 @@ import {
   TIPOS_DOCUMENTO,
   vedacoesEdital,
 } from '../rotulos';
+import { CamposParametrosSelecao, INVERSAO_VAZIA, itensParametrosSelecao, pendenciasParametrosSelecao, PROVA_CONCEITO_VAZIA } from './ParametrosSelecao';
+import { SecaoSustentabilidade, sustentabilidadeCompleta } from './SecaoSustentabilidade';
 import type { PropsEtapa } from './tipos';
 
 const TIPOS: readonly TipoDocumento[] = ['tr', 'edital', 'minuta_contrato'];
@@ -35,16 +37,35 @@ function lerPercentual(texto: string): number | null | undefined {
   return Number.isFinite(valor) && valor >= 0 ? valor : undefined;
 }
 
+/** "" → null; inteiro de 1 a 30 → valor; caso contrário, undefined (inválido). */
+function lerPrazo(texto: string): number | null | undefined {
+  const limpo = texto.trim();
+  if (limpo === '') return null;
+  const valor = Number(limpo);
+  return Number.isInteger(valor) && valor >= 1 && valor <= 30 ? valor : undefined;
+}
+
 function ParametrosDoEdital({ processo, editavel }: PropsEtapa) {
   const base = useId();
   const { avisar } = useAvisos();
   const salvar = useSalvarParametrosEdital(processo.id);
   const [parametros, definirParametros] = useState<ParametrosEdital>(() => processo.parametrosEdital);
   const [textoPl, definirTextoPl] = useState(() => textoPercentual(processo.parametrosEdital.patrimonioLiquidoMinimoPercentual));
+  const [textoPrazo, definirTextoPrazo] = useState(() => String(processo.parametrosEdital.provaConceito?.prazoDiasUteis ?? ''));
   const percentual = lerPercentual(textoPl);
-  const atual: ParametrosEdital = { ...parametros, patrimonioLiquidoMinimoPercentual: percentual ?? null };
+  const prazo = lerPrazo(textoPrazo);
+  const prova = parametros.provaConceito ?? PROVA_CONCEITO_VAZIA;
+  const inversao = parametros.inversaoFases ?? INVERSAO_VAZIA;
+  const atual: ParametrosEdital = {
+    ...parametros,
+    patrimonioLiquidoMinimoPercentual: percentual ?? null,
+    provaConceito: { ...prova, prazoDiasUteis: prazo ?? null, roteiro: textoOuNulo(prova.roteiro ?? ''), justificativa: textoOuNulo(prova.justificativa ?? '') },
+    inversaoFases: { ...inversao, motivacao: textoOuNulo(inversao.motivacao ?? '') },
+  };
+  const prazoInvalido = prova.exigencia !== 'nenhuma' && prazo === undefined;
+  const pendenciasSelecao = pendenciasParametrosSelecao(atual.provaConceito ?? PROVA_CONCEITO_VAZIA, atual.inversaoFases ?? INVERSAO_VAZIA);
   const vedacoes = vedacoesEdital(atual);
-  const alterado = !mesmoConteudo(atual, processo.parametrosEdital) || percentual === undefined;
+  const alterado = !mesmoConteudo(atual, processo.parametrosEdital) || percentual === undefined || prazoInvalido;
   const limitePl = processo.valorEstimado !== null ? aplicarPercentual(processo.valorEstimado, 10) : null;
   const valorPl = processo.valorEstimado !== null && typeof percentual === 'number' ? aplicarPercentual(processo.valorEstimado, percentual) : null;
 
@@ -56,10 +77,15 @@ function ParametrosDoEdital({ processo, editavel }: PropsEtapa) {
       document.getElementById(`${base}-pl`)?.focus();
       return;
     }
+    if (prazoInvalido) {
+      document.getElementById(`${base}-prazo-prova`)?.focus();
+      return;
+    }
     salvar.mutate(atual, {
       onSuccess: (atualizado) => {
         definirParametros(atualizado.parametrosEdital);
         definirTextoPl(textoPercentual(atualizado.parametrosEdital.patrimonioLiquidoMinimoPercentual));
+        definirTextoPrazo(String(atualizado.parametrosEdital.provaConceito?.prazoDiasUteis ?? ''));
         const regerar = atualizado.documentos.filter((d) => d.geradoComParametrosAnteriores).length;
         avisar({
           tipo: vedacoes.length === 0 && regerar === 0 ? 'sucesso' : 'aviso',
@@ -94,6 +120,7 @@ function ParametrosDoEdital({ processo, editavel }: PropsEtapa) {
               valor: p.patrimonioLiquidoMinimoPercentual === null ? 'Não exigido' : `${textoPercentual(p.patrimonioLiquidoMinimoPercentual)}% do valor estimado`,
             },
             { termo: 'Registro cadastral complementar', valor: p.exigeRegistroCadastralComplementar ? 'Exigido (vedado)' : 'Não exigido' },
+            ...itensParametrosSelecao(p.provaConceito ?? PROVA_CONCEITO_VAZIA, p.inversaoFases ?? INVERSAO_VAZIA),
           ]}
         />
         {vedacoesSalvas.length > 0 ? (
@@ -179,11 +206,30 @@ function ParametrosDoEdital({ processo, editavel }: PropsEtapa) {
           ajuda="Vedado: o edital e os anexos ficam acessíveis sem cadastro prévio (art. 87, § 2º; art. 25, § 3º)."
         />
       </fieldset>
+      <CamposParametrosSelecao
+        prova={prova}
+        inversao={inversao}
+        textoPrazo={textoPrazo}
+        idPrazo={`${base}-prazo-prova`}
+        erroPrazo={prazoInvalido ? 'Informe um número inteiro de dias úteis, de 1 a 30.' : null}
+        aoMudarProva={(nova) => alterar('provaConceito', nova)}
+        aoMudarInversao={(nova) => alterar('inversaoFases', nova)}
+        aoMudarTextoPrazo={definirTextoPrazo}
+      />
       <div aria-live="polite">
         {vedacoes.length > 0 ? (
           <Alerta tipo="erro" compacto titulo="O edital não pode avançar com estas exigências (RN-06)">
             <ul>
               {vedacoes.map((v) => (
+                <li key={v}>{v}</li>
+              ))}
+            </ul>
+          </Alerta>
+        ) : null}
+        {pendenciasSelecao.length > 0 ? (
+          <Alerta tipo="aviso" compacto titulo="Complete os parâmetros de seleção antes de avançar">
+            <ul>
+              {pendenciasSelecao.map((v) => (
                 <li key={v}>{v}</li>
               ))}
             </ul>
@@ -203,6 +249,7 @@ function ParametrosDoEdital({ processo, editavel }: PropsEtapa) {
             onClick={() => {
               definirParametros(processo.parametrosEdital);
               definirTextoPl(textoPercentual(processo.parametrosEdital.patrimonioLiquidoMinimoPercentual));
+              definirTextoPrazo(String(processo.parametrosEdital.provaConceito?.prazoDiasUteis ?? ''));
               salvar.reset();
             }}
           >
@@ -244,6 +291,20 @@ export default function Etapa4Documentos(props: PropsEtapa) {
       atendido: vedacoesEdital(processo.parametrosEdital).length === 0,
       detalhe: ' — com os parâmetros salvos',
     },
+    {
+      id: 'rn20',
+      rotulo: 'Prova de conceito ou amostra e inversão de fases bem instruídas, quando adotadas (RN-20, RN-22)',
+      atendido:
+        pendenciasParametrosSelecao(processo.parametrosEdital.provaConceito ?? PROVA_CONCEITO_VAZIA, processo.parametrosEdital.inversaoFases ?? INVERSAO_VAZIA)
+          .length === 0,
+      detalhe: ' — com os parâmetros salvos',
+    },
+    {
+      id: 'rn21',
+      rotulo: 'Critérios de sustentabilidade e logística reversa no TR (RN-21)',
+      atendido: !processo.sustentabilidade.politicaObrigatoria || (sustentabilidadeCompleta(processo.sustentabilidade) && !processo.bloqueiosDetalhe.some((b) => b.regra === 'RN-21')),
+      detalhe: processo.sustentabilidade.politicaObrigatoria ? undefined : ' — política do órgão desligada',
+    },
   ];
 
   return (
@@ -257,6 +318,8 @@ export default function Etapa4Documentos(props: PropsEtapa) {
       </Alerta>
 
       <ParametrosDoEdital {...props} />
+
+      <SecaoSustentabilidade {...props} documento="tr" />
 
       {desatualizados.length > 0 ? (
         <Alerta tipo="aviso" titulo="Gere nova versão dos documentos afetados (RN-06)">

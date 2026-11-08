@@ -8,6 +8,7 @@ import { Requisitos, type Requisito } from '../comum';
 import { analiseDaCesta, SecaoCesta } from './SecaoCesta';
 import { SecaoEtp } from './SecaoEtp';
 import { SecaoRiscos } from './SecaoRiscos';
+import { SecaoSustentabilidade, sustentabilidadeCompleta } from './SecaoSustentabilidade';
 import { textoSuficiente, type PropsEtapa } from './tipos';
 
 const ALERTAS_IMPEDITIVOS = ['FORNECEDOR_DIRETO_INSUFICIENTE', 'SEM_JUSTIFICATIVA_FORNECEDOR'];
@@ -39,17 +40,25 @@ export default function Etapa3Planejamento(props: PropsEtapa) {
       atendido: !cesta.orcamentoSigiloso || textoSuficiente(cesta.motivoSigilo),
       detalhe: cesta.orcamentoSigiloso ? undefined : ' — orçamento público',
     },
+    {
+      id: 'sustentabilidade',
+      rotulo: 'Critérios de sustentabilidade ambiental e logística reversa preenchidos (RN-21)',
+      atendido: !processo.sustentabilidade.politicaObrigatoria || sustentabilidadeCompleta(processo.sustentabilidade),
+      detalhe: processo.sustentabilidade.politicaObrigatoria ? undefined : ' — política do órgão desligada',
+    },
   ];
 
   return (
     <div className="pilha pilha--ampla">
       <nav className="jornada-sumario" aria-label="Seções da etapa 3">
         <a href="#etapa3-etp">ETP</a>
+        <a href="#etapa-sustentabilidade-etp">Sustentabilidade</a>
         <a href="#etapa3-riscos">Matriz de riscos</a>
         <a href="#etapa3-cesta">Cesta de preços</a>
         <a href="#etapa3-documentos">Documentos</a>
       </nav>
       <SecaoEtp {...props} />
+      <SecaoSustentabilidade {...props} documento="etp" />
       <SecaoRiscos {...props} />
       <SecaoCesta {...props} />
       {editavel ? <Requisitos titulo="Condições para avançar à etapa 4 (com os dados salvos)" itens={requisitos} /> : null}

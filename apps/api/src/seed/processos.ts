@@ -1,8 +1,10 @@
-import { adicionarDias, type PapelProcesso } from '@agora/dominio';
+import { adicionarDias, hojeISO, type OpcoesCalendario, type PapelProcesso } from '@agora/dominio';
 import type { EtapaJornada, OrgaoRequisitante } from '@agora/contratos';
+import type { Transacao } from '../banco/tipos.ts';
 import { criarProvedorIa } from '../ia/provedor.ts';
 import { DISPUTA_INICIAL, EDITAL_PADRAO, ITENS_PARECER, parecerInicial, PUBLICACAO_INICIAL, TITULOS_ETAPA } from '../modulos/jornada/constantes.ts';
 import { carregarProcesso, obterLinhaProcesso } from '../modulos/jornada/repositorio.ts';
+import { avaliarSelecaoProcesso, classificacaoDaDisputa } from '../modulos/jornada/selecao.ts';
 import {
   aprovarDocumento,
   assinarNaArvore,
@@ -22,9 +24,10 @@ import type {
   EtpProcesso,
   ParametrosEdital,
   RiscoProcesso,
+  SelecaoArmazenada,
   TipoDocumento,
 } from '../modulos/jornada/tipos.ts';
-import { instanteEm, type ContextoSeed } from './contexto.ts';
+import { instanteEm, type ContextoSeed, type EventoSeed } from './contexto.ts';
 import { USUARIOS_DEMONSTRACAO } from './usuarios-demonstracao.ts';
 
 /**
@@ -74,6 +77,13 @@ interface PlanoProcesso {
   /** Dias atrás da publicação no PNCP (etapa 5 em diante). */
   publicacaoDiasAtras: number | null;
   licitantes: { chave: string; valorProposta: number; nota: number }[];
+  /** Critérios de sustentabilidade do ETP e do TR (RN-21), registrados antes dos documentos da etapa 3. */
+  sustentabilidade?: { criteriosAmbientais: string; logisticaReversa: string };
+}
+
+/** Critérios de sustentabilidade sintéticos (RN-21) a partir dos fatos de cada objeto. */
+function criteriosSustentaveis(ambientais: string, reversa: string): PlanoProcesso['sustentabilidade'] {
+  return { criteriosAmbientais: ambientais, logisticaReversa: reversa };
 }
 
 const DOCUMENTOS_POR_ETAPA: Partial<Record<EtapaJornada, TipoDocumento[]>> = {
@@ -197,6 +207,10 @@ function planos(): PlanoProcesso[] {
         { chave: 'fortaleza', valorProposta: reais(15_420_000), nota: 86 },
         { chave: 'horizonte', valorProposta: reais(15_640_000), nota: 71 },
       ],
+      sustentabilidade: criteriosSustentaveis(
+        'Motor em conformidade com a fase vigente do PROCONVE, pneus com selo de eficiência e baixo ruído e kit de sinalização em LED de baixo consumo.',
+        'As viaturas substituídas serão alienadas por leilão ou doação; baterias, pneus e óleos usados retornam à rede autorizada para destinação ambientalmente adequada.',
+      ),
     },
     // 2 — Coletes balísticos (SENASP): etapa 6, empate resolvido pelo art. 60, II.
     {
@@ -256,7 +270,18 @@ function planos(): PlanoProcesso[] {
           expurgo: 'Produto de nível de proteção inferior e sem certificação; preço inexequível para o objeto especificado.',
         },
       ],
-      edital: EDITAL_PADRAO,
+      // RN-20: amostra do colete do licitante provisoriamente vencedor, ensaiada em sessão pública gravada.
+      edital: {
+        ...EDITAL_PADRAO,
+        provaConceito: {
+          exigencia: 'amostra',
+          roteiro:
+            'Entrega de 2 coletes (modelo masculino e feminino) para conferência do certificado de conformidade, das medidas da grade, da etiquetagem dos painéis e do ensaio de penetração em laboratório acreditado, aprovados se todos os itens forem atendidos.',
+          justificativa:
+            'Proteção balística é item crítico de segurança do servidor: a conformidade só se comprova com a amostra física, antes da adjudicação.',
+          prazoDiasUteis: 5,
+        },
+      },
       equipe: EQUIPE_COMPLETA,
       documentosEtapaAtual: [],
       parecerFavoravel: true,
@@ -266,6 +291,10 @@ function planos(): PlanoProcesso[] {
         { chave: 'boreal', valorProposta: reais(3_408_000), nota: 85 },
         { chave: 'guardiao', valorProposta: reais(3_468_000), nota: 88 },
       ],
+      sustentabilidade: criteriosSustentaveis(
+        'Capas em tecido com fibras recicladas quando houver, embalagens recicláveis e painéis sem substâncias restritas pela norma de produtos controlados.',
+        'O fabricante recolhe os painéis balísticos vencidos para descaracterização e destinação final, com certificado de destruição entregue ao órgão.',
+      ),
     },
     // 3 — Rádios digitais (PF): etapa 5, parecer favorável e edital publicado com prazo já cumprido.
     {
@@ -339,6 +368,10 @@ function planos(): PlanoProcesso[] {
       parecerFavoravel: true,
       publicacaoDiasAtras: 21,
       licitantes: [],
+      sustentabilidade: criteriosSustentaveis(
+        'Rádios e carregadores com baixo consumo em espera, baterias de íon-lítio sem metais pesados restritos e embalagens recicláveis.',
+        'O fabricante recolhe as baterias e os rádios substituídos para reciclagem, conforme a Política Nacional de Resíduos Sólidos, com comprovante de destinação.',
+      ),
     },
     // 4 — Drones (SENASP): etapa 4, edital com exigência de faturamento mínimo (RN-06) e minuta em revisão.
     {
@@ -415,6 +448,10 @@ function planos(): PlanoProcesso[] {
       parecerFavoravel: false,
       publicacaoDiasAtras: null,
       licitantes: [],
+      sustentabilidade: criteriosSustentaveis(
+        'Baterias de alta densidade com ciclo de vida mínimo declarado, carregadores com eficiência energética e operação dentro das normas de ruído.',
+        'O fornecedor recolhe as baterias ao fim da vida útil e as aeronaves inservíveis para reciclagem e destinação final ambientalmente adequada.',
+      ),
     },
     // 5 — Scanners corporais (SENAPPEN): etapa 3, ETP incompleto e preço discrepante sugerido para expurgo.
     {
@@ -476,6 +513,10 @@ function planos(): PlanoProcesso[] {
       parecerFavoravel: false,
       publicacaoDiasAtras: null,
       licitantes: [],
+      sustentabilidade: criteriosSustentaveis(
+        'Equipamentos com modo de espera de baixo consumo, blindagem radiológica licenciada pela CNEN e componentes sem substâncias restritas.',
+        'O fornecedor recolhe os equipamentos substituídos e os componentes eletrônicos para descarte ambientalmente adequado, com laudo de destinação.',
+      ),
     },
     // 6 — Licenças de software de perícia (PF): etapa 5, aguardando o parecer jurídico.
     {
@@ -548,6 +589,10 @@ function planos(): PlanoProcesso[] {
       parecerFavoravel: false,
       publicacaoDiasAtras: null,
       licitantes: [],
+      sustentabilidade: criteriosSustentaveis(
+        'Licenças entregues por meio eletrônico, sem mídias físicas, e software compatível com as estações periciais existentes, sem troca de equipamentos.',
+        'Não há bens físicos a recolher: as chaves de licença antigas são desativadas e os manuais e certificados são entregues apenas em formato digital.',
+      ),
     },
     // 7 — EPIs (SENASP): etapa 1, indício de artigo de luxo e demanda fora do PCA.
     {
@@ -654,6 +699,68 @@ function planos(): PlanoProcesso[] {
   ];
 }
 
+interface AtosSelecaoSeed {
+  tx: Transacao;
+  id: string;
+  numeroSei: string;
+  /** Instante do registro da disputa (julgamento). */
+  registro: Date;
+  hoje: string;
+  calendario: OpcoesCalendario;
+  agente: { id: string; nome: string };
+  autoridade: { id: string; nome: string };
+  eventos: EventoSeed[];
+  carga: Record<string, unknown>;
+}
+
+/**
+ * Atos da seleção de processo que já passou da etapa 6 (RN-22 e RF-18): habilitação do primeiro classificado no dia
+ * do julgamento, registro de intenções encerrado sem manifestação (preclusão), adjudicação e homologação pela
+ * autoridade competente e divulgação dos documentos preparatórios (art. 54, § 3º). A ordem é conferida pelo domínio.
+ */
+async function registrarAtosSelecao(p: AtosSelecaoSeed): Promise<void> {
+  const linha = await obterLinhaProcesso(p.tx, p.id, null);
+  if (!linha) throw new Error('Processo recém-criado não encontrado');
+  const vencedor = classificacaoDaDisputa(linha.disputa)[0];
+  if (!vencedor) throw new Error('Disputa sintética sem classificação');
+  const nome = linha.disputa.licitantes.find((l) => l.fornecedorId === vencedor)?.nome ?? '';
+  const dataAto = hojeISO(p.registro);
+  const dataAdjudicacao = adicionarDias(dataAto, 2);
+  const dataHomologacao = adicionarDias(dataAto, 3);
+  const instante = (dataIso: string) => new Date(Math.min(Date.parse(`${dataIso}T15:00:00.000Z`), Date.parse(`${p.hoje}T00:00:00.000Z`)));
+  const selecao: SelecaoArmazenada = {
+    convocacoes: [],
+    habilitacoes: [
+      {
+        fornecedorId: vencedor,
+        resultado: 'habilitado',
+        data: dataAto,
+        motivacao: 'Documentos de habilitação jurídica, fiscal, social, trabalhista, econômico-financeira e técnica conferidos e regulares no SICAF.',
+        por: p.agente,
+      },
+    ],
+    recursos: [
+      { vencedorId: vencedor, dataAto, intencoes: [], intencaoEncerradaEm: dataAto, razoes: [], contrarrazoes: [], reconsideracao: null, decisaoSuperior: null },
+    ],
+    adjudicacao: { data: dataAdjudicacao, fornecedorId: vencedor, motivacao: null, por: p.autoridade },
+    homologacao: { data: dataHomologacao, fornecedorId: vencedor, motivacao: null, por: p.autoridade },
+    preparatoriosDivulgadosEm: instante(dataHomologacao).toISOString(),
+  };
+  if (avaliarSelecaoProcesso({ ...linha, selecao }, dataHomologacao, p.calendario).proximoAto !== 'concluida') {
+    throw new Error('Atos sintéticos da seleção fora da ordem do art. 17');
+  }
+  await gravarJson(p.tx, p.id, 'selecao', selecao, instante(dataHomologacao));
+  const evento = (data: string, usuarioId: string, acao: string, resumo: string, dados: Record<string, unknown>) =>
+    p.eventos.push({ ocorridoEm: instante(data), usuarioId, acao: `processo.selecao.${acao}`, recurso: 'processo', recursoId: p.id, resumo, dados: { ...p.carga, numeroSei: p.numeroSei, ...dados } });
+  evento(dataAto, p.agente.id, 'habilitacao.registrar', `Registrou a habilitação de ${nome}: habilitado`, { fornecedorId: vencedor, resultado: 'habilitado' });
+  evento(dataAto, p.agente.id, 'recurso.encerrar_intencao', 'Encerrou o registro de intenções de recurso sem manifestação: preclusão do direito de recorrer', { intencoes: 0 });
+  evento(dataAdjudicacao, p.autoridade.id, 'adjudicar', `Adjudicou o objeto a ${nome}`, { fornecedorId: vencedor });
+  evento(dataHomologacao, p.autoridade.id, 'homologar', `Homologou a licitação adjudicada a ${nome}`, { fornecedorId: vencedor });
+  evento(dataHomologacao, p.autoridade.id, 'divulgar_preparatorios', 'Divulgou na página pública do edital os documentos da fase preparatória', {
+    fundamento: 'Lei 14.133/2021, art. 54, § 3º',
+  });
+}
+
 export async function gerarProcessos(ctx: ContextoSeed): Promise<void> {
   const { tx, prng, dados, hoje, agora, eventos, calendario } = ctx;
   const usuario = (email: string) => {
@@ -669,7 +776,9 @@ export async function gerarProcessos(ctx: ContextoSeed): Promise<void> {
   const emailsDemonstracao = new Set(USUARIOS_DEMONSTRACAO.map((u) => u.email));
   const sinteticos = [...dados.usuarios.values()].filter((u) => !emailsDemonstracao.has(u.email));
   const requisitante = sinteticos.find((u) => u.perfis.includes('planejamento')) ?? planejamento;
-  const autoridade = sinteticos.find((u) => u.perfis.includes('gestor_contratos')) ?? gestor;
+  // Autoridade competente: o gestor de demonstração (perfil com jornada:homologar), para que a adjudicação, a
+  // homologação e a decisão de recursos (art. 71; art. 165, § 2º) possam ser demonstradas com um login.
+  const autoridade = gestor;
   const fiscalPara = (uasg: string) => {
     if (fiscalDemo.uasgs === 'todas' || fiscalDemo.uasgs.includes(uasg)) return fiscalDemo;
     return sinteticos.find((u) => u.perfis.includes('fiscal') && (u.uasgs === 'todas' || u.uasgs.includes(uasg))) ?? fiscalDemo;
@@ -740,6 +849,21 @@ export async function gerarProcessos(ctx: ContextoSeed): Promise<void> {
       resumo: `Autuou o processo ${numeroSei} — ${plano.titulo}`,
       dados: { ...carga, numeroSei, orgao: plano.orgao, uasg: plano.uasg },
     });
+
+    if (plano.sustentabilidade) {
+      // RN-21: critérios registrados na etapa 3, antes de o ETP e o TR serem gerados.
+      const registroSustentabilidade = new Date(Math.min(Date.parse(`${data(3)}T14:00:00.000Z`), agora.getTime() - 60_000));
+      await gravarJson(tx, id, 'sustentabilidade', plano.sustentabilidade, registroSustentabilidade);
+      eventos.push({
+        ocorridoEm: registroSustentabilidade,
+        usuarioId: planejamento.id,
+        acao: 'processo.sustentabilidade.atualizar',
+        recurso: 'processo',
+        recursoId: id,
+        resumo: 'Atualizou os critérios de sustentabilidade ambiental e a logística reversa do ETP e do TR',
+        dados: { ...carga, numeroSei, criteriosAmbientais: true, logisticaReversa: true, politicaObrigatoria: true },
+      });
+    }
 
     if (plano.equipe.length > 0) {
       const designacao = instante(data(2));
@@ -852,6 +976,9 @@ export async function gerarProcessos(ctx: ContextoSeed): Promise<void> {
           resumo: `Registrou a disputa com ${plano.licitantes.length} licitante(s)${disputa.resultado?.empateDetectado ? ' e aplicou os critérios de desempate do art. 60' : ''}`,
           dados: { ...carga, numeroSei, empateDetectado: disputa.resultado?.empateDetectado ?? false, criterioDecisivo: disputa.resultado?.criterioDecisivo ?? null },
         });
+        if (plano.etapa > 6) {
+          await registrarAtosSelecao({ tx, id, numeroSei, registro, hoje, calendario, agente, autoridade, eventos, carga });
+        }
       }
     }
     await tx.executar('UPDATE processos SET atualizado_em = $2 WHERE id = $1', [id, ultimaAlteracao.toISOString()]);

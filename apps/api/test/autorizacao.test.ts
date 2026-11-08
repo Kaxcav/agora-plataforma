@@ -114,7 +114,10 @@ describe('autorização: RBAC por perfil e escopo por UASG', () => {
     const perfis = await obterJson<PerfilAcesso[]>(app, admin, '/api/v1/perfis');
     assert.equal(perfis.length, 9);
     const porCodigo = new Map(perfis.map((p) => [p.codigo, p]));
-    assert.equal(porCodigo.get('administrador')?.permissoes.length, 25);
+    // 26: inclui jornada:homologar (adjudicação, homologação e decisão de recursos pela autoridade competente).
+    assert.equal(porCodigo.get('administrador')?.permissoes.length, 26);
+    assert.ok(porCodigo.get('gestor_contratos')?.permissoes.includes('jornada:homologar'));
+    assert.ok(!porCodigo.get('agente_contratacao')?.permissoes.includes('jornada:homologar'));
     assert.ok(porCodigo.get('auditor')?.permissoes.includes('lgpd:revelar'));
     assert.ok(!porCodigo.get('auditor')?.permissoes.includes('pendencias:resolver'));
     assert.ok(porCodigo.get('fiscal')?.permissoes.includes('pagamentos:atestar'));

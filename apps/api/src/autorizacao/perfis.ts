@@ -27,6 +27,7 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'auditoria:ler',
   'lgpd:revelar',
   'lgpd:relatorio',
+  'jornada:homologar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -42,7 +43,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
   {
     codigo: 'gestor_contratos',
     nome: 'Gestor de contratos',
-    descricao: 'Acompanha atas e contratos, resolve pendências, vincula instrumentos e instrui sanções.',
+    descricao:
+      'Acompanha atas e contratos, resolve pendências, vincula instrumentos e instrui sanções. Quando designado autoridade competente do processo, decide recursos, adjudica e homologa.',
     permissoes: [
       'painel:ler',
       'pendencias:resolver',
@@ -59,6 +61,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'sancoes:ler',
       'sancoes:instruir',
       'jornada:ler',
+      'jornada:homologar',
     ],
   },
   {
