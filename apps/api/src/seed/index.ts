@@ -20,6 +20,7 @@ import { gerarVinculoSalaDisputa } from './disputa.ts';
 import { gerarVinculosImpedimentos } from './vinculos-impedimentos.ts';
 import { gerarFila } from './fila.ts';
 import { gerarOperacaoMetas } from './operacao-metas.ts';
+import { gerarImr } from './imr.ts';
 
 /** Semente fixa do gerador (Lei 14.133): a mesma data de referência produz sempre os mesmos dados. */
 export const SEMENTE_DEMONSTRACAO = 14_133;
@@ -45,6 +46,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'regularidade', executar: gerarRegularidade },
   { nome: 'fila', executar: gerarFila },
   { nome: 'operacao-metas', executar: gerarOperacaoMetas },
+  { nome: 'imr', executar: gerarImr },
 ];
 
 function dadosVazios(): DadosSeed {

@@ -889,6 +889,30 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'medirTempoInstrucao, avaliarMitigacaoTravas, medirEconomia, efeitoExpurgosCesta, validarMetasEtp, situacaoMeta; api: GET /metas-etp; GET /metas-etp/exportar.csv; GET /metas-etp/configuracao; PUT /metas-etp/configuracao; trilha: trava.bloqueio',
   },
+  {
+    id: 'RN-36',
+    tipo: 'RN',
+    titulo: 'Conferência da nota fiscal com o valor devido e o ajuste do IMR',
+    descricao:
+      'O valor devido de cada nota fiscal é o preço unitário contratado multiplicado pela quantidade recebida no período, menos a glosa do instrumento de medição de resultado (IMR) calculada sobre as medições da competência. A Ágora confere a nota registrada (número, valor e itens) e aponta preço acima do contratado, quantidade cobrada maior que a recebida, quantidade acima do saldo do item, soma dos itens diferente do total, medição pendente e diferença entre o valor da nota e o valor devido. Havendo divergência, o atesto fica bloqueado até a correção da nota ou a justificativa registrada pelo agente responsável; em contrato com IMR, o atesto exige a conferência. A glosa ajusta o pagamento ao resultado medido e não é sanção: a faixa que prevê processo sancionatório só encaminha o caso para a decisão da autoridade competente.',
+    fundamento: 'Lei 14.133/2021, art. 6º, XXIII, "g", e arts. 117, 140 e 141; IN SEGES/MP 5/2017, anexo VIII-A',
+    etapa: null,
+    telas: ['pagamentos', 'pagamentos.conferencia', 'contratos.detalhe'],
+    implementacao:
+      'conferirNotaFiscal, calcularAjustePagamento; api: GET /pagamentos/:id/conferencia; POST /pagamentos/:id/conferencia; POST /pagamentos/:id/conferencia/justificativa; POST /pagamentos/:id/atestar',
+  },
+  {
+    id: 'RF-29',
+    tipo: 'RF',
+    titulo: 'Instrumento de medição de resultado (IMR) do contrato e medições periódicas',
+    descricao:
+      'Na aba "IMR e medições" do contrato, o gestor configura os indicadores do instrumento de medição de resultado: nome, meta, forma de cálculo, periodicidade, fonte da medição, itens alcançados e faixas de ajuste do pagamento (glosa), com teto opcional. O fiscal registra a medição de cada competência com a evidência, e a Ágora calcula o resultado e o percentual de glosa de forma determinística, com memória de cálculo, e conclui a tarefa de medição do plano de gestão. A medição que cai na faixa com previsão de processo sancionatório abre pendência para o gestor avaliar o encaminhamento, que é decisão humana. Na conferência da nota fiscal, a fiscalização e o financeiro registram a nota e veem o valor cobrado ao lado do valor devido.',
+    fundamento: 'Lei 14.133/2021, art. 6º, XXIII, "g", e arts. 117 e 140; IN SEGES/MP 5/2017, anexo VIII-A',
+    etapa: null,
+    telas: ['contratos.detalhe', 'pagamentos.conferencia'],
+    implementacao:
+      'validarIndicadorImr, calcularResultadoImr, calcularAjustePagamento, medicaoImrDevida; api: GET /contratos/:id/imr; POST /contratos/:id/imr/indicadores; PUT /contratos/:id/imr/indicadores/:indicadorId; POST /contratos/:id/imr/indicadores/:indicadorId/encerrar; POST /contratos/:id/imr/medicoes',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
