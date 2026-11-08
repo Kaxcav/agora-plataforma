@@ -194,7 +194,8 @@
   gap: var(--esp-1);
   font-size: var(--fonte-pequena);
   font-weight: var(--peso-semi);
-  color: var(--alerta-vermelho);
+  /* Texto de erro em vermelho escuro (gov.br): o vermelho da bandeira só em bordas e ícones, pois pode cair sobre fundo tingido. */
+  color: var(--vermelho-60);
 }
 
 .campo__erro svg {
@@ -510,7 +511,6 @@ fieldset.grupo-campos {
 .etiqueta--sucesso {
   background: var(--verde-10);
   border-color: var(--bandeira-verde);
-  color: var(--verde-50);
 }
 
 .etiqueta--sucesso svg {
@@ -548,7 +548,6 @@ fieldset.grupo-campos {
 .etiqueta--erro {
   background: var(--vermelho-10);
   border-color: var(--alerta-vermelho);
-  color: var(--alerta-vermelho);
 }
 
 .etiqueta--erro svg {
