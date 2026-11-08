@@ -51,6 +51,8 @@ export default defineConfig({
       AGORA_DADOS_DIR: dados,
       AGORA_COOKIE_SEGURO: 'false',
       AGORA_LOG_NIVEL: 'warn',
+      // A suíte inteira passa pelo mesmo IP: sem isso, o limite padrão (300/min) devolve 429 no meio dos testes.
+      AGORA_LIMITE_REQUISICOES_MINUTO: '100000',
     },
   },
 });
