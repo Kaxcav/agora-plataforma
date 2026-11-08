@@ -93,6 +93,8 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/base-normativa', permissao: 'normas:ler', pagina: lazy(() => import('../paginas/ia/BaseNormativa')) },
   { caminho: '/qualidade-normativa', permissao: 'qualidade_ia:ler', pagina: lazy(() => import('../paginas/ia/QualidadeNormativa')) },
   { caminho: '/jornada/:id/conferencia', permissao: 'jornada:ler', pagina: lazy(() => import('../paginas/ia/ConferenciaProcesso')) },
+  // Publicações no DOU (RF-36): avisos de licitação e extratos, envio pelo INCom e conferência da publicação
+  { caminho: '/publicacoes-dou', permissao: ['jornada:ler', 'contratos:ler'], pagina: lazy(() => import('../paginas/publicacoes/PublicacoesDou')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

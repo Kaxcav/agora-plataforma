@@ -1229,8 +1229,8 @@ export type CanalNotificacao = 'email' | 'sei' | 'govbr';
 export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel';
 export type SituacaoEnvio = 'pendente' | 'enviando' | 'enviado' | 'falhou' | 'suprimido';
 export type FaixaVencimento = 30 | 60 | 90 | 120;
-/** smtp = servidor de e-mail do órgão; simulado = driver de demonstração (nada sai do servidor). */
-export type ModoCanalNotificacao = 'simulado' | 'smtp' | 'desligado';
+/** smtp = servidor de e-mail do órgão; webservice = SEI do órgão (SeiWS); simulado = driver de demonstração (nada sai do servidor). */
+export type ModoCanalNotificacao = 'simulado' | 'smtp' | 'desligado' | 'webservice';
 
 export interface EnvioNotificacao {
   id: Id;
@@ -2524,7 +2524,15 @@ export interface VinculosFornecedor {
 // ───────────────────────── Fila de integrações (RNF-07) ─────────────────────────
 
 /** Tarefa da fila durável de integrações (RabbitMQ ou PostgreSQL), executada pelo serviço trabalhador. */
-export type TipoTarefaFila = 'sincronizacao' | 'pncp.compra' | 'pncp.arquivo' | 'pncp.contrato' | 'pncp.termo';
+export type TipoTarefaFila =
+  | 'sincronizacao'
+  | 'pncp.compra'
+  | 'pncp.arquivo'
+  | 'pncp.contrato'
+  | 'pncp.termo'
+  | 'sei.envio'
+  | 'sei.assinaturas'
+  | 'dou.conferencia';
 /** 'pendente' inclui a espera de nova tentativa (`tentativas` > 0 e `proximaTentativaEm`); 'erro' é a fila de erro (dead letter). */
 export type SituacaoTarefaFila = 'pendente' | 'executando' | 'concluida' | 'erro';
 export interface TarefaFila {
@@ -3761,3 +3769,169 @@ export interface PainelAuditorIa {
   fontes: string[];
   aviso: string;
 }
+// ───────────────────────── Integração com o SEI (RF-35) ─────────────────────────
+
+/** Situação de uma tarefa do SEI ou do DOU na fila de integrações. */
+export type SituacaoTarefaSei = 'na_fila' | 'nova_tentativa' | 'executando' | 'concluida' | 'erro';
+export interface TarefaSei {
+  id: Id;
+  tipo: 'sei.envio' | 'sei.assinaturas';
+  situacao: SituacaoTarefaSei;
+  tentativas: number;
+  maximoTentativas: number;
+  proximaTentativaEm: InstanteISO | null;
+  ultimoErro: string | null;
+  criadaEm: InstanteISO;
+  concluidaEm: InstanteISO | null;
+}
+/** Assinatura feita no SEI (certificado ICP-Brasil ou login do servidor), devolvida por `consultarDocumento`. */
+export interface AssinaturaDocumentoSei {
+  nome: string;
+  cargoFuncao: string | null;
+  assinadoEm: InstanteISO;
+}
+export interface DocumentoSei {
+  /** Número do documento na árvore do processo da Ágora (`ProcessoDetalhe.arvoreSei[].numero`). */
+  numeroArvore: string;
+  titulo: string;
+  tipo: DocumentoGerado['tipo'] | null;
+  enviado: boolean;
+  /** Número do documento no SEI (DocumentoFormatado). */
+  numeroSei: string | null;
+  linkSei: string | null;
+  enviadoEm: InstanteISO | null;
+  /** 'restrito' = documento com dado pessoal ou orçamento sigiloso; 'padrao' = nível do tipo de processo no SEI. */
+  nivelAcesso: 'restrito' | 'padrao' | null;
+  /** Bloco de assinatura do SEI em que o documento foi incluído. */
+  blocoAssinatura: string | null;
+  assinaturas: AssinaturaDocumentoSei[];
+  assinado: boolean;
+  /** "Ana Ribeiro (Requisitante)" — vazio enquanto não houver assinatura. */
+  resumoAssinatura: string;
+  consultadoEm: InstanteISO | null;
+}
+export interface IntegracaoSeiProcesso {
+  processoId: Id;
+  /** 'online' = SEI real do órgão (SeiWS); 'offline' = simulação determinística. */
+  modo: 'offline' | 'online';
+  /** Online: endereço, sigla do sistema, identificação do serviço e unidade informados (AGORA_SEI_*). */
+  configurado: boolean;
+  processo: {
+    numero: string;
+    idProcedimento: string;
+    link: string | null;
+    geradoEm: InstanteISO;
+    unidadeDestino: string | null;
+    enviadoUnidadeEm: InstanteISO | null;
+  } | null;
+  documentos: DocumentoSei[];
+  /** Documentos aprovados na Ágora que ainda não foram incluídos no SEI. */
+  pendentesEnvio: number;
+  /** Documentos já no SEI e ainda sem assinatura. */
+  pendentesAssinatura: number;
+  envio: TarefaSei | null;
+  consulta: TarefaSei | null;
+}
+// GET /processos/:id/sei → IntegracaoSeiProcesso (jornada:ler)
+// POST /processos/:id/sei/enviar → IntegracaoSeiProcesso (jornada:editar): gera o processo no SEI, inclui os documentos aprovados, monta o bloco de assinatura e, se configurado, envia à unidade
+// POST /processos/:id/sei/consultar-assinaturas → IntegracaoSeiProcesso (jornada:editar ou jornada:aprovar_juridico): reflete as assinaturas feitas no SEI
+
+// ───────────────────────── Publicação no DOU (RF-36) ─────────────────────────
+
+export type TipoMateriaDou = 'aviso_licitacao' | 'extrato_contrato' | 'extrato_aditivo';
+/** rascunho = gerada, a enviar pelo INCom; enviada = protocolo do INCom registrado; publicada = edição conferida. */
+export type SituacaoMateriaDou = 'rascunho' | 'enviada' | 'publicada';
+export interface MateriaDou {
+  id: Id;
+  tipo: TipoMateriaDou;
+  situacao: SituacaoMateriaDou;
+  /** Seção do DOU (3 = contratos, editais e avisos). */
+  secao: number;
+  titulo: string;
+  identificacao: string;
+  /** Texto no padrão de publicação, sem CPF completo. */
+  texto: string;
+  hashTexto: string;
+  obrigatoria: boolean;
+  fundamento: string;
+  uasg: string;
+  processo: { id: Id | null; numero: string };
+  contrato: { id: Id; numero: string } | null;
+  aditivo: { id: Id; numero: string } | null;
+  /** Gerada sozinha quando o edital foi aceito no PNCP (aviso de licitação). */
+  automatica: boolean;
+  geradaEm: InstanteISO;
+  geradaPor: UsuarioResumo | null;
+  envio: { protocolo: string; enviadaEm: InstanteISO; registradoPor: UsuarioResumo | null; dataPrevista: DataISO } | null;
+  publicacao: {
+    data: DataISO;
+    edicao: string | null;
+    pagina: string | null;
+    url: string | null;
+    /** consulta = conferida na consulta pública do DOU pelo servidor; manual = registrada pelo servidor responsável. */
+    forma: 'consulta' | 'manual';
+    modo: 'offline' | 'online';
+    registradaEm: InstanteISO;
+  } | null;
+  conferencia: {
+    vezes: number;
+    ultimaEm: InstanteISO | null;
+    /** Resultado da última conferência, ex.: "Ainda não localizada no DOU até 10/11/2026". */
+    resultado: string | null;
+    tarefa: { situacao: SituacaoTarefaSei; ultimoErro: string | null; proximaTentativaEm: InstanteISO | null } | null;
+  };
+  /** Publicação do aviso em jornal diário de grande circulação (art. 54, § 1º). */
+  jornal: { nome: string; data: DataISO; registradoEm: InstanteISO } | null;
+}
+export interface ResumoPublicacoesDou {
+  modo: 'offline' | 'online';
+  /** Consulta pública do DOU usada na conferência, pelo servidor. */
+  consulta: string;
+  rascunho: number;
+  enviada: number;
+  publicada: number;
+  /** Avisos de licitação (obrigatórios) ainda sem publicação conferida. */
+  avisosPendentes: number;
+}
+export interface CandidatoMateriaDou {
+  tipo: TipoMateriaDou;
+  processoId: Id | null;
+  contratoId: Id | null;
+  aditivoId: Id | null;
+  /** Ex.: "Contrato 12/2026 — Aquisição de coletes". */
+  rotulo: string;
+  uasg: string;
+  /** Matéria já gerada para este ato, se houver. */
+  materiaId: Id | null;
+}
+export interface EntradaMateriaDou {
+  tipo: TipoMateriaDou;
+  processoId?: Id;
+  contratoId?: Id;
+  aditivoId?: Id;
+}
+export interface EntradaEnvioDou {
+  /** Protocolo devolvido pelo INCom. */
+  protocolo: string;
+  /** Instante do envio pelo INCom (padrão: agora). */
+  enviadaEm?: InstanteISO;
+}
+export interface EntradaPublicacaoDou {
+  data: DataISO;
+  edicao: string;
+  pagina: string;
+  url?: string | null;
+}
+export interface EntradaJornalDou {
+  nome: string;
+  data: DataISO;
+}
+// GET /publicacoes-dou/resumo → ResumoPublicacoesDou (jornada:ler ou contratos:ler)
+// GET /publicacoes-dou?tipo&situacao&processoId&pagina&tamanhoPagina → Pagina<MateriaDou> (aviso: jornada:ler; extratos: contratos:ler; escopo de UASG)
+// GET /publicacoes-dou/candidatos?tipo → CandidatoMateriaDou[]
+// GET /publicacoes-dou/:id → MateriaDou
+// POST /publicacoes-dou body EntradaMateriaDou → MateriaDou (aviso: jornada:publicar; extratos: contratos:editar) — gera ou refaz o rascunho
+// POST /publicacoes-dou/:id/envio body EntradaEnvioDou → MateriaDou: registra o envio pelo INCom e a edição prevista
+// POST /publicacoes-dou/:id/conferir → MateriaDou: confere a publicação na consulta pública do DOU, pela fila
+// POST /publicacoes-dou/:id/publicacao body EntradaPublicacaoDou → MateriaDou: registra manualmente a edição
+// POST /publicacoes-dou/:id/jornal body EntradaJornalDou → MateriaDou: publicação do aviso em jornal (art. 54, § 1º)

@@ -19,7 +19,16 @@ function manipuladoresCom(sincronizacao: Manipuladores['sincronizacao']): Manipu
   const nunca: Manipuladores['sincronizacao'] = async () => {
     throw new Error('não usado neste teste');
   };
-  return { sincronizacao, 'pncp.compra': nunca, 'pncp.arquivo': nunca, 'pncp.contrato': nunca, 'pncp.termo': nunca };
+  return {
+    sincronizacao,
+    'pncp.compra': nunca,
+    'pncp.arquivo': nunca,
+    'pncp.contrato': nunca,
+    'pncp.termo': nunca,
+    'sei.envio': nunca,
+    'sei.assinaturas': nunca,
+    'dou.conferencia': nunca,
+  };
 }
 
 describe('fila de integrações em PostgreSQL (RNF-07)', () => {

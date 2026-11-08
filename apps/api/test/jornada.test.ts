@@ -452,7 +452,7 @@ describe('jornada da contratação: processos sintéticos, regras de avanço e c
     const pub = publicado.json<ProcessoDetalhe>().publicacao;
     const hoje = hojeISO(new Date(INICIO_TESTES));
     assert.equal(pub.pncp, 'publicado');
-    assert.equal(pub.dou, 'publicado');
+    assert.equal(pub.dou, 'na_fila', 'RF-36: o DOU só fica publicado quando o aviso de licitação é conferido');
     assert.equal(pub.publicadoEm, hoje);
     assert.equal(pub.dataMinimaPropostas, dataMinimaAberturaPropostas(hoje, { objeto: 'bens', criterio: 'menor_preco', regime: 'outro' }).data);
     assert.match(pub.idPncp ?? '', /^\d{14}-1-\d{6}\/\d{4}$/);

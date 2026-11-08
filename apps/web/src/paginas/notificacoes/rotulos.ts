@@ -55,4 +55,5 @@ export const MODOS_CANAL: Record<ModoCanalNotificacao, RotuloTom> = {
   simulado: { rotulo: 'Simulado', tom: 'aviso' },
   smtp: { rotulo: 'Servidor do órgão', tom: 'sucesso' },
   desligado: { rotulo: 'Desligado', tom: 'neutro' },
+  webservice: { rotulo: 'SEI do órgão', tom: 'sucesso' },
 };

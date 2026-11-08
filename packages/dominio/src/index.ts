@@ -51,3 +51,5 @@ export * from './normas/citacoes-legais.ts';
 export * from './normas/modelos-padronizados.ts';
 export * from './lei14133/conferencia-cruzada.ts';
 export * from './lei14133/auditor-continuo.ts';
+export * from './integracoes/sei.ts';
+export * from './lei14133/dou.ts';

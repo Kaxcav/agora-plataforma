@@ -1030,6 +1030,30 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: ['jornada.conferencia', 'controle'],
     implementacao: 'extrairFatosDocumento, conferirDocumentosCruzados, sinaisAuditorContinuo; api: GET /processos/:id/conferencia-cruzada; GET /controle/auditor-ia',
   },
+  {
+    id: 'RF-35',
+    tipo: 'RF',
+    titulo: 'Integração com o SEI e assinatura refletida',
+    descricao:
+      'Envia o processo da jornada ao SEI do órgão pelo web service oficial (SeiWS), sempre pela fila de integrações: gera o processo no SEI, inclui os documentos aprovados na Ágora como PDF, monta o bloco de assinatura e, quando configurado, envia o processo à unidade de destino. Cada documento guarda o número SEI e cada processo o número do processo SEI. A assinatura com certificado ICP-Brasil acontece no próprio SEI; a Ágora consulta as assinaturas e marca o documento como assinado, com quem assinou e quando, sem assinar nada por conta própria. Documento com dado pessoal ou orçamento sigiloso entra como restrito.',
+    fundamento: 'Lei 14.133/2021, art. 12, VI, e art. 174; Lei 12.527/2011, art. 31; Portaria Interministerial nº 11/2019 (NUP)',
+    etapa: null,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'digitosVerificadoresNup, formatarNup, validarNup, nivelAcessoSei, dataHoraSeiParaIso, dataHoraSei, situacaoAssinaturaSei; api: GET /processos/:id/sei; POST /processos/:id/sei/enviar; POST /processos/:id/sei/consultar-assinaturas',
+  },
+  {
+    id: 'RF-36',
+    tipo: 'RF',
+    titulo: 'Publicação no Diário Oficial da União',
+    descricao:
+      'Gera, no padrão da Seção 3 do DOU, o aviso de licitação (automático quando o edital é aceito no PNCP), o extrato de contrato e o extrato de termo aditivo, sem CPF completo. Como a Imprensa Nacional não oferece API pública de envio, o servidor credenciado envia a matéria pelo INCom e registra na Ágora o protocolo e a data do envio; a Ágora calcula a edição prevista e confere a publicação na consulta pública do DOU, pelo servidor e pela fila de integrações, ou aceita o registro manual da edição. A publicação do aviso no jornal diário de grande circulação também é registrada.',
+    fundamento: 'Lei 14.133/2021, art. 54, § 1º, e art. 94',
+    etapa: 5,
+    telas: ['publicacoes.dou', 'jornada.detalhe'],
+    implementacao:
+      'montarMateriaDou, dataPrevistaPublicacaoDou, localizarMateriaDou; api: GET /publicacoes-dou; POST /publicacoes-dou; POST /publicacoes-dou/:id/envio; POST /publicacoes-dou/:id/conferir; POST /publicacoes-dou/:id/publicacao; POST /publicacoes-dou/:id/jornal',
+  },
 ]);
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
 export function regrasPorTela(tela: string): RegraCatalogo[] {

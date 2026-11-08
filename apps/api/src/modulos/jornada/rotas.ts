@@ -438,6 +438,12 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     const id = idDaRota(request.params);
     const tipoArvore = await tipoDocumentoDaArvore(ctx.banco, id, documentoNumero);
     exigirPermissaoNoHandler(request, permissaoAprovacaoDocumento(tipoArvore) ?? permissaoDocumento(tipoArvore));
+    // RF-35: com o SEI real, a assinatura ICP-Brasil é feita no próprio SEI e refletida pela consulta das assinaturas.
+    if (ctx.config.integracoes === 'online') {
+      throw regraNegocio('A assinatura é feita no SEI, com o certificado do servidor: envie o documento ao SEI e use "Consultar assinaturas".', [
+        { campo: 'RF-35', mensagem: 'Assinatura no SEI' },
+      ]);
+    }
     return alterar(request, async (tx, linha, c) => {
       await exigirAutoridadeDesignada(tx, linha.id, tipoArvore, sessaoDe(request).usuario.id);
       const assinado = await assinarNaArvore(tx, linha.id, documentoNumero, sessaoDe(request).usuario.id, c.agora);
@@ -764,7 +770,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
           acao: 'publicar',
           resumo: pedido.reaberta
             ? 'Reenviou o edital ao PNCP: a publicação que estava na fila de erro voltou para a fila de integrações'
-            : 'Enviou o edital e os anexos aprovados para publicação no PNCP pela fila de integrações (extrato no DOU simulado)',
+            : 'Enviou o edital e os anexos aprovados para publicação no PNCP pela fila de integrações; o aviso de licitação para o DOU é gerado quando o PNCP aceitar',
           dados: {
             fila: app.fila.driver.transporte,
             tarefaId: pedido.tarefa.id,

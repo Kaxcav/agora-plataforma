@@ -36,6 +36,7 @@ import {
   MessagesSquare,
   Library,
   FileCheck,
+  Newspaper,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -168,5 +169,10 @@ export const MENU: readonly SecaoMenu[] = [
       { rotulo: 'Base normativa', caminho: '/base-normativa', icone: Library, permissao: 'normas:ler' },
       { rotulo: 'Qualidade normativa', caminho: '/qualidade-normativa', icone: FileCheck, permissao: 'qualidade_ia:ler' },
     ],
+  },
+  {
+    id: 'publicacoes',
+    titulo: 'Publicações',
+    itens: [{ rotulo: 'Publicações no DOU', caminho: '/publicacoes-dou', icone: Newspaper, permissao: ['jornada:ler', 'contratos:ler'] }],
   },
 ];
