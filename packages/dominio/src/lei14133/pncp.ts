@@ -21,7 +21,7 @@ export const TIPOS_DOCUMENTO_PNCP = Object.freeze({
   outrosDocumentos: 16,
 } as const);
 
-export type RegistroPncp = 'compra' | 'contrato' | 'ata';
+export type RegistroPncp = 'compra' | 'contrato' | 'ata' | 'pca';
 
 export interface LocalizacaoPncp {
   registro: RegistroPncp;
@@ -49,6 +49,8 @@ export function numeroControlePncp(p: { registro: RegistroPncp; cnpj: string; an
   const sequencialValido = (n: number | undefined) => n !== undefined && Number.isInteger(n) && n >= 1 && n <= 999_999;
   if (!sequencialValido(p.sequencial)) throw new ErroDominio('PNCP_INVALIDO', 'O sequencial PNCP deve ser um inteiro de 1 a 999999.');
   if (p.registro === 'contrato') return `${p.cnpj}-2-${seis(p.sequencial)}/${p.ano}`;
+  // Plano de contratações anual: marcador "0" (Manual de Integração PNCP, 4.3).
+  if (p.registro === 'pca') return `${p.cnpj}-0-${seis(p.sequencial)}/${p.ano}`;
   const compra = `${p.cnpj}-1-${seis(p.sequencial)}/${p.ano}`;
   if (p.registro === 'compra') return compra;
   if (!sequencialValido(p.sequencialAta)) throw new ErroDominio('PNCP_INVALIDO', 'O sequencial da ata deve ser um inteiro de 1 a 999999.');
@@ -56,7 +58,7 @@ export function numeroControlePncp(p: { registro: RegistroPncp; cnpj: string; an
 }
 
 const PADRAO_LOCALIZACAO =
-  /\/v1\/orgaos\/(\d{14})\/(compras|contratos)\/(\d{4})\/(\d{1,6})(?:\/atas\/(\d{1,6}))?(?:\/arquivos\/(\d{1,6}))?\/?$/;
+  /\/v1\/orgaos\/(\d{14})\/(compras|contratos|pca)\/(\d{4})\/(\d{1,6})(?:\/atas\/(\d{1,6}))?(?:\/arquivos\/(\d{1,6}))?\/?$/;
 
 /**
  * Interpreta o endereço devolvido pelo PNCP no cabeçalho `location` (ou em `compraUri`) de uma inclusão bem-sucedida
@@ -69,10 +71,10 @@ export function interpretarLocalizacaoPncp(localizacao: string): LocalizacaoPncp
   const partes = PADRAO_LOCALIZACAO.exec(caminho);
   if (!partes) throw new ErroDominio('PNCP_LOCALIZACAO_INVALIDA', `Endereço de registro do PNCP não reconhecido: "${texto.slice(0, 200)}".`);
   const [, cnpj = '', colecao, ano = '0', sequencial = '0', ata, arquivo] = partes;
-  if (colecao === 'contratos' && ata !== undefined) {
-    throw new ErroDominio('PNCP_LOCALIZACAO_INVALIDA', 'Contratos do PNCP não têm atas: endereço inconsistente.');
+  if (colecao !== 'compras' && ata !== undefined) {
+    throw new ErroDominio('PNCP_LOCALIZACAO_INVALIDA', 'Só contratações do PNCP têm atas: endereço inconsistente.');
   }
-  const registro: RegistroPncp = colecao === 'contratos' ? 'contrato' : ata !== undefined ? 'ata' : 'compra';
+  const registro: RegistroPncp = colecao === 'contratos' ? 'contrato' : colecao === 'pca' ? 'pca' : ata !== undefined ? 'ata' : 'compra';
   const sequencialAta = ata === undefined ? null : Number(ata);
   return {
     registro,

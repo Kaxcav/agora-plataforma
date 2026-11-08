@@ -37,6 +37,7 @@ export * from './integracoes/fila.ts';
 export * from './lei14133/pncp.ts';
 export * from './lei14133/execucao-contratual.ts';
 export * from './lei14133/garantias.ts';
+export * from './lei14133/planejamento.ts';
 export * from './lei14133/metas-etp.ts';
 export * from './operacao/disponibilidade.ts';
 export * from './operacao/carga.ts';

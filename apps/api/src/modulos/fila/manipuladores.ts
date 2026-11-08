@@ -1,6 +1,7 @@
 import type { Manipuladores } from '../../fila/tipos.ts';
 import { executarPublicacaoArquivo, executarPublicacaoCompra, executarPublicacaoContrato } from '../publicacao-pncp/tarefas.ts';
 import { executarTarefaSincronizacao } from './sincronizacao.ts';
+import { executarPublicacaoPca } from '../planejamento/publicacao.ts';
 import { executarDivulgacaoTermo } from '../alteracoes/tarefas.ts';
 import { executarConsultaAssinaturasSei, executarEnvioSei } from '../sei/tarefas.ts';
 import { executarConferenciaDou } from '../dou/tarefas.ts';
@@ -11,6 +12,7 @@ export const MANIPULADORES: Manipuladores = {
   'pncp.compra': executarPublicacaoCompra,
   'pncp.arquivo': executarPublicacaoArquivo,
   'pncp.contrato': executarPublicacaoContrato,
+  'pncp.pca': executarPublicacaoPca,
   'pncp.termo': executarDivulgacaoTermo,
   'sei.envio': executarEnvioSei,
   'sei.assinaturas': executarConsultaAssinaturasSei,

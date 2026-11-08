@@ -32,6 +32,8 @@ import {
   ShieldAlert,
   FileSignature,
   CalendarClock,
+  CalendarRange,
+  Handshake,
   Gauge,
   Target,
   MessagesSquare,
@@ -148,6 +150,14 @@ export const MENU: readonly SecaoMenu[] = [
         permissao: ['controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha'],
       },
       { rotulo: 'Controle externo', caminho: '/controle-externo', icone: Landmark, permissao: 'controle_externo:ler' },
+    ],
+  },
+  {
+    id: 'planejamento',
+    titulo: 'Planejamento',
+    itens: [
+      { rotulo: 'Plano de contratações', caminho: '/planejamento/pca', icone: CalendarRange, permissao: 'pca:ler' },
+      { rotulo: 'Intenções de registro de preços', caminho: '/planejamento/irp', icone: Handshake, permissao: 'pca:ler' },
     ],
   },
   {

@@ -20,6 +20,7 @@ import { gerarVinculoSalaDisputa } from './disputa.ts';
 import { gerarVinculosImpedimentos } from './vinculos-impedimentos.ts';
 import { gerarFila } from './fila.ts';
 import { gerarExecucaoContratual } from './execucao-contratual.ts';
+import { gerarPlanejamento } from './planejamento.ts';
 import { gerarOperacaoMetas } from './operacao-metas.ts';
 import { gerarImr } from './imr.ts';
 import { gerarPreparatorios } from './preparatorios.ts';
@@ -52,6 +53,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'regularidade', executar: gerarRegularidade },
   { nome: 'fila', executar: gerarFila },
   { nome: 'execucao-contratual', executar: gerarExecucaoContratual },
+  { nome: 'planejamento', executar: gerarPlanejamento },
   { nome: 'operacao-metas', executar: gerarOperacaoMetas },
   { nome: 'imr', executar: gerarImr },
   { nome: 'preparatorios', executar: gerarPreparatorios },

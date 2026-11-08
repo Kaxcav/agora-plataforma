@@ -28,6 +28,7 @@ function manipuladoresCom(sincronizacao: Manipuladores['sincronizacao']): Manipu
     'sei.envio': nunca,
     'sei.assinaturas': nunca,
     'dou.conferencia': nunca,
+    'pncp.pca': nunca,
   };
 }
 

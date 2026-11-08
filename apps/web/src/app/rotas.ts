@@ -81,6 +81,9 @@ export const ROTAS: readonly DefinicaoRota[] = [
 
   // Execução contratual: prazos de pagamento e alteração justificada da ordem cronológica (F22, frente L)
   { caminho: '/financeiro/prazos', permissao: 'pagamentos:ler', pagina: lazy(() => import('../paginas/financeiro/PrazosPagamento')) },
+  // Planejamento: plano de contratações anual e intenções de registro de preços (RF-31, RN-38)
+  { caminho: '/planejamento/pca', permissao: 'pca:ler', pagina: lazy(() => import('../paginas/planejamento/PlanoContratacoes')) },
+  { caminho: '/planejamento/irp', permissao: 'pca:ler', pagina: lazy(() => import('../paginas/planejamento/IntencoesRegistroPrecos')) },
   // Operação (RNF-10, IMR-01) e painel das metas do ETP (RF-39)
   { caminho: '/operacao', permissao: 'operacao:ler', pagina: lazy(() => import('../paginas/operacao/Operacao')) },
   { caminho: '/metas-etp', permissao: 'metas:ler', pagina: lazy(() => import('../paginas/metas/PainelMetas')) },
