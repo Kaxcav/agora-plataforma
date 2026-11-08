@@ -32,6 +32,7 @@ import { rotasPublicacaoPncp } from './publicacao-pncp/rotas.ts';
 import { rotasOperacao } from './operacao/rotas.ts';
 import { rotasMetasEtp } from './metas-etp/rotas.ts';
 import { rotasImr } from './imr/rotas.ts';
+import { rotasPreparatorios } from './preparatorios/rotas.ts';
 
 export type ModuloRotas = (api: FastifyInstance) => Promise<void>;
 
@@ -70,4 +71,5 @@ export const MODULOS_API: readonly ModuloRotas[] = [
   rotasOperacao,
   rotasMetasEtp,
   rotasImr,
+  rotasPreparatorios,
 ];

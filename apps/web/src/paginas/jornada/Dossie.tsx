@@ -30,8 +30,9 @@ import {
   tituloEtapa,
   vedacoesEdital,
 } from './rotulos';
+import { ORDEM_PECAS } from './preparatorios/rotulos';
 
-const ORDEM_DOCUMENTOS: readonly TipoDocumento[] = ['dfd', 'etp', 'matriz_riscos', 'nota_tecnica_precos', 'tr', 'edital', 'minuta_contrato', 'parecer_checklist'];
+const ORDEM_DOCUMENTOS: readonly TipoDocumento[] = ['dfd', 'etp', 'matriz_riscos', 'nota_tecnica_precos', 'tr', 'edital', 'minuta_contrato', 'parecer_checklist', ...ORDEM_PECAS];
 
 function TabelaDossie({ legenda, cabecalhos, linhas, vazio }: { legenda: string; cabecalhos: readonly string[]; linhas: readonly ReactNode[][]; vazio: string }) {
   if (linhas.length === 0) return <p className="texto-secundario">{vazio}</p>;

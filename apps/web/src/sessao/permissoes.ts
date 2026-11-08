@@ -80,6 +80,7 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'imr:configurar': 'Configurar o IMR dos contratos (indicadores, metas e faixas de glosa)',
   'imr:medir': 'Registrar as medições do IMR, com evidência',
   'pagamentos:conferir': 'Conferir a nota fiscal e justificar divergências',
+  'jornada:autorizar': 'Aprovar a portaria de designação, a declaração orçamentária e o despacho de autorização (autoridade competente designada)',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

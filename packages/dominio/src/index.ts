@@ -39,3 +39,4 @@ export * from './lei14133/metas-etp.ts';
 export * from './operacao/disponibilidade.ts';
 export * from './operacao/carga.ts';
 export * from './lei14133/imr.ts';
+export * from './lei14133/fase-preparatoria.ts';

@@ -55,6 +55,7 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'imr:configurar',
   'imr:medir',
   'pagamentos:conferir',
+  'jornada:autorizar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -105,6 +106,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'imr:configurar',
       'imr:medir',
       'pagamentos:conferir',
+      'jornada:autorizar',
     ],
   },
   {

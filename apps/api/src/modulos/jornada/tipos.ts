@@ -1,5 +1,6 @@
 import type { aplicarDesempate, analisarCestaPrecos, EfeitoReforma, FonteCotacao, PapelProcesso } from '@agora/dominio';
 import type { DocumentoGerado, EtapaJornada, OrgaoRequisitante, ParametrosEdital, ProcessoDetalhe } from '@agora/contratos';
+import type { DeclaracaoAgente, LinhaDotacao } from '@agora/dominio';
 
 export type { ParametrosEdital };
 
@@ -210,4 +211,20 @@ export interface CargaProcesso {
   equipe: MembroEquipe[];
   arvore: EntradaArvore[];
   documentos: DocumentoCarregado[];
+  /** Dotação orçamentária e declarações dos agentes designados (frente P — RN-39 e RF-32). */
+  preparatorios?: DadosPreparatorios;
+}
+
+/** Dotação orçamentária gravada em `processos_dotacoes` (RN-39). */
+export interface DotacaoArmazenada {
+  linhas: LinhaDotacao[];
+  registradaEm: string | null;
+  registradaPor: { id: string; nome: string } | null;
+}
+
+/** Dados da frente P que acompanham a carga do processo (`preparatorios/dotacao.ts`). */
+export interface DadosPreparatorios {
+  dotacao: DotacaoArmazenada;
+  /** Declaração vigente de impedimento (RN-28) de cada agente designado, por usuário (sem cargo nem matrícula). */
+  declaracoes: Record<string, DeclaracaoAgente>;
 }
