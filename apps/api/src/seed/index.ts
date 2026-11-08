@@ -11,6 +11,7 @@ import { gerarGestao } from './gestao.ts';
 import { gerarInstrumentos } from './instrumentos.ts';
 import { Prng } from './prng.ts';
 import { gerarProcessos } from './processos.ts';
+import { gerarReferenciasPrecos } from './precos.ts';
 import { SENHA_DEMONSTRACAO } from './usuarios-demonstracao.ts';
 
 /** Semente fixa do gerador (Lei 14.133): a mesma data de referência produz sempre os mesmos dados. */
@@ -27,6 +28,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'execucao', executar: gerarExecucao },
   { nome: 'gestao', executar: gerarGestao },
   { nome: 'processos', executar: gerarProcessos },
+  { nome: 'precos', executar: gerarReferenciasPrecos },
 ];
 
 function dadosVazios(): DadosSeed {
