@@ -239,7 +239,9 @@ describe('regularidade do contratado (modo offline): CEIS/CNEP simulados, certid
     assert.equal(previa.momento, 'prorrogacao');
     assert.equal(previa.bloqueia, true);
 
-    const corpo = { novaVigenciaFim: adicionarDias(contrato.vigencia_fim, 365), valor: 0, justificativa: 'Prorrogação por mais 12 meses: serviço contínuo com preços vantajosos (art. 107).' };
+    // Travas da RN-33 (frente K) atendidas: aqui só a regularidade (RN-09) decide.
+    const travasRn33 = { vantajosidadeAtestada: true, precoCompativel: true, previsaoEdital: true, creditoOrcamentario: true, causaAtraso: 'sem_culpa_contratado' };
+    const corpo = { novaVigenciaFim: adicionarDias(contrato.vigencia_fim, 365), valor: 0, justificativa: 'Prorrogação por mais 12 meses: serviço contínuo com preços vantajosos (art. 107).', ...travasRn33 };
     const bloqueada = await chamar(app, admin, 'POST', `/api/v1/contratos/${contrato.id}/prorrogacoes`, corpo);
     assert.equal(bloqueada.statusCode, 422);
     assert.match(JSON.stringify(erro(bloqueada).detalhes), /CNDT .*validade expirada/);

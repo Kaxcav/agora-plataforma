@@ -12,10 +12,11 @@
 -- * irps / irp_adesoes: intenção de registro de preços aberta por pelo menos 8 dias úteis (art. 86; Decreto
 --   11.462/2023, art. 9º), as adesões das UASGs participantes e a consolidação das quantidades.
 
--- A fila de integrações passa a aceitar a publicação do PCA no PNCP.
+-- A fila de integrações passa a aceitar a publicação do PCA no PNCP. A lista mantém os tipos das migrações
+-- anteriores, inclusive 'pncp.termo' (020_alteracoes_contratuais.sql): quem acrescentar tipo depois inclui todos.
 ALTER TABLE fila_tarefas DROP CONSTRAINT IF EXISTS fila_tarefas_tipo_check;
 ALTER TABLE fila_tarefas ADD CONSTRAINT fila_tarefas_tipo_check
-  CHECK (tipo IN ('sincronizacao', 'pncp.compra', 'pncp.arquivo', 'pncp.contrato', 'pncp.pca'));
+  CHECK (tipo IN ('sincronizacao', 'pncp.compra', 'pncp.arquivo', 'pncp.contrato', 'pncp.termo', 'pncp.pca'));
 
 CREATE TABLE pca_planos (
   id uuid PRIMARY KEY,

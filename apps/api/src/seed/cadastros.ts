@@ -30,6 +30,8 @@ const UNIDADE_POR_PERFIL: Record<CodigoPerfil, string> = {
   auditor: 'COCIN',
   consulta: 'DIPAT',
   controle_interno: 'COCIN',
+  // Perfil externo (gestão compartilhada com a sociedade): o cidadão não pertence a unidade interna.
+  cidadao: '',
 };
 
 function telefone(ctx: ContextoSeed, uf: string): string {

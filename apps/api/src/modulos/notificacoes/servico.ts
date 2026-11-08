@@ -35,6 +35,7 @@ import type { Banco, Executor, ParametroSql, Transacao } from '../../banco/tipos
 import type { Config } from '../../config.ts';
 import { identificadorInstrumento, normalizarBusca } from '../../compartilhado/texto.ts';
 import { criarDrivers, ErroEnvio, type DriversCanais } from './canais.ts';
+import { alertasProrrogacao } from '../alteracoes/prorrogacao.ts';
 
 /** Dependências do serviço (o `ContextoApp` da API e o processo à parte as fornecem). */
 export interface ContextoNotificacoes {
@@ -652,6 +653,8 @@ async function coletarCandidatos(executor: Executor, hoje: string): Promise<Cand
     (l) => mapearInstrumento('ata', l),
   );
   const candidatos: Candidato[] = [];
+  // RN-33 (frente K): o aviso de vencimento do contrato diz se cabe prorrogar, até quando, ou se é preciso nova licitação.
+  const prorrogacoes = await alertasProrrogacao(executor, contratos.filter((c) => c.vigenciaFim <= limite).map((c) => c.id), hoje);
 
   for (const i of [...contratos, ...atas]) {
     const papeis: PapelDestinatario[] = i.tipo === 'contrato' ? ['gestor', 'fiscal'] : ['gestor'];
@@ -664,7 +667,7 @@ async function coletarCandidatos(executor: Executor, hoje: string): Promise<Cand
           chave: `vencimento:${i.tipo}:${i.id}:${i.vigenciaFim}:${aviso.faixa}`,
           papeis,
           dataReferencia: null,
-          detalhe: null,
+          detalhe: i.tipo === 'contrato' ? (prorrogacoes.get(i.id) ?? null) : null,
           responsavelId: null,
         });
       }

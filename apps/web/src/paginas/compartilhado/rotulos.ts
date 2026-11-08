@@ -97,6 +97,8 @@ export const TIPOS_ADITIVO: Record<Aditivo['tipo'], string> = {
   supressao: 'Supressão',
   prorrogacao: 'Prorrogação',
   reajuste: 'Reajuste',
+  qualitativa: 'Alteração qualitativa',
+  reequilibrio: 'Reequilíbrio',
 };
 
 export const ORIGENS_CONTRATO = {

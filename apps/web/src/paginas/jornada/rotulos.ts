@@ -13,6 +13,7 @@ import {
 } from '@agora/contratos';
 import type { FonteCotacao, PapelProcesso } from '@agora/dominio';
 import type { RotuloTom } from '../compartilhado/rotulos';
+import { TIPOS_DOCUMENTO_COMPLEMENTARES } from './preparatorios/rotulos';
 
 export const ORGAOS: Record<OrgaoRequisitante, { sigla: string; nome: string }> = {
   PF: { sigla: 'PF', nome: 'Polícia Federal' },
@@ -78,6 +79,7 @@ export const TIPOS_DOCUMENTO: Record<DocumentoGerado['tipo'], { rotulo: string; 
   edital: { rotulo: 'Edital', fundamento: 'Lei 14.133/2021, art. 25' },
   minuta_contrato: { rotulo: 'Minuta de contrato', fundamento: 'Lei 14.133/2021, art. 92' },
   parecer_checklist: { rotulo: 'Checklist do parecer jurídico', fundamento: 'Lei 14.133/2021, art. 53' },
+  ...TIPOS_DOCUMENTO_COMPLEMENTARES,
 };
 
 export const SITUACOES_DOCUMENTO: Record<DocumentoGerado['situacao'], RotuloTom> = {

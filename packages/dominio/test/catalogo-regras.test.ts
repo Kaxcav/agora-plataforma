@@ -249,3 +249,99 @@ describe('CATALOGO_REGRAS — frente V (operação e metas do ETP)', () => {
     assert.deepEqual(regrasPorTela('metas').map((x) => x.id), ['RF-39']);
   });
 });
+
+describe('CATALOGO_REGRAS — frente M (IMR e conferência da nota fiscal, F7)', () => {
+  const casos: [string, string[], string, RegExp][] = [
+    ['RN-36', ['pagamentos', 'pagamentos.conferencia', 'contratos.detalhe'], 'conferirNotaFiscal', /arts\. 117, 140 e 141/],
+    ['RF-29', ['contratos.detalhe', 'pagamentos.conferencia'], 'calcularAjustePagamento', /art\. 6º, XXIII, "g"/],
+  ];
+  for (const [id, telas, implementacao, fundamento] of casos) {
+    it(`${id}: telas ${telas.join(', ')} e ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, null);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+      assert.match(r.fundamento, /IN SEGES\/MP 5\/2017, anexo VIII-A/);
+    });
+  }
+
+  it('RN-36 bloqueia o atesto com divergência e diz que a glosa não é sanção', () => {
+    const d = regra('RN-36').descricao;
+    assert.match(d, /atesto fica bloqueado/);
+    assert.match(d, /não é sanção/);
+    assert.match(d, /decisão da autoridade competente/);
+  });
+});
+
+describe('CATALOGO_REGRAS — frente P (dotação e documentos da fase preparatória)', () => {
+  it('RN-39: dotação estruturada, declaração da autoridade e bloqueio do avanço da etapa 4', () => {
+    const r = regra('RN-39');
+    assert.equal(r.etapa, 4);
+    assert.ok(r.telas.includes('jornada.detalhe'));
+    assert.match(r.fundamento, /art\. 150/);
+    assert.match(r.fundamento, /XXIII, "j"/);
+    for (const simbolo of ['validarDotacaoOrcamentaria', 'verificarDotacaoParaEdital']) assert.ok(r.implementacao.includes(simbolo), simbolo);
+    assert.match(r.descricao, /unidade gestora, programa de trabalho, natureza da despesa, fonte de recursos, exercício/);
+    assert.match(r.descricao, /autoridade competente designada/);
+  });
+
+  it('RF-32: peças complementares com PDF, aprovação e checklist por etapa', () => {
+    const r = regra('RF-32');
+    assert.match(r.fundamento, /53/);
+    for (const simbolo of ['gerarQuesitosControleLegalidade', 'montarCasosTesteProvaConceito', 'montarChecklistPecas']) assert.ok(r.implementacao.includes(simbolo), simbolo);
+    for (const peca of ['portaria de designação', 'nota técnica de encaminhamento', 'planilha de julgamento', 'termos de recebimento', 'PDF']) assert.ok(r.descricao.includes(peca), peca);
+  });
+});
+
+describe('CATALOGO_REGRAS — frente K (execução contratual como ato)', () => {
+  const casos: [string, string[], string, RegExp][] = [
+    ['RN-32', ['contratos.detalhe'], 'avaliarTermoAditivo', /arts\. 53, § 4º, 91, § 4º, 94, 124 e 125/],
+    ['RN-33', ['contratos.detalhe', 'notificacoes'], 'avaliarProrrogacao', /arts\. 105 a 107, 110, 111 e 114/],
+    ['RF-27', ['contratos.detalhe'], 'avaliarReajuste', /arts\. 25, § 7º, 92, § 3º/],
+  ];
+  for (const [id, telas, implementacao, fundamento] of casos) {
+    it(`${id}: etapa 7, telas ${telas.join(', ')} e ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, 7);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+    });
+  }
+
+  it('RN-32 é trava: acima do limite a API recusa', () => {
+    assert.match(regra('RN-32').descricao, /a API recusa a alteração/);
+  });
+
+  it('RN-33 cobre o escopo (art. 111) e o alerta de 120 dias; RF-27 cobre o contraditório na extinção', () => {
+    assert.match(regra('RN-33').descricao, /prorroga automaticamente/);
+    assert.match(regra('RN-33').descricao, /120 dias/);
+    assert.match(regra('RF-27').descricao, /contraditório/);
+  });
+});
+
+describe('CATALOGO_REGRAS — frente Q (IA ancorada: RNF-08, RIA-14 e RIA-15)', () => {
+  const casos: [string, number | null, string[], string, RegExp][] = [
+    ['RNF-08', null, ['normas.base'], 'buscarNaBaseNormativa', /Lei 9\.610\/1998, art\. 8º, IV/],
+    ['RIA-14', 4, ['normas.qualidade', 'jornada.detalhe', 'jornada.conferencia'], 'conferirCitacoesLegais', /art\. 19, IV/],
+    ['RIA-15', 4, ['jornada.conferencia', 'controle'], 'sinaisAuditorContinuo', /art\. 169/],
+  ];
+  for (const [id, etapa, telas, implementacao, fundamento] of casos) {
+    it(`${id}: etapa ${String(etapa)}, telas ${telas.join(', ')} e ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, etapa);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+    });
+  }
+
+  it('as regras de IA só sinalizam e exigem revisão humana; a base é local, sem serviço externo', () => {
+    assert.match(regra('RIA-14').descricao, /revisão humana registrada/);
+    assert.match(regra('RIA-14').descricao, /IMR-02/);
+    assert.match(regra('RIA-15').descricao, /requer revisão humana/);
+    assert.match(regra('RIA-15').descricao, /não acusa, não glosa e não sanciona/);
+    assert.match(regra('RNF-08').descricao, /sem serviço externo nem embeddings de terceiros/);
+  });
+});

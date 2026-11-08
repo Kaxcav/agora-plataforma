@@ -506,3 +506,39 @@ situacaoRegistroCeisCnep({ aplicacao; enviadoEm: DataISO | null; hoje }, opcoes?
 // vencimento = prazoRegistroCeisCnep (15 dias úteis, art. 161); alerta com até 5 dias úteis restantes ou vencido.
 // REGISTRO_CEIS_CNEP_INVALIDO: envio antes da aplicação, envio futuro ou datas inválidas.
 ```
+
+## lei14133/fase-preparatoria.ts — art. 6º, XXIII, "j", arts. 18, 53 e 150 (RN-39, RF-32)
+
+```ts
+interface LinhaDotacao { unidadeGestora; programaTrabalho; naturezaDespesa; fonteRecursos; exercicio; valor: Centavos; preEmpenho? }
+
+normalizarNaturezaDespesa('449052') → '4.4.90.52'; normalizarProgramaTrabalho('06181501620A10001') → '06.181.5016.20A1.0001'
+
+validarDotacaoOrcamentaria(linhas, { hoje, valorEstimado? }) → { valida; pendencias: { linha; campo; mensagem }[]; sinais; linhas (normalizadas);
+  exercicioReferencia; total; totalExercicio; fundamento }
+// Pendências: nenhuma linha; UG sem 6 dígitos; programa fora de 00.000.0000.0000.0000; natureza fora de C.G.MM.EE, grupo
+// incoerente com a categoria (3 → 1 a 3; 4 → 4 a 6) ou elemento 00; fonte sem 10 (ou 3 a 4) dígitos; exercício encerrado
+// ou mais de 10 anos à frente; nenhum crédito do exercício de hoje (art. 150); valor não positivo; pré-empenho fora de
+// AAAAPE000000 ou de outro exercício; linha repetida. Sinais: grupo de pessoal, juros ou amortização; créditos menores
+// que o valor estimado (total ou do exercício). DOTACAO_INVALIDA: entrada que não é lista ou com mais de 20 linhas.
+
+chaveDotacao(linhas) → string  // canônica: ordem e pontuação não importam; o hash dela liga declaração, TR e minuta à dotação
+
+verificarDotacaoParaEdital({ validacao; declaracao: 'nao_gerada' | 'rascunho' | 'aprovada' | 'desatualizada';
+  documentos: { titulo; versao; situacao: 'nao_gerado' | 'com_dotacao' | 'sem_dotacao' }[] }) → { liberado; pendencias; fundamento }
+// RN-39 (etapa 4 → 5): pendências da dotação + declaração não aprovada com a dotação atual + TR/minuta sem a dotação
+// (só quando há dotação; documento não gerado fica com a RIA-04).
+
+gerarQuesitosControleLegalidade(dados) → { numero; pergunta; fundamento; motivo }[]
+// Sempre: art. 18; dotação (art. 150); minutas (arts. 25 e 92); matriz de riscos (art. 22). Conforme os dados: PCA,
+// catálogo, artigo de luxo, expurgos, cotação direta, sigilo do orçamento, técnica e preço, prova de conceito, inversão
+// de fases, patrimônio líquido, software (art. 93), ME/EPP, vínculo não efetivo e sustentabilidade. Só perguntas.
+
+montarCasosTesteProvaConceito(roteiro) → { codigo: 'CT-01'…; descricao }[]  // por linha ou por ";", sem a numeração; até 25
+
+PECAS_PROCESSO: { tipo; titulo; etapa; fundamento; obrigatoriedade: 'obrigatoria' | 'condicional' | 'recomendada'; condicao? }[]
+montarChecklistPecas({ etapaAtual; documentos: { tipo; versao; situacao; assinado; desatualizado }[]; provaConceitoExigida })
+  → { etapas: { etapa; itens: { …peça; situacao: 'pronta' | 'rascunho' | 'desatualizada' | 'falta' | 'nao_aplicavel'; versao; assinado; falta }[];
+      prontas; faltantes }[]; prontas; faltantes; recomendadasPendentes; fundamento }
+// Falta = peça obrigatória (ou condicional aplicável) que não está pronta; recomendadas contadas à parte. ETAPA_INVALIDA.
+```

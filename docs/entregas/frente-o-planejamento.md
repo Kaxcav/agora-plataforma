@@ -225,5 +225,5 @@ Antes de usar essas seções, salve ou descarte as alterações do DFD.
 - **Catálogo:** a busca textual de serviços usa só a cópia local, porque a API não oferece o filtro. A carga de demonstração tem códigos sintéticos.
 - **Item sem classe do catálogo** vai ao PNCP como catálogo "outros" (2), com o nome da categoria na classificação superior. O PNCP pode exigir a classe; conferir no ambiente de treinamento.
 - **Para o coordenador:**
-  - a migração 024 recria o `CHECK` de `fila_tarefas.tipo` com `pncp.pca`. Se outra frente acrescentar tipo de tarefa em migração própria, junte as listas, porque vale a última migração;
+  - a migração 024 recria o `CHECK` de `fila_tarefas.tipo` com `pncp.pca`, mantendo o `pncp.termo` da migração 020. Migração posterior que mexer nesse `CHECK` precisa repetir a lista inteira, porque vale a última;
   - o teste `apps/api/test/fila.test.ts` ganhou `'pncp.pca'` no mapa de manipuladores, exigido pelo tipo `Manipuladores`.

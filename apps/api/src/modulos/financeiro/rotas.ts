@@ -8,6 +8,7 @@ import { booleanoQuery, camposPaginacao, codigoUasg, deslocamento, idDaRota, pag
 import { carregarProveniencias, provenienciaDe } from '../../integracoes/servico.ts';
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
 import { abrirPendenciaRegularidade, verificarRegularidade } from '../regularidade/servico.ts';
+import { exigirConferenciaLiberada, situacaoAtestoConferencia } from '../imr/servico.ts';
 import { listarEmpenhos, listarPagamentos, obterPagamento } from './repositorio.ts';
 
 const esquemaEmpenhos = z.object({
@@ -82,14 +83,16 @@ export async function rotasFinanceiro(app: FastifyInstance): Promise<void> {
     const id = idDaRota(request.params);
     const sessao = sessaoDe(request);
     const escopo = escopoUasgs(sessao);
-    const [previo] = await ctx.banco.consultar<{ situacao: string; contrato_id: string; fornecedor_id: string; nota_fiscal: string }>(
-      `SELECT p.situacao, p.contrato_id, c.fornecedor_id, p.nota_fiscal
+    const [previo] = await ctx.banco.consultar<{ situacao: string; contrato_id: string; fornecedor_id: string; nota_fiscal: string; competencia: string }>(
+      `SELECT p.situacao, p.contrato_id, c.fornecedor_id, p.nota_fiscal, p.competencia
          FROM pagamentos p JOIN contratos c ON c.id = p.contrato_id
         WHERE p.id = $1 AND ($2::text[] IS NULL OR c.uasg = ANY($2::text[]))`,
       [id, escopo],
     );
     if (!previo) throw naoEncontrado('Pagamento não encontrado.');
     if (previo.situacao !== 'previsto') throw conflito('Somente pagamentos na situação "previsto" podem ser atestados.');
+    // RN-36: conferência da nota divergente sem justificativa (ou ausente, em contrato com IMR) bloqueia o atesto.
+    exigirConferenciaLiberada(await situacaoAtestoConferencia(ctx.banco, { id, contrato_id: previo.contrato_id, competencia: previo.competencia }));
     const verificacao = await verificarRegularidade(ctx, request, {
       fornecedorId: previo.fornecedor_id,
       momento: 'atesto',
@@ -98,8 +101,8 @@ export async function rotasFinanceiro(app: FastifyInstance): Promise<void> {
     });
     let pendenciaAberta = false;
     await ctx.banco.transacao(async (tx) => {
-      const [alvo] = await tx.consultar<{ situacao: string; contrato_id: string; nota_fiscal: string }>(
-        `SELECT p.situacao, p.contrato_id, p.nota_fiscal
+      const [alvo] = await tx.consultar<{ situacao: string; contrato_id: string; nota_fiscal: string; competencia: string; valor: number }>(
+        `SELECT p.situacao, p.contrato_id, p.nota_fiscal, p.competencia, p.valor
            FROM pagamentos p
            JOIN contratos c ON c.id = p.contrato_id
           WHERE p.id = $1 AND ($2::text[] IS NULL OR c.uasg = ANY($2::text[]))
@@ -108,11 +111,20 @@ export async function rotasFinanceiro(app: FastifyInstance): Promise<void> {
       );
       if (!alvo) throw naoEncontrado('Pagamento não encontrado.');
       if (alvo.situacao !== 'previsto') throw conflito('Somente pagamentos na situação "previsto" podem ser atestados.');
+      const conferencia = await situacaoAtestoConferencia(tx, { id, contrato_id: alvo.contrato_id, competencia: alvo.competencia });
+      exigirConferenciaLiberada(conferencia);
       await tx.executar(`UPDATE pagamentos SET situacao = 'atestado', atestado_por = $2, atestado_em = $3 WHERE id = $1`, [
         id,
         sessao.usuario.id,
         ctx.relogio().toISOString(),
       ]);
+      // RN-36: com a nota conferida, a parcela segue para liquidação pelo valor a liquidar (o menor entre a nota e o devido).
+      const conferenciaNota = conferencia.conferencia
+        ? { ...conferencia.conferencia, valor: { de: alvo.valor, para: conferencia.conferencia.valorALiquidar } }
+        : null;
+      if (conferenciaNota && conferenciaNota.valorALiquidar !== alvo.valor) {
+        await tx.executar('UPDATE pagamentos SET valor = $2 WHERE id = $1', [id, conferenciaNota.valorALiquidar]);
+      }
       const pendenciaId = verificacao.regular
         ? null
         : await abrirPendenciaRegularidade(tx, ctx, { contratoId: alvo.contrato_id, notaFiscal: alvo.nota_fiscal, momento: 'atesto', verificacao });
@@ -129,6 +141,7 @@ export async function rotasFinanceiro(app: FastifyInstance): Promise<void> {
           instrumentoId: alvo.contrato_id,
           situacao: { de: 'previsto', para: 'atestado' },
           regularidade: { verificacaoId: verificacao.id, regular: verificacao.regular, motivos: verificacao.motivos, pendenciaId },
+          ...(conferenciaNota ? { conferenciaNota } : {}),
         },
       });
     });

@@ -35,6 +35,9 @@ import {
   Handshake,
   Gauge,
   Target,
+  MessagesSquare,
+  Library,
+  FileCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -158,6 +161,22 @@ export const MENU: readonly SecaoMenu[] = [
     itens: [
       { rotulo: 'Metas do ETP', caminho: '/metas-etp', icone: Target, permissao: 'metas:ler' },
       { rotulo: 'Operação', caminho: '/operacao', icone: Gauge, permissao: 'operacao:ler' },
+    ],
+  },
+  {
+    id: 'sociedade',
+    titulo: 'Sociedade',
+    itens: [
+      { rotulo: 'Gestão compartilhada', caminho: '/sociedade', icone: MessagesSquare, permissao: 'sociedade:ler', exato: true },
+      { rotulo: 'Minhas manifestações', caminho: '/sociedade/minhas-manifestacoes', icone: MessagesSquare, permissao: 'sociedade:manifestar' },
+    ],
+  },
+  {
+    id: 'normas',
+    titulo: 'Lei e qualidade normativa',
+    itens: [
+      { rotulo: 'Base normativa', caminho: '/base-normativa', icone: Library, permissao: 'normas:ler' },
+      { rotulo: 'Qualidade normativa', caminho: '/qualidade-normativa', icone: FileCheck, permissao: 'qualidade_ia:ler' },
     ],
   },
 ];

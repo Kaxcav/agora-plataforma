@@ -6,10 +6,19 @@
  *     cabeçalhos `Titulo-Documento` e `Tipo-Documento-Id` → 201 com `location`.
  *   * Anexos da compra: POST /v1/orgaos/{cnpj}/compras/{ano}/{sequencial}/arquivos, multipart (parte `arquivo`).
  *   * Ata: POST /v1/orgaos/{cnpj}/compras/{ano}/{sequencial}/atas (JSON). Contrato: POST /v1/orgaos/{cnpj}/contratos (JSON).
+ *   * Termo de contrato (aditivo, apostilamento, rescisão): POST /v1/orgaos/{cnpj}/contratos/{ano}/{sequencial}/termos (JSON),
+ *     esquema IncluirTermoContratoDTO da especificação OpenAPI do PNCP → 201 com `location` .../termos/{sequencialTermoContrato}.
  * Respostas: 2xx sucesso; 401 refaz o login uma vez; 408/425/429/5xx e falhas de rede são transitórias (nova
  * tentativa); os demais 4xx são definitivos e vão para a fila de erro (`classificarRespostaHttp`).
  */
-import { classificarRespostaHttp, interpretarLocalizacaoPncp, type ItemPlanoPncp, type LocalizacaoPncp } from '@agora/dominio';
+import {
+  classificarRespostaHttp,
+  interpretarLocalizacaoPncp,
+  interpretarLocalizacaoTermoPncp,
+  numeroControlePncp,
+  type ItemPlanoPncp,
+  type LocalizacaoPncp,
+} from '@agora/dominio';
 import { FalhaTarefa } from '../fila/tipos.ts';
 import type { FuncaoFetch } from '../http/contexto.ts';
 
@@ -90,6 +99,31 @@ export interface PlanoPncp {
   itensPlano: ItemPlanoPncp[];
 }
 
+/** Termo de contrato no formato do PNCP (IncluirTermoContratoDTO). */
+export interface TermoContratoPncp {
+  tipoTermoContratoId: 1 | 2 | 3;
+  numeroTermoContrato: string;
+  objetoTermoContrato: string;
+  qualificacaoAcrescimoSupressao: boolean;
+  qualificacaoVigencia: boolean;
+  qualificacaoFornecedor: boolean;
+  qualificacaoInformativo: boolean;
+  qualificacaoReajuste: boolean;
+  dataAssinatura: string;
+  niFornecedor: string;
+  tipoPessoaFornecedor: 'PJ' | 'PF';
+  nomeRazaoSocialFornecedor: string;
+  informativoObservacao?: string;
+  fundamentoLegal: string;
+  valorAcrescido: number;
+  numeroParcelas: number;
+  valorParcela: number;
+  valorGlobal: number;
+  prazoAditadoDias: number;
+  dataVigenciaInicio: string;
+  dataVigenciaFim: string;
+}
+
 export interface RespostaInclusao {
   /** Endereço do registro criado, devolvido no `location` (protocolo do PNCP). */
   localizacao: string;
@@ -155,6 +189,22 @@ export interface ClientePncp {
   incluirAta(cnpj: string, anoCompra: number, sequencialCompra: number, ata: AtaPncp): Promise<RespostaInclusao>;
   /** PCA aprovado da unidade (art. 12, § 1º; Decreto 10.947/2022, art. 12, § 2º). */
   incluirPca(cnpj: string, plano: PlanoPncp): Promise<RespostaInclusao>;
+  /** Inclui o termo no contrato já divulgado; `registro.sequencialDocumento` traz o sequencial do termo no PNCP. */
+  incluirTermoContrato(cnpj: string, anoContrato: number, sequencialContrato: number, termo: TermoContratoPncp): Promise<RespostaInclusao>;
+}
+
+/** Endereço do termo (.../termos/{n}) visto como o registro do contrato, com o sequencial do termo em `sequencialDocumento`. */
+function localizacaoDoTermo(localizacao: string): LocalizacaoPncp {
+  const termo = interpretarLocalizacaoTermoPncp(localizacao);
+  return {
+    registro: 'contrato',
+    cnpj: termo.cnpj,
+    ano: termo.anoContrato,
+    sequencial: termo.sequencialContrato,
+    sequencialAta: null,
+    sequencialDocumento: termo.sequencialTermo,
+    numeroControle: numeroControlePncp({ registro: 'contrato', cnpj: termo.cnpj, ano: termo.anoContrato, sequencial: termo.sequencialContrato }),
+  };
 }
 
 export function criarClientePncp(o: OpcoesClientePncp): ClientePncp {
@@ -205,7 +255,12 @@ export function criarClientePncp(o: OpcoesClientePncp): ClientePncp {
   }
 
   /** POST autenticado; 401 renova o token uma vez. Devolve o `location` do 201. */
-  async function incluir(operacao: string, caminho: string, montar: () => { corpo: FormData | string; cabecalhos: Record<string, string> }): Promise<RespostaInclusao> {
+  async function incluir(
+    operacao: string,
+    caminho: string,
+    montar: () => { corpo: FormData | string; cabecalhos: Record<string, string> },
+    interpretar: (localizacao: string) => LocalizacaoPncp = interpretarLocalizacaoPncp,
+  ): Promise<RespostaInclusao> {
     for (let renovou = false; ; renovou = true) {
       const token = renovou ? await login() : await tokenValido();
       const { corpo, cabecalhos } = montar();
@@ -243,7 +298,7 @@ export function criarClientePncp(o: OpcoesClientePncp): ClientePncp {
         }
       }
       try {
-        return { localizacao, registro: interpretarLocalizacaoPncp(localizacao) };
+        return { localizacao, registro: interpretar(localizacao) };
       } catch {
         throw new FalhaTarefa(`PNCP respondeu ${resposta.status} em ${operacao}, mas sem o endereço do registro criado (location).`, false);
       }
@@ -292,6 +347,9 @@ export function criarClientePncp(o: OpcoesClientePncp): ClientePncp {
     },
     incluirPca(cnpj, plano) {
       return incluir('a inclusão do plano de contratações anual', `/v1/orgaos/${cnpj}/pca`, json(plano));
+    },
+    incluirTermoContrato(cnpj, anoContrato, sequencialContrato, termo) {
+      return incluir('a inclusão do termo do contrato', `/v1/orgaos/${cnpj}/contratos/${anoContrato}/${sequencialContrato}/termos`, json(termo), localizacaoDoTermo);
     },
   };
 }

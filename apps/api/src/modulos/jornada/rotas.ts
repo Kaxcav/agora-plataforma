@@ -67,6 +67,9 @@ import type { CestaArmazenada, CotacaoArmazenada, LinhaProcesso, ParametrosEdita
 import type { LinhaTarefa } from '../../fila/tipos.ts';
 import { solicitarPublicacaoEdital } from '../publicacao-pncp/servico.ts';
 import { alvoDoProcesso, comTrava, travaAplicada } from '../../compartilhado/travas.ts';
+import { exigirAutoridadeDesignada, verificarAprovacaoComplementar } from '../preparatorios/aprovacao.ts';
+import { permissaoAprovacaoDocumento } from '../preparatorios/constantes.ts';
+import { exigirCitacoesRevisadas, resumoCitacoes } from '../ia-ancorada/servico.ts';
 
 // ───────────────────────── esquemas ─────────────────────────
 
@@ -259,7 +262,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
   const edicao = { preHandler: exigir('jornada:editar') };
   const juridico = { preHandler: exigir('jornada:aprovar_juridico') };
   const publicacao = { preHandler: exigir('jornada:publicar') };
-  const documentos = { preHandler: exigirAlguma(['jornada:editar', 'jornada:aprovar_juridico']) };
+  const documentos = { preHandler: exigirAlguma(['jornada:editar', 'jornada:aprovar_juridico', 'jornada:autorizar']) };
 
   async function contexto(): Promise<ContextoJornada> {
     const agora = ctx.relogio();
@@ -433,8 +436,10 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
   app.post('/processos/:id/sei/assinar', documentos, async (request) => {
     const { documentoNumero } = esquemaAssinatura.parse(request.body);
     const id = idDaRota(request.params);
-    exigirPermissaoNoHandler(request, permissaoDocumento(await tipoDocumentoDaArvore(ctx.banco, id, documentoNumero)));
+    const tipoArvore = await tipoDocumentoDaArvore(ctx.banco, id, documentoNumero);
+    exigirPermissaoNoHandler(request, permissaoAprovacaoDocumento(tipoArvore) ?? permissaoDocumento(tipoArvore));
     return alterar(request, async (tx, linha, c) => {
+      await exigirAutoridadeDesignada(tx, linha.id, tipoArvore, sessaoDe(request).usuario.id);
       const assinado = await assinarNaArvore(tx, linha.id, documentoNumero, sessaoDe(request).usuario.id, c.agora);
       return {
         acao: 'sei.assinar',
@@ -619,6 +624,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
           modeloIa: preparado.modeloIa,
           falhaIa: preparado.falhaIa,
           hashConteudo: doc.hash,
+          citacoes: resumoCitacoes(preparado.conteudo),
         },
       };
     });
@@ -630,11 +636,15 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     return alterar(request, async (tx, linha, c) => {
       const doc = await obterDocumentoParaAprovar(tx, linha.id, documentoId);
       if (!doc) throw naoEncontrado('Documento não encontrado.');
-      exigirPermissaoNoHandler(request, permissaoDocumento(doc.tipo));
+      exigirPermissaoNoHandler(request, permissaoAprovacaoDocumento(doc.tipo) ?? permissaoDocumento(doc.tipo));
+      // RF-32 e RN-39: atos da autoridade designada; declaração e despacho só com a dotação válida e declarada.
+      await verificarAprovacaoComplementar(tx, linha, doc, sessao.usuario.id, c.hoje);
       if (geradoComParametrosAnteriores(doc.tipo, doc.hash_parametros, linha.edital)) {
         const mensagem = `O documento "${doc.titulo}" (versão ${doc.versao}) foi gerado com parâmetros anteriores — gere novamente e aprove.`;
         throw travaAplicada(alvoDoProcesso(linha, 'documento_aprovar'), regraNegocio(mensagem, [{ campo: 'RN-06', mensagem }]));
       }
+      // RIA-14: citação inexistente ou sem efeito só passa com a revisão humana das citações registrada.
+      await exigirCitacoesRevisadas(tx, doc);
       // RN-21: com a política do órgão ligada, o ETP e o TR só se concluem com os critérios de sustentabilidade.
       if (doc.tipo === 'etp' || doc.tipo === 'tr') {
         const verificacao = sustentabilidadeDoProcesso(linha, c.politicaSustentabilidade ?? true, doc.tipo);
