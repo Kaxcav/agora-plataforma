@@ -379,3 +379,39 @@ Conteúdo mínimo do catálogo (escreva descrições completas em pt-BR):
 - RNF-06 IA nunca decide sanção, habilitação ou fraude; human-in-the-loop
 - RF para as telas de operação: painel, atas, contratos, itens, empenhos, pagamentos, vínculos, ajustes, administração, auditoria, transparência (um RF por tela, ids RF-01…)
 ```
+
+## lei14133/pesquisa-precos.ts — art. 23, §§ 1º e 2º (RF-25) e projeção do valor estimado (RIA-11)
+
+```ts
+export type OrigemPrecoAutomatizada = 'painel_precos' | 'contratacoes_similares' | 'notas_fiscais' | 'sinapi' | 'sicro';
+export interface AmostraPrecoExterna { origem: OrigemPrecoAutomatizada; identificador: string; descricao: string; valorUnitario: Centavos; data: DataISO; unidade?: string; local?: string }
+export function enquadrarAmostraArt23(origem: OrigemPrecoAutomatizada, tipoObjeto: TipoObjetoPesquisa): { fonteCotacao: FonteCotacao; inciso: string; fundamento: string; prazoMeses: number | null } | null;
+// Bens e serviços (§ 1º): painel → I; similares → II (12 meses); notas fiscais → V (12 meses, IN 65/2021, art. 5º, V).
+// Obras e serviços de engenharia (§ 2º, ordem legal): Sinapi/Sicro → I (fonteCotacao 'midia_especializada', tabela oficial);
+// similares → III (12 meses); notas fiscais → IV. Painel em obras e Sinapi/Sicro em bens/serviços → null (não aplicável).
+export function selecionarSugestoesPrecos(amostras: AmostraPrecoExterna[], opcoes: { hoje: DataISO; tipoObjeto: TipoObjetoPesquisa; limitePorOrigem?: number /*=5, máx. 50*/ }): {
+  sugestoes: (AmostraPrecoExterna & { fonteCotacao; inciso; fundamento; prazoMeses; descricaoFonte: string /* ≤ 500 */ })[];
+  descartadas: { origem; identificador; motivo }[];   // fonte não prevista, sem identificador, valor ≤ 0, data inválida/futura, fora do prazo, repetida
+  excedentes: number;                                 // além do limite por origem
+  alertas: { codigo: 'SEM_PARAMETRO_PRIORITARIO' | 'SEM_REFERENCIA_SINAPI_SICRO' | 'POUCAS_SUGESTOES'; mensagem; fundamento }[];
+  aviso: string;                                      // AVISO_SUGESTOES_PRECOS: o agente escolhe o que entra na cesta
+}
+// Ordem: § 1º → painel, similares, notas (IN 65/2021, art. 5º, § 1º); § 2º → Sinapi, Sicro, similares, notas.
+// Em cada origem, mais recente primeiro; empate mantém a ordem da fonte.
+
+export interface IndiceMensal { competencia: string /* AAAA-MM */; valor: number }
+export function projetarValorEstimado(e: { valorBase: Centavos; dataBase: DataISO; dataPrevista: DataISO; ipca: IndiceMensal[] /* variação % */; cambio?: IndiceMensal[] /* cotação */; percentualCambial?: number /* 0..100 */ }): {
+  meses; fatorCentral; fatorMinimo; fatorMaximo; valorBase; valorProjetado; faixa: { minimo; maximo }; variacaoPercentual;
+  inflacao: { taxaMensalMedia; desvioMensal; competencias; periodo; acumuladoPeriodo };
+  cambio: { participacao; taxaMensalMedia; desvioMensal; competencias; periodo; ultimaCotacao } | null;
+  sinal: { nivel: 'informativo' | 'atencao' /* |variação| ≥ 5% */; mensagem };
+  premissas: string[]; memoriaCalculo: string[]; fundamento: string; aviso: string /* "Requer revisão humana" */;
+}
+// Média geométrica mensal dos 12 últimos meses (mínimo 6; câmbio: 13 cotações, mínimo 7); horizonte em meses de 30,4375 dias,
+// até 36 meses; fator = (1 − p)·(1 + IPCA)^m + p·(1 + câmbio)^m; faixa = taxas ± 1 desvio-padrão amostral.
+// Erros: ErroDominio('PROJECAO_INVALIDA') para data prevista ≤ data-base ou > 36 meses, série curta, competência inválida ou repetida,
+// percentual fora de 0..100 ou câmbio ausente com parcela cambial.
+```
+
+- RF-25 consulta automática e combinada de preços (selecionarSugestoesPrecos, enquadrarAmostraArt23; etapa 3; tela 'jornada.detalhe')
+- RIA-11 projeção cambial e inflacionária do valor estimado (projetarValorEstimado; etapa 3; sinal, não altera o valor)

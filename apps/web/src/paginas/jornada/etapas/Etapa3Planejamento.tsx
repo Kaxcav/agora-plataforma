@@ -7,6 +7,7 @@ import { DocumentosEtapa } from '../Documentos';
 import { Requisitos, type Requisito } from '../comum';
 import { analiseDaCesta, SecaoCesta } from './SecaoCesta';
 import { SecaoEtp } from './SecaoEtp';
+import { SecaoPesquisaPrecos } from './SecaoPesquisaPrecos';
 import { SecaoRiscos } from './SecaoRiscos';
 import { textoSuficiente, type PropsEtapa } from './tipos';
 
@@ -47,11 +48,14 @@ export default function Etapa3Planejamento(props: PropsEtapa) {
         <a href="#etapa3-etp">ETP</a>
         <a href="#etapa3-riscos">Matriz de riscos</a>
         <a href="#etapa3-cesta">Cesta de preços</a>
+        <a href="#etapa3-pesquisa">Consulta automática de preços</a>
+        <a href="#etapa3-projecao">Projeção do valor</a>
         <a href="#etapa3-documentos">Documentos</a>
       </nav>
       <SecaoEtp {...props} />
       <SecaoRiscos {...props} />
       <SecaoCesta {...props} />
+      <SecaoPesquisaPrecos {...props} />
       {editavel ? <Requisitos titulo="Condições para avançar à etapa 4 (com os dados salvos)" itens={requisitos} /> : null}
       <div id="etapa3-documentos">
         <DocumentosEtapa

@@ -19,6 +19,15 @@ export interface Config {
   webDir: string | null;
   confiarProxy: boolean;
   limiteRequisicoesPorMinuto: number;
+  /** Fontes da pesquisa de preços (RF-25) e dos índices da projeção (RIA-11), consultadas só pelo servidor. */
+  precos: {
+    comprasDadosUrl: string;
+    transparenciaUrl: string;
+    transparenciaChave: string | null;
+    ibgeSidraUrl: string;
+    bcbSgsUrl: string;
+    timeoutMs: number;
+  };
 }
 
 export class ErroConfiguracao extends Error {
@@ -75,6 +84,12 @@ const esquemaAmbiente = z.object({
   AGORA_WEB_DIR: textoOpcional,
   AGORA_CONFIAR_PROXY: booleanoOpcional,
   AGORA_LIMITE_REQUISICOES_MINUTO: z.coerce.number().int().min(10).max(100_000).default(300),
+  AGORA_COMPRAS_DADOS_URL: z.string().min(1).default('https://dadosabertos.compras.gov.br'),
+  AGORA_TRANSPARENCIA_URL: z.string().min(1).default('https://api.portaldatransparencia.gov.br/api-de-dados'),
+  AGORA_TRANSPARENCIA_CHAVE: textoOpcional,
+  AGORA_IBGE_SIDRA_URL: z.string().min(1).default('https://apisidra.ibge.gov.br'),
+  AGORA_BCB_SGS_URL: z.string().min(1).default('https://api.bcb.gov.br/dados/serie'),
+  AGORA_PRECOS_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(15_000),
 });
 
 function urlValida(valor: string): boolean {
@@ -133,6 +148,14 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_ORGAO_CNPJ !== null && !/^\d{14}$/.test(e.AGORA_ORGAO_CNPJ.replace(/\D/g, ''))) {
     problemas.push('AGORA_ORGAO_CNPJ: informe os 14 dígitos do CNPJ do órgão');
   }
+  for (const [nome, valor] of [
+    ['AGORA_COMPRAS_DADOS_URL', e.AGORA_COMPRAS_DADOS_URL],
+    ['AGORA_TRANSPARENCIA_URL', e.AGORA_TRANSPARENCIA_URL],
+    ['AGORA_IBGE_SIDRA_URL', e.AGORA_IBGE_SIDRA_URL],
+    ['AGORA_BCB_SGS_URL', e.AGORA_BCB_SGS_URL],
+  ] as const) {
+    if (!urlValida(valor)) problemas.push(`${nome}: URL inválida`);
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -158,5 +181,13 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     webDir: e.AGORA_WEB_DIR,
     confiarProxy: e.AGORA_CONFIAR_PROXY ?? false,
     limiteRequisicoesPorMinuto: e.AGORA_LIMITE_REQUISICOES_MINUTO,
+    precos: {
+      comprasDadosUrl: e.AGORA_COMPRAS_DADOS_URL.replace(/\/+$/, ''),
+      transparenciaUrl: e.AGORA_TRANSPARENCIA_URL.replace(/\/+$/, ''),
+      transparenciaChave: e.AGORA_TRANSPARENCIA_CHAVE,
+      ibgeSidraUrl: e.AGORA_IBGE_SIDRA_URL.replace(/\/+$/, ''),
+      bcbSgsUrl: e.AGORA_BCB_SGS_URL.replace(/\/+$/, ''),
+      timeoutMs: e.AGORA_PRECOS_TIMEOUT_MS,
+    },
   };
 }

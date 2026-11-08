@@ -1017,3 +1017,153 @@ export interface EditalPublico {
 
 // ───────────────────────── Saúde ─────────────────────────
 // GET /saude/vivo → { situacao: 'ok' }   GET /saude/pronto → { situacao: 'ok' | 'indisponivel', banco: boolean, versao: string }
+
+// ───────────────────────── Pesquisa de preços automatizada (RF-25) e projeção (RIA-11) ─────────────────────────
+
+/** Fontes consultadas pelo servidor. O navegador nunca chama essas APIs. */
+export type FontePesquisaPrecos = 'PAINEL_PRECOS' | 'CONTRATACOES_SIMILARES' | 'NOTAS_FISCAIS' | 'SINAPI' | 'SICRO';
+export type SituacaoFontePesquisa = 'ok' | 'sem_resultado' | 'falhou' | 'dependente_de_acesso' | 'nao_aplicavel';
+
+/** Proveniência de cada fonte numa consulta: modo, horário, quantidade e hash do conteúdo recebido. */
+export interface ResultadoFontePesquisa {
+  fonte: FontePesquisaPrecos;
+  nome: string;
+  situacao: SituacaoFontePesquisa;
+  /** 'offline' = simulação determinística; 'online' = API oficial; 'local' = tabela oficial importada no servidor. */
+  modo: 'offline' | 'online' | 'local';
+  registros: number;
+  mensagem: string;
+  hashConteudo: string | null;
+  consultadoEm: InstanteISO;
+  /** Endereço consultado, sem chaves de acesso. */
+  endereco: string | null;
+}
+
+export interface SugestaoPreco {
+  id: Id;
+  fonte: FontePesquisaPrecos;
+  /** Parâmetro da cesta (art. 23, § 1º) em que a sugestão entra. */
+  fonteCotacao: 'painel_precos' | 'contratacao_similar' | 'midia_especializada' | 'fornecedor_direto' | 'nota_fiscal';
+  inciso: string; // "art. 23, § 1º, I"
+  fundamento: string;
+  identificador: string;
+  descricao: string;
+  descricaoFonte: string; // texto gravado na cotação
+  local: string | null;
+  unidade: string | null;
+  valorUnitario: Centavos;
+  data: DataISO;
+  /** Id da cotação criada na cesta, quando o agente incluiu a sugestão. */
+  cotacaoId: Id | null;
+  incluidaEm: InstanteISO | null;
+}
+
+export interface ItemReferenciaPesquisa {
+  numero: number;
+  descricao: string;
+  catmat: string | null;
+  unidade: string;
+}
+
+export interface ConsultaPrecos {
+  id: Id;
+  item: ItemReferenciaPesquisa;
+  termo: string;
+  uf: string;
+  modo: 'offline' | 'online';
+  executadaEm: InstanteISO;
+  executadaPor: string | null; // nome do usuário
+  fontes: ResultadoFontePesquisa[];
+  sugestoes: SugestaoPreco[];
+  descartadas: { fonte: FontePesquisaPrecos; identificador: string; motivo: string }[];
+  excedentes: number;
+  alertas: { codigo: string; mensagem: string; fundamento: string }[];
+  aviso: string;
+}
+
+/** Série oficial usada na projeção, com a proveniência da consulta. */
+export interface SerieIndiceProjecao {
+  serie: 'IPCA' | 'CAMBIO_USD';
+  nome: string;
+  fonte: string; // "IBGE — SIDRA, tabela 1737, variável 63"
+  modo: 'offline' | 'online';
+  competencias: { competencia: string; valor: number }[];
+  consultadoEm: InstanteISO;
+  hashConteudo: string;
+}
+
+export interface ProjecaoValorEstimado {
+  id: Id;
+  dataBase: DataISO;
+  dataPrevista: DataISO;
+  percentualCambial: number;
+  /** Valor estimado do processo (item de referência pela cesta; demais itens pela estimativa do DFD). */
+  valorBase: Centavos;
+  valorProjetado: Centavos;
+  faixa: { minimo: Centavos; maximo: Centavos };
+  /** Valor unitário da cesta projetado pelo mesmo fator (null sem análise da cesta). */
+  valorUnitarioBase: Centavos | null;
+  valorUnitarioProjetado: Centavos | null;
+  variacaoPercentual: number;
+  meses: number;
+  inflacao: { taxaMensalMedia: number; desvioMensal: number; competencias: number; periodo: string; acumuladoPeriodo: number };
+  cambio: { participacao: number; taxaMensalMedia: number; desvioMensal: number; competencias: number; periodo: string; ultimaCotacao: number } | null;
+  sinal: { nivel: 'informativo' | 'atencao'; mensagem: string };
+  premissas: string[];
+  memoriaCalculo: string[];
+  fontes: SerieIndiceProjecao[];
+  fundamento: string;
+  aviso: string; // inclui "Requer revisão humana"
+  geradaEm: InstanteISO;
+  geradaPor: string | null;
+}
+
+export interface TabelaReferenciaEngenharia {
+  sistema: 'SINAPI' | 'SICRO';
+  uf: string;
+  dataBase: string; // AAAA-MM
+  desonerado: boolean;
+  itens: number;
+  importadaEm: InstanteISO;
+  hashConteudo: string;
+}
+
+export interface PesquisaPrecosProcesso {
+  modo: 'offline' | 'online';
+  itemReferencia: ItemReferenciaPesquisa | null;
+  termoSugerido: string;
+  uf: string;
+  engenharia: boolean;
+  consultas: ConsultaPrecos[]; // mais recente primeiro (até 5)
+  projecao: ProjecaoValorEstimado | null;
+  tabelasEngenharia: TabelaReferenciaEngenharia[];
+}
+
+export interface EntradaConsultaPrecos {
+  termo?: string; // padrão: palavras principais da descrição do item de referência
+  catmat?: string | null; // padrão: CATMAT/CATSER do item de referência
+}
+export interface EntradaIncluirSugestoes {
+  sugestoes: Id[];
+}
+export interface EntradaProjecaoValor {
+  dataPrevista: DataISO;
+  percentualCambial: number; // 0 a 100
+}
+export interface EntradaImportacaoReferencias {
+  sistema: 'SINAPI' | 'SICRO';
+  uf: string;
+  dataBase: string; // AAAA-MM
+  desonerado: boolean;
+  conteudo: string; // CSV: codigo;descricao;unidade;preco
+}
+export interface ResultadoImportacaoReferencias {
+  tabela: TabelaReferenciaEngenharia;
+  substituidos: number;
+}
+// GET  /processos/:id/pesquisa-precos → PesquisaPrecosProcesso (jornada:ler)
+// POST /processos/:id/pesquisa-precos/consultas body EntradaConsultaPrecos → ConsultaPrecos (jornada:editar; consulta as fontes no servidor)
+// POST /processos/:id/pesquisa-precos/consultas/:consultaId/incluir body EntradaIncluirSugestoes → ProcessoDetalhe (jornada:editar)
+// POST /processos/:id/pesquisa-precos/projecao body EntradaProjecaoValor → ProjecaoValorEstimado (jornada:editar; sinal, não altera o valor)
+// GET  /pesquisa-precos/referencias-engenharia → TabelaReferenciaEngenharia[] (jornada:ler)
+// POST /pesquisa-precos/referencias-engenharia/importacao body EntradaImportacaoReferencias → ResultadoImportacaoReferencias (integracoes:executar; 422 com erros por linha)

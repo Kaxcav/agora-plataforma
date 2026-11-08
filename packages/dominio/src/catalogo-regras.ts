@@ -568,6 +568,29 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: [],
     implementacao: 'api: GET /publico/editais; GET /publico/editais/:id; GET /publico/editais/:id/documentos/:tipo; mascararCpf',
   },
+  {
+    id: 'RF-25',
+    tipo: 'RF',
+    titulo: 'Consulta automática e combinada de preços',
+    descricao:
+      'Consulta, pelo servidor, as fontes oficiais de preços para o item de referência da cesta: o painel de preços e as contratações similares do último ano pelas APIs de dados abertos de compras do governo federal e do PNCP, as notas fiscais eletrônicas acessíveis ao órgão e as tabelas do Sinapi e do Sicro importadas no servidor, em obras e serviços de engenharia. Cada amostra é enquadrada no inciso do art. 23, descartada com motivo quando não serve e apresentada com fonte, data e proveniência da consulta. As sugestões só entram na cesta por escolha do agente, e a consulta e a inclusão ficam na trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, art. 23, §§ 1º e 2º; IN SEGES/ME 65/2021, art. 5º',
+    etapa: 3,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'selecionarSugestoesPrecos, enquadrarAmostraArt23; api: POST /processos/:id/pesquisa-precos/consultas; POST /processos/:id/pesquisa-precos/consultas/:consultaId/incluir',
+  },
+  {
+    id: 'RIA-11',
+    tipo: 'RIA',
+    titulo: 'Projeção de variação cambial e inflacionária do valor estimado',
+    descricao:
+      'Projeta o valor estimado da contratação até a data prevista com índices oficiais obtidos pelo servidor: a variação mensal do IPCA, do IBGE, e a cotação média mensal do dólar, do Banco Central, aplicada só à parcela do valor que o agente indica como sujeita ao câmbio. Mostra o valor projetado, a faixa de variação, as premissas, as fontes e a data do cálculo, com a marcação "requer revisão humana". É sinal: não altera o valor estimado nem a cesta de preços.',
+    fundamento: 'Lei 14.133/2021, art. 23 e art. 25, § 7º; IN SEGES/ME 65/2021, art. 5º, I e II',
+    etapa: 3,
+    telas: ['jornada.detalhe'],
+    implementacao: 'projetarValorEstimado; api: POST /processos/:id/pesquisa-precos/projecao',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
