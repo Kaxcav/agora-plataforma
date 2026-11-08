@@ -97,6 +97,9 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'sigilo:credenciar': 'Credenciar o acesso a informação sigilosa',
   'sigilo:controle': 'Acesso irrestrito de órgão de controle a informação sigilosa',
   'auditoria:ancorar': 'Ancorar a trilha de auditoria em carimbo do tempo',
+  'desempenho:avaliar': 'Emitir a avaliação de desempenho do contratado (gestor ou fiscal designado)',
+  'desempenho:certificar': 'Emitir o certificado e a declaração de desempenho do fornecedor',
+  'licoes:registrar': 'Registrar ocorrências da execução (base de lições aprendidas)',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

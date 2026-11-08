@@ -44,6 +44,8 @@ import { AbaAlteracoes } from './alteracoes/AbaAlteracoes';
 import { BotaoNotificar } from '../notificacoes/DialogoNotificar';
 import { AbaRiscosContrato } from '../controle/AbaRiscosContrato';
 import { AbaImrContrato } from './AbaImrContrato';
+import { AbaAvaliacoesContrato } from '../desempenho/AbaAvaliacoesContrato';
+import { AbaOcorrenciasContrato } from '../desempenho/AbaOcorrenciasContrato';
 
 const DIVULGACAO: Record<DadosContrato['divulgacaoPncp']['situacao'], { rotulo: string; tom: TomEtiqueta }> = {
   divulgado_no_prazo: { rotulo: 'Divulgado no prazo', tom: 'sucesso' },
@@ -401,6 +403,8 @@ function ConteudoContrato({ contrato }: { contrato: DadosContrato }) {
           { id: 'historico', rotulo: 'Histórico', conteudo: () => <AbaHistorico id={contrato.id} /> },
           { id: 'riscos', rotulo: 'Matriz de riscos', conteudo: () => <AbaRiscosContrato contrato={contrato} /> },
           { id: 'imr', rotulo: 'IMR e medições', conteudo: () => <AbaImrContrato contrato={contrato} /> },
+          { id: 'avaliacao-desempenho', rotulo: 'Avaliação de desempenho', conteudo: () => <AbaAvaliacoesContrato contrato={contrato} /> },
+          { id: 'ocorrencias-execucao', rotulo: 'Ocorrências da execução', conteudo: () => <AbaOcorrenciasContrato contrato={contrato} /> },
         ]}
       />
     </>

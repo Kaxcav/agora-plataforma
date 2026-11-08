@@ -22,6 +22,8 @@ import {
 import { CamposParametrosSelecao, INVERSAO_VAZIA, itensParametrosSelecao, pendenciasParametrosSelecao, PROVA_CONCEITO_VAZIA } from './ParametrosSelecao';
 import { SecaoSustentabilidade, sustentabilidadeCompleta } from './SecaoSustentabilidade';
 import type { PropsEtapa } from './tipos';
+import { LicoesAprendidas } from '../../licoes/LicoesAprendidas';
+import { CriterioDesempenhoEdital } from '../../desempenho/CriterioDesempenhoEdital';
 
 const TIPOS: readonly TipoDocumento[] = ['tr', 'edital', 'minuta_contrato'];
 
@@ -332,6 +334,9 @@ export default function Etapa4Documentos(props: PropsEtapa) {
           </p>
         </Alerta>
       ) : null}
+
+      <CriterioDesempenhoEdital {...props} />
+      <LicoesAprendidas {...props} documento="tr" />
 
       <DocumentosEtapa
         processo={processo}

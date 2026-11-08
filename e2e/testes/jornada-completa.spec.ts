@@ -295,7 +295,8 @@ test.describe('jornada completa na interface', () => {
     await expect(page.getByRole('alert').filter({ hasText: 'Informe o valor da proposta de Fortaleza Blindagens' })).toBeVisible();
     await expect(valor).toBeFocused();
     await valor.fill('3.520.000,00');
-    await page.getByRole('spinbutton', { name: /^Nota de desempenho prévio — Fortaleza Blindagens/ }).fill('80');
+    // Art. 60, II (RN-37): a nota de desempenho vem do registro cadastral, não é digitada.
+    await expect(page.getByRole('row').filter({ hasText: 'Fortaleza Blindagens' }).first()).toContainText('86');
     await page.getByText(/^4\. Fortaleza Blindagens/).click();
     await page
       .getByRole('group', { name: /^Critérios do art\. 60 — Fortaleza Blindagens/ })

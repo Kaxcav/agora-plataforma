@@ -56,6 +56,10 @@ export interface ParticipanteArmazenado {
   propostaInicial: number | null;
   notaTecnica: number | null;
   perfil: PerfilLicitanteSimulado | null;
+  /** Nota do registro de desempenho na criação da sessão (art. 60, II; RN-37); ausente nas sessões antigas. */
+  notaDesempenhoPrevio?: number | null;
+  /** Composição da nota técnica com o desempenho anterior, quando o edital adota a fórmula (art. 37, III; RN-37). */
+  composicaoNotaTecnica?: { notaProposta: number; notaDesempenho: number; origem: 'registro' | 'sem_historico'; memoria: string } | null;
 }
 
 export type EventoArmazenado = EventoSessaoDisputa & {
@@ -174,7 +178,14 @@ export function definicaoDe(linha: LinhaSessao): DefinicaoSessaoDisputa | null {
       const valor = linha.uso === 'simulacao' ? p.propostaInicial : valorConhecido(linha, p, lances);
       return valor === null
         ? null
-        : { id: p.fornecedorId, nome: p.nome, propostaInicial: valor, meEpp: p.meEpp, ...(p.notaTecnica !== null ? { notaTecnica: p.notaTecnica } : {}) };
+        : {
+            id: p.fornecedorId,
+            nome: p.nome,
+            propostaInicial: valor,
+            meEpp: p.meEpp,
+            ...(p.notaTecnica !== null ? { notaTecnica: p.notaTecnica } : {}),
+            ...(typeof p.notaDesempenhoPrevio === 'number' ? { notaDesempenhoPrevio: p.notaDesempenhoPrevio } : {}),
+          };
     })
     .filter((p) => p !== null);
   if (participantes.length === 0) return null;
@@ -533,7 +544,11 @@ export async function registrarResultadoNoProcesso(
 ): Promise<DisputaArmazenada> {
   const disputa = await montarDisputa(
     tx,
-    classificacao.classificacao.map((c) => ({ id: c.id, valorProposta: c.valorConsiderado })),
+    classificacao.classificacao.map((c) => ({
+      id: c.id,
+      valorProposta: c.valorConsiderado,
+      notaDesempenhoPrevio: linha.participantes.find((p) => p.fornecedorId === c.id)?.notaDesempenhoPrevio ?? null,
+    })),
     agora,
   );
   const nomes = new Map(disputa.licitantes.map((l) => [l.fornecedorId, l.nome]));

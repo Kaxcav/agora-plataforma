@@ -1091,6 +1091,42 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'declaracaoAncoragem, ancoragemDevida, conferirAncoragem; api: GET /auditoria/ancoragens; POST /auditoria/ancoragens; GET /auditoria/ancoragens/verificacao; cofre (apps/api/src/modulos/sigilo/cofre.ts)',
   },
+  {
+    id: 'RN-37',
+    tipo: 'RN',
+    titulo: 'Avaliação de desempenho do contratado e registro cadastral de atestos',
+    descricao:
+      'Ao final de cada etapa da execução ou na conclusão, o gestor ou o fiscal designado do contrato emite o documento de avaliação de desempenho, com os indicadores objetivamente aferidos no período (entregas no prazo, recebimentos definitivos sem ressalva e ocorrências resolvidas no prazo), as penalidades aplicadas e a avaliação motivada. A nota não é digitada: resulta dos indicadores, com os mesmos pesos do IDC. O contratado pode se manifestar em 5 dias úteis; havendo discordância, o avaliador mantém ou revisa a avaliação com motivação. A avaliação definitiva passa a constar do registro cadastral do fornecedor, cuja nota (média por contrato nos últimos 36 meses) é a usada no desempate do art. 60, II, e, quando o edital adota fórmula com regulamento, na pontuação técnica. O certificado de desempenho exige nota de ao menos 90, sem impedimento vigente. A avaliação não é sanção.',
+    fundamento: 'Lei 14.133/2021, art. 36, § 3º, art. 37, III, art. 60, II, art. 87 e art. 88, §§ 2º a 4º; Lei 9.784/1999, art. 24',
+    etapa: 7,
+    telas: ['contratos.detalhe', 'fornecedores', 'desempenho', 'jornada.detalhe'],
+    implementacao:
+      'avaliarDesempenhoContratado, situacaoAvaliacaoDesempenho, validarManifestacaoContratado, validarAnaliseManifestacao, consolidarRegistroDesempenho, avaliarIncentivoDesempenho, validarCriterioDesempenhoTecnica, comporNotaTecnicaComDesempenho, clausulaCriterioDesempenhoEdital, aplicarDesempate; api: POST /contratos/:id/avaliacoes-desempenho; GET /fornecedores/:id/desempenho; PUT /processos/:id/criterio-desempenho; PUT /processos/:id/disputa',
+  },
+  {
+    id: 'RF-30',
+    tipo: 'RF',
+    titulo: 'Avaliação de desempenho, histórico do fornecedor e certificado',
+    descricao:
+      'Na aba de avaliação do contrato, o gestor ou o fiscal emite a avaliação de desempenho a partir dos indicadores e das ocorrências registradas, registra a manifestação do contratado e a análise, e baixa o documento em PDF com o protocolo do registro. No fornecedor, a aba de desempenho mostra a nota do registro, o histórico das avaliações e a emissão do certificado de desempenho e da declaração para uso em licitações, em PDF com código de verificação. A tela de desempenho reúne o ranking pelo registro e o simulador de impacto em editais futuros (desempate e técnica e preço).',
+    fundamento: 'Lei 14.133/2021, art. 87 e art. 88, §§ 2º a 4º',
+    etapa: 7,
+    telas: ['contratos.detalhe', 'fornecedores', 'desempenho'],
+    implementacao:
+      'redigirDocumentoAvaliacaoDesempenho, redigirCertificadoDesempenho, simularImpactoDesempenho, rotuloFaixaDesempenho; api: GET /avaliacoes-desempenho/:id/documento.pdf; POST /fornecedores/:id/certificados-desempenho; GET /certificados-desempenho/:id/documento.pdf; POST /desempenho/simulacao',
+  },
+  {
+    id: 'RIA-12',
+    tipo: 'RIA',
+    titulo: 'Lições aprendidas da execução no DFD, no ETP e no TR',
+    descricao:
+      'A base de conhecimento reúne os fatos da execução dos contratos: ocorrências, glosas, atrasos e rescisões registrados pela fiscalização, aditivos de acréscimo acima de 15%, sanções aplicadas e avaliações de desempenho abaixo de 60. Ao preencher o DFD, o ETP ou o TR de objeto semelhante (mesmo código do catálogo ou objeto com termos em comum), a Ágora sugere cláusulas mais rigorosas de prazo, qualidade e amostras, níveis de serviço, garantia, quantidades e fiscalização, cada uma com os contratos e fatos de origem, as premissas, a data e a marca "requer revisão humana". É sinal, não decisão: o agente aceita ou recusa, a escolha fica registrada na trilha e só o que foi aceito entra no rascunho do documento.',
+    fundamento: 'Lei 14.133/2021, art. 11, art. 18, art. 117 e art. 169',
+    etapa: 1,
+    telas: ['jornada.dfd', 'jornada.detalhe', 'contratos.detalhe'],
+    implementacao:
+      'sugerirClausulasLicoes, semelhancaObjeto, termosObjeto, derivarFatosExecucao, categoriaPadraoFato, secaoLicoesAceitas, rotuloCategoriaLicao; api: GET /processos/:id/licoes-aprendidas; POST /processos/:id/licoes-aprendidas/decisoes; POST /contratos/:id/ocorrencias-execucao',
+  },
 ]);
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
 export function regrasPorTela(tela: string): RegraCatalogo[] {

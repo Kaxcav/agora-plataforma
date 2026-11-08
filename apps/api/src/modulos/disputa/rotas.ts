@@ -53,6 +53,7 @@ import {
   type LinhaSessao,
   type ParticipanteArmazenado,
 } from './servico.ts';
+import { comDesempenhoRegistrado } from '../desempenho/sala.ts';
 
 const CRITERIOS = ['menor_preco', 'maior_desconto', 'tecnica_e_preco'] as const;
 const MODOS = ['aberto', 'aberto_fechado', 'fechado_aberto', 'fechado'] as const;
@@ -272,6 +273,8 @@ export async function rotasDisputa(app: FastifyInstance): Promise<void> {
           perfil: null,
         };
       });
+      // RN-37: nota do registro de desempenho (desempate do art. 60, II) e, com a fórmula do edital, nota técnica composta (art. 37, III).
+      participantes = await comDesempenhoRegistrado(tx, processo.id, entrada.criterio, participantes, ctx.hoje());
       const cenario = simulacao ? (entrada.cenario ?? 'concorrencia') : null;
       if (simulacao && cenario) {
         const vinculos = await vinculosDaSessao(tx, participantes);

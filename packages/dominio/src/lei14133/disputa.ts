@@ -75,6 +75,8 @@ export interface ParticipanteDisputa {
   /** Nota da proposta técnica, de 0 a 100 (somente técnica e preço). */
   notaTecnica?: number;
   meEpp?: boolean;
+  /** Nota do registro de desempenho (0–100), lida do registro cadastral, nunca digitada (art. 60, II; RN-37). */
+  notaDesempenhoPrevio?: number;
 }
 
 export interface DefinicaoSessaoDisputa {
@@ -870,7 +872,7 @@ export function pontuarTecnicaEPreco(
 
 function paraLicitante(definicao: DefinicaoSessaoDisputa, id: string, valor: Centavos): Licitante {
   const p = definicao.participantes.find((x) => x.id === id);
-  return { id, nome: p?.nome ?? id, valorProposta: valor, meEpp: p?.meEpp ?? false };
+  return { id, nome: p?.nome ?? id, valorProposta: valor, meEpp: p?.meEpp ?? false, ...(p?.notaDesempenhoPrevio !== undefined ? { notaDesempenhoPrevio: p.notaDesempenhoPrevio } : {}) };
 }
 
 /**

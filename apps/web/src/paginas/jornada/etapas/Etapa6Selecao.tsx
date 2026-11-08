@@ -8,6 +8,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Gavel, ListOrdered, Plus, Rotat
 import type { EntradaLicitanteDisputa, FornecedorResumo, LicitanteDisputa } from '@agora/contratos';
 import { aplicarDesempate, formatarMoeda, type Licitante } from '@agora/dominio';
 import { useFornecedores } from '../../../api/fornecedores';
+import { useNotasRegistro } from '../../../api/desempenho';
 import { ehResultadoDesempate, useSalvarDisputa, type ResultadoDesempate } from '../../../api/jornada';
 import { Alerta, Botao, CampoBusca, CampoMoeda, Etiqueta, LinkBotao, Selecao, useAvisos } from '../../../componentes';
 import { PORTES } from '../../compartilhado/rotulos';
@@ -302,6 +303,9 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
   const { avisar } = useAvisos();
   const salvar = useSalvarDisputa(processo.id);
   const [licitantes, definirLicitantes] = useState<LicitanteDisputa[]>(() => processo.disputa.licitantes);
+  // Art. 60, II (RN-37): a nota de desempenho vem do registro cadastral, no servidor; a interface só a exibe.
+  const notasRegistro = useNotasRegistro(licitantes.map((l) => l.id));
+  const notaDoRegistro = (id: string): number | null => notasRegistro.data?.find((n) => n.fornecedorId === id)?.nota ?? null;
   const [erroLista, definirErroLista] = useState<string | null>(null);
   const [anuncio, definirAnuncio] = useState('');
   const tituloTabela = useRef<HTMLHeadingElement>(null);
@@ -312,7 +316,10 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
   // A prévia só considera quem já tem valor de proposta (uma linha recém-incluída não "vence" com R$ 0,00).
   const comValor = licitantes.filter((l) => l.valorProposta > 0);
   const semValorNaPrevia = licitantes.length - comValor.length;
-  const previa = comValor.length > 0 ? calcular(() => aplicarDesempate(paraDominio(comValor), { empateFictoMeEpp: true })) : null;
+  const previa =
+    comValor.length > 0
+      ? calcular(() => aplicarDesempate(paraDominio(comValor.map((l) => ({ ...l, notaDesempenhoPrevio: notaDoRegistro(l.id) }))), { empateFictoMeEpp: true }))
+      : null;
   const usarPrevia = alterado || resultadoServidor === null;
   const resultado = usarPrevia ? (previa?.ok ? previa.valor : null) : resultadoServidor;
   const sinaisVinculo = processo.sinais.filter((s) => s.regra === 'RIA-06');
@@ -420,7 +427,7 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
                   ME/EPP
                 </th>
                 <th scope="col" className="tabela__alinhar--fim">
-                  Desempenho prévio (0–100)
+                  Desempenho registrado (art. 60, II)
                 </th>
                 {disputaEditavel ? (
                   <th scope="col">
@@ -456,18 +463,8 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
                           />
                         </td>
                         <td className="tabela__alinhar--centro">{l.meEpp ? 'Sim' : 'Não'}</td>
-                        <td className="tabela__alinhar--fim">
-                          <input
-                            className="campo__controle jornada-entrada-numero numero"
-                            type="number"
-                            min={0}
-                            max={100}
-                            step="any"
-                            inputMode="decimal"
-                            aria-label={`Nota de desempenho prévio — ${l.nome} (opcional, art. 60, II)`}
-                            value={l.notaDesempenhoPrevio === null ? '' : String(l.notaDesempenhoPrevio)}
-                            onChange={(e) => alterar(l.id, { notaDesempenhoPrevio: e.target.value === '' || Number.isNaN(e.target.valueAsNumber) ? null : e.target.valueAsNumber })}
-                          />
+                        <td className="tabela__alinhar--fim numero" title="Nota do registro cadastral de desempenho (RN-37); não é digitada.">
+                          {notaDoRegistro(l.id) ?? 'Sem avaliação'}
                         </td>
                         <td>
                           <Botao variante="terciario" tamanho="compacto" somenteIcone icone={Trash2} aria-label={`Remover licitante ${i + 1} — ${l.nome}`} onClick={() => remover(l, i + 1)} />

@@ -71,6 +71,9 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'sigilo:credenciar',
   'sigilo:controle',
   'auditoria:ancorar',
+  'desempenho:avaliar',
+  'desempenho:certificar',
+  'licoes:registrar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -132,6 +135,9 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'qualidade_ia:ler',
       'sigilo:ler',
       'sigilo:classificar',
+      'desempenho:avaliar',
+      'desempenho:certificar',
+      'licoes:registrar',
     ],
   },
   {
@@ -164,6 +170,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'sociedade:responder',
       'sociedade:registrar',
       'normas:ler',
+      'desempenho:avaliar',
+      'licoes:registrar',
     ],
   },
   {

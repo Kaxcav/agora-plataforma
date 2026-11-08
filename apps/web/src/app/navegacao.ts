@@ -37,6 +37,7 @@ import {
   Library,
   FileCheck,
   Newspaper,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -98,6 +99,7 @@ export const MENU: readonly SecaoMenu[] = [
       { rotulo: 'Fornecedores', caminho: '/fornecedores', icone: Building2, permissao: 'fornecedores:ler' },
       { rotulo: 'Sanções', caminho: '/sancoes', icone: Gavel, permissao: 'sancoes:ler' },
       { rotulo: 'Vínculos e impedimentos', caminho: '/impedimentos', icone: ShieldAlert, permissao: 'impedimentos:ler', exato: true },
+      { rotulo: 'Desempenho', caminho: '/desempenho', icone: Trophy, permissao: 'fornecedores:ler' },
     ],
   },
   {

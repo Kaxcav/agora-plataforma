@@ -23,6 +23,7 @@ import { FAIXAS_IDC, PORTES, TIPOS_SANCAO } from '../compartilhado/rotulos';
 import { colunasSancao } from '../sancoes/colunasSancao';
 import { DocumentoFornecedor, formatarNotaIdc } from './idc';
 import { RegularidadeFornecedor } from './RegularidadeFornecedor';
+import { AbaDesempenhoFornecedor } from '../desempenho/AbaDesempenhoFornecedor';
 
 type ComponenteIdc = DadosFornecedor['idcDetalhe']['componentes'][number];
 type PenalidadeIdc = DadosFornecedor['idcDetalhe']['penalidades'][number];
@@ -260,6 +261,7 @@ function ConteudoFornecedor({ fornecedor }: { fornecedor: DadosFornecedor }) {
             rotulo: 'Regularidade e certidões',
             conteudo: () => <RegularidadeFornecedor fornecedor={fornecedor} />,
           },
+          { id: 'desempenho', rotulo: 'Desempenho registrado', conteudo: () => <AbaDesempenhoFornecedor fornecedorId={fornecedor.id} /> },
         ]}
       />
     </>

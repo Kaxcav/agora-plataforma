@@ -11,6 +11,7 @@ import { SecaoPesquisaPrecos } from './SecaoPesquisaPrecos';
 import { SecaoRiscos } from './SecaoRiscos';
 import { SecaoSustentabilidade, sustentabilidadeCompleta } from './SecaoSustentabilidade';
 import { textoSuficiente, type PropsEtapa } from './tipos';
+import { LicoesAprendidas } from '../../licoes/LicoesAprendidas';
 
 const ALERTAS_IMPEDITIVOS = ['FORNECEDOR_DIRETO_INSUFICIENTE', 'SEM_JUSTIFICATIVA_FORNECEDOR'];
 
@@ -65,6 +66,7 @@ export default function Etapa3Planejamento(props: PropsEtapa) {
       <SecaoRiscos {...props} />
       <SecaoCesta {...props} />
       <SecaoPesquisaPrecos {...props} />
+      <LicoesAprendidas {...props} documento="etp" />
       {editavel ? <Requisitos titulo="Condições para avançar à etapa 4 (com os dados salvos)" itens={requisitos} /> : null}
       <div id="etapa3-documentos">
         <DocumentosEtapa

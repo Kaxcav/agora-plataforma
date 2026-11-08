@@ -149,7 +149,10 @@ export type Permissao =
   | 'sigilo:classificar'
   | 'sigilo:credenciar'
   | 'sigilo:controle'
-  | 'auditoria:ancorar';
+  | 'auditoria:ancorar'
+  | 'desempenho:avaliar'
+  | 'desempenho:certificar'
+  | 'licoes:registrar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -4185,3 +4188,298 @@ export interface VerificacaoAncoragens {
 // GET  /auditoria/ancoragens → SituacaoAncoragens (auditoria:ler)
 // POST /auditoria/ancoragens → AncoragemTrilha (auditoria:ancorar)
 // GET  /auditoria/ancoragens/verificacao → VerificacaoAncoragens (auditoria:ler)
+
+// ───────────────────────── Avaliação de desempenho do contratado (RN-37, RF-30) ─────────────────────────
+
+export type TipoAvaliacaoDesempenho = 'parcial' | 'final';
+export type SituacaoAvaliacaoDesempenho = 'em_manifestacao' | 'manifestada' | 'definitiva';
+export type PapelAvaliadorDesempenho = 'gestor' | 'fiscal';
+
+export interface IndicadoresAvaliacaoDesempenho {
+  entregasNoPrazo: number;
+  entregasTotal: number;
+  recebimentosAprovados: number;
+  recebimentosTotal: number;
+  /** Derivadas das ocorrências registradas no período (não digitadas). */
+  ocorrenciasFiscalizacao: number;
+  ocorrenciasResolvidasNoPrazo: number;
+}
+
+/** Quem pode emitir a avaliação do contrato: o gestor ou o fiscal designado (decidido no servidor). */
+export interface AvaliadorContrato {
+  podeAvaliar: boolean;
+  papel: PapelAvaliadorDesempenho | null;
+  motivo: string | null;
+}
+
+export interface AvaliacaoDesempenho {
+  id: Id;
+  protocolo: string;
+  versao: number;
+  contrato: { id: Id; numero: string; objeto: string; uasg: string };
+  fornecedor: { id: Id; razaoSocial: string };
+  tipo: TipoAvaliacaoDesempenho;
+  periodoInicio: DataISO;
+  periodoFim: DataISO;
+  indicadores: IndicadoresAvaliacaoDesempenho;
+  evidencias: string;
+  motivacao: string;
+  nota: number;
+  faixa: FaixaIdc;
+  componentes: { nome: string; valor: number; peso: number; contribuicao: number }[];
+  penalidades: { tipo: TipoSancao; dataAplicacao: DataISO; desconto: number }[];
+  metodologia: string;
+  avaliador: { id: Id; nome: string; papel: PapelAvaliadorDesempenho };
+  emitidaEm: InstanteISO;
+  prazoManifestacao: DataISO;
+  manifestacao: { texto: string; recebidaEm: DataISO; concorda: boolean; registradaPor: UsuarioResumo; registradaEm: InstanteISO } | null;
+  analise: { decisao: 'mantida' | 'revista'; motivacao: string; por: UsuarioResumo; em: InstanteISO } | null;
+  situacao: SituacaoAvaliacaoDesempenho;
+  explicacaoSituacao: string;
+  /** Envio ao cadastro de atesto do PNCP: o Manual de Integração não tem esse serviço; fica o protocolo do registro na Ágora. */
+  envioCadastro: { situacao: 'aguardando_cadastro_pncp'; explicacao: string };
+  hashDocumento: string;
+}
+
+export interface AvaliacoesContrato {
+  avaliador: AvaliadorContrato;
+  avaliacoes: AvaliacaoDesempenho[];
+}
+
+/** Dados que o servidor deriva para o período (ocorrências registradas e sanções aplicadas no contrato). */
+export interface PreviaAvaliacaoDesempenho {
+  periodoInicio: DataISO;
+  periodoFim: DataISO;
+  vigenciaInicio: DataISO;
+  vigenciaFim: DataISO;
+  ocorrencias: { total: number; resolvidasNoPrazo: number; abertas: number };
+  sancoesNoPeriodo: { tipo: TipoSancao; dataAplicacao: DataISO }[];
+  avaliador: AvaliadorContrato;
+}
+
+export interface EntradaAvaliacaoDesempenho {
+  tipo: TipoAvaliacaoDesempenho;
+  periodoInicio: DataISO;
+  periodoFim: DataISO;
+  entregasNoPrazo: number;
+  entregasTotal: number;
+  recebimentosAprovados: number;
+  recebimentosTotal: number;
+  evidencias: string;
+  motivacao: string;
+}
+export interface EntradaManifestacaoAvaliacao {
+  texto: string;
+  recebidaEm: DataISO;
+  concorda: boolean;
+}
+export interface EntradaAnaliseAvaliacao {
+  decisao: 'mantida' | 'revista';
+  motivacao: string;
+  /** Na revisão, as contagens corrigidas (a nota é recalculada). */
+  entregasNoPrazo?: number;
+  entregasTotal?: number;
+  recebimentosAprovados?: number;
+  recebimentosTotal?: number;
+}
+// GET  /contratos/:id/avaliacoes-desempenho → AvaliacoesContrato (contratos:ler; escopo de UASG)
+// GET  /contratos/:id/avaliacoes-desempenho/previa?periodoInicio&periodoFim → PreviaAvaliacaoDesempenho (contratos:ler)
+// POST /contratos/:id/avaliacoes-desempenho EntradaAvaliacaoDesempenho → AvaliacaoDesempenho (desempenho:avaliar; gestor ou fiscal designado)
+// POST /avaliacoes-desempenho/:id/manifestacao EntradaManifestacaoAvaliacao → AvaliacaoDesempenho (desempenho:avaliar)
+// POST /avaliacoes-desempenho/:id/analise EntradaAnaliseAvaliacao → AvaliacaoDesempenho (desempenho:avaliar)
+// GET  /avaliacoes-desempenho/:id/documento.pdf → PDF (fornecedores:ler)
+
+export interface AvaliacaoDesempenhoResumo {
+  id: Id;
+  protocolo: string;
+  contrato: { id: Id; numero: string; uasg: string };
+  tipo: TipoAvaliacaoDesempenho;
+  periodoInicio: DataISO;
+  periodoFim: DataISO;
+  nota: number;
+  faixa: FaixaIdc;
+  situacao: SituacaoAvaliacaoDesempenho;
+  consideradaNoRegistro: boolean;
+  emitidaEm: InstanteISO;
+}
+
+export type TipoDocumentoIncentivo = 'certificado' | 'declaracao';
+export interface CertificadoDesempenho {
+  id: Id;
+  tipo: TipoDocumentoIncentivo;
+  codigo: string;
+  nota: number | null;
+  faixa: FaixaIdc;
+  emitidoEm: InstanteISO;
+  validoAte: DataISO;
+  emitidoPor: UsuarioResumo | null;
+  versaoRegistro: string;
+  /** 'registro_atualizado': o registro mudou depois da emissão (art. 88, § 2º: renove o documento). */
+  situacao: 'valido' | 'registro_atualizado' | 'vencido';
+}
+
+export interface ElegibilidadeIncentivo {
+  elegivel: boolean;
+  motivos: string[];
+  criterio: string;
+}
+
+export interface RegistroDesempenhoFornecedor {
+  fornecedor: { id: Id; razaoSocial: string; documento: string; impedido: boolean };
+  nota: number | null;
+  faixa: FaixaIdc;
+  contratosConsiderados: number;
+  versaoRegistro: string;
+  metodologia: string;
+  fundamento: string;
+  avaliacoes: AvaliacaoDesempenhoResumo[];
+  certificados: CertificadoDesempenho[];
+  incentivo: { certificado: ElegibilidadeIncentivo; declaracao: ElegibilidadeIncentivo };
+}
+export interface EntradaCertificadoDesempenho {
+  tipo: TipoDocumentoIncentivo;
+}
+// GET  /fornecedores/:id/desempenho → RegistroDesempenhoFornecedor (fornecedores:ler; registro cadastral do órgão, art. 87)
+// POST /fornecedores/:id/certificados-desempenho EntradaCertificadoDesempenho → CertificadoDesempenho (desempenho:certificar; 422 sem critério)
+// GET  /certificados-desempenho/:id/documento.pdf → PDF (fornecedores:ler)
+
+export interface NotaRegistroDesempenho {
+  fornecedorId: Id;
+  razaoSocial: string;
+  nota: number | null;
+  faixa: FaixaIdc;
+  contratosConsiderados: number;
+}
+// GET /desempenho/notas?fornecedores=<id>,<id> → NotaRegistroDesempenho[] (fornecedores:ler)
+// GET /desempenho/ranking → NotaRegistroDesempenho[] (fornecedores:ler; fornecedores com avaliação, da maior nota para a menor)
+
+export interface CriterioDesempenhoTecnicaEdital {
+  pesoDesempenhoPercentual: number;
+  notaSemHistorico: number;
+  regulamento: string;
+}
+export interface EntradaSimulacaoDesempenho {
+  licitantes: { fornecedorId: Id; valorProposta: Centavos; notaProposta?: number | null }[];
+  criterio?: (CriterioDesempenhoTecnicaEdital & { pesoTecnicoPercentual: number }) | null;
+}
+export interface ResultadoSimulacaoDesempenho {
+  licitantes: { fornecedorId: Id; nome: string; notaDesempenho: number | null; faixa: FaixaIdc }[];
+  desempate: {
+    classificacao: { id: Id; nome: string; posicao: number; valorConsiderado: Centavos }[];
+    empateDetectado: boolean;
+    criterioDecisivo: string | null;
+    passos: { ordem: number; criterio: string; fundamento: string; resultado: string }[];
+    sorteioNecessario: boolean;
+  };
+  tecnicaEPreco:
+    | { id: Id; nome: string; posicao: number; notaProposta: number; notaDesempenho: number; origem: 'registro' | 'sem_historico'; notaTecnica: number; notaPreco: number; notaFinal: number }[]
+    | null;
+  aviso: string;
+}
+// POST /desempenho/simulacao EntradaSimulacaoDesempenho → ResultadoSimulacaoDesempenho (fornecedores:ler; somente leitura)
+
+/** Fórmula do desempenho anterior na pontuação técnica, configurada no edital (art. 36, § 3º; art. 37, III). */
+export interface CriterioDesempenhoEdital {
+  adotado: boolean;
+  pesoDesempenhoPercentual: number | null;
+  notaSemHistorico: number | null;
+  regulamento: string | null;
+  criterioJulgamento: CriterioJulgamentoEdital;
+  /** O critério de julgamento do edital admite a pontuação técnica (técnica e preço ou melhor técnica). */
+  aplicavel: boolean;
+  explicacao: string;
+  atualizadoEm: InstanteISO | null;
+  atualizadoPor: UsuarioResumo | null;
+}
+export interface EntradaCriterioDesempenhoEdital {
+  adotado: boolean;
+  pesoDesempenhoPercentual?: number | null;
+  notaSemHistorico?: number | null;
+  regulamento?: string | null;
+}
+// GET /processos/:id/criterio-desempenho → CriterioDesempenhoEdital (jornada:ler)
+// PUT /processos/:id/criterio-desempenho EntradaCriterioDesempenhoEdital → CriterioDesempenhoEdital (jornada:editar; até a etapa 4)
+
+// ───────────────────────── Lições aprendidas da execução (RIA-12) ─────────────────────────
+
+export type TipoOcorrenciaExecucao = 'ocorrencia' | 'glosa' | 'atraso' | 'rescisao';
+export type TipoFatoExecucao = TipoOcorrenciaExecucao | 'aditivo' | 'sancao' | 'avaliacao';
+export type CategoriaLicao = 'prazo' | 'qualidade' | 'nivel_servico' | 'garantia' | 'quantitativo' | 'fiscalizacao';
+export type SituacaoOcorrenciaExecucao = 'aberta' | 'resolvida_no_prazo' | 'resolvida_fora_do_prazo';
+
+export interface OcorrenciaExecucao {
+  id: Id;
+  contratoId: Id;
+  tipo: TipoOcorrenciaExecucao;
+  categoria: CategoriaLicao;
+  data: DataISO;
+  descricao: string;
+  diasAtraso: number | null;
+  valorGlosa: Centavos | null;
+  situacao: SituacaoOcorrenciaExecucao;
+  resolvidaEm: DataISO | null;
+  registradaPor: UsuarioResumo | null;
+  registradaEm: InstanteISO;
+}
+export interface BaseConhecimentoContrato {
+  ocorrencias: OcorrenciaExecucao[];
+  /** Fatos derivados do que já está registrado: aditivos acima de 15%, sanções e avaliações abaixo de 60. */
+  fatosDerivados: { tipo: TipoFatoExecucao; categoria: CategoriaLicao; data: DataISO; descricao: string }[];
+}
+export interface EntradaOcorrenciaExecucao {
+  tipo: TipoOcorrenciaExecucao;
+  categoria?: CategoriaLicao | null;
+  data: DataISO;
+  descricao: string;
+  diasAtraso?: number | null;
+  valorGlosa?: Centavos | null;
+}
+export interface EntradaSolucaoOcorrencia {
+  situacao: 'resolvida_no_prazo' | 'resolvida_fora_do_prazo';
+  resolvidaEm: DataISO;
+}
+// GET  /contratos/:id/ocorrencias-execucao → BaseConhecimentoContrato (contratos:ler)
+// POST /contratos/:id/ocorrencias-execucao EntradaOcorrenciaExecucao → OcorrenciaExecucao (licoes:registrar)
+// POST /ocorrencias-execucao/:id/solucao EntradaSolucaoOcorrencia → OcorrenciaExecucao (licoes:registrar)
+
+export type DocumentoLicao = 'dfd' | 'etp' | 'tr';
+export interface SugestaoLicaoAprendida {
+  chave: string;
+  regra: 'RIA-12';
+  documento: DocumentoLicao;
+  categoria: CategoriaLicao;
+  rotuloCategoria: string;
+  titulo: string;
+  clausula: string;
+  fundamento: string;
+  ocorrencias: number;
+  fontes: { contratoId: Id; numero: string; objeto: string; motivo: string; fatos: { tipo: TipoFatoExecucao; data: DataISO; descricao: string }[] }[];
+  premissas: string[];
+  geradoEm: DataISO;
+  aviso: string;
+  decisao: DecisaoLicao | null;
+}
+export interface DecisaoLicao {
+  chave: string;
+  titulo: string;
+  decisao: 'aceita' | 'recusada';
+  motivo: string | null;
+  por: UsuarioResumo | null;
+  em: InstanteISO;
+}
+export interface LicoesAprendidasProcesso {
+  documento: DocumentoLicao;
+  sugestoes: SugestaoLicaoAprendida[];
+  /** Decisões já registradas cuja sugestão não aparece mais (a base mudou); as aceitas continuam no rascunho. */
+  decisoesAnteriores: DecisaoLicao[];
+  contratosAnalisados: number;
+  consultadoEm: DataISO;
+}
+export interface EntradaDecisaoLicao {
+  documento: DocumentoLicao;
+  chave: string;
+  decisao: 'aceita' | 'recusada';
+  motivo?: string | null;
+}
+// GET  /processos/:id/licoes-aprendidas?documento=dfd|etp|tr → LicoesAprendidasProcesso (jornada:ler)
+// POST /processos/:id/licoes-aprendidas/decisoes EntradaDecisaoLicao → LicoesAprendidasProcesso (jornada:editar; auditado)
