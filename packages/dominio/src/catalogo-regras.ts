@@ -116,7 +116,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     tipo: 'RN',
     titulo: 'Verificação de regularidade e sanções antes da assinatura ou prorrogação',
     descricao:
-      'Antes de formalizar ou prorrogar o contrato, a Administração verifica a regularidade fiscal do contratado, consulta o Cadastro Nacional de Empresas Inidôneas e Suspensas (CEIS) e o Cadastro Nacional de Empresas Punidas (CNEP), emite as certidões negativas de inidoneidade, de impedimento e de débitos trabalhistas e as junta ao processo. A Ágora bloqueia a contratação e a prorrogação quando o fornecedor tem impedimento ou inidoneidade vigentes ou pendência de regularidade.',
+      'Antes de formalizar ou prorrogar o contrato, a Administração verifica a regularidade fiscal do contratado, consulta o Cadastro Nacional de Empresas Inidôneas e Suspensas (CEIS) e o Cadastro Nacional de Empresas Punidas (CNEP), emite as certidões negativas de inidoneidade, de impedimento e de débitos trabalhistas e as junta ao processo. Na contratação (etapa 7), a Ágora bloqueia a assinatura quando o fornecedor tem impedimento ou inidoneidade vigentes ou pendência de regularidade nas bases que o servidor consulta: as sanções registradas na Ágora e a última sincronização de regularidade. No simulador de aditivo, a mesma verificação aparece antes de uma prorrogação. A consulta online ao CEIS/CNEP e às certidões depende da integração do órgão.',
     fundamento: 'Lei 14.133/2021, art. 91, § 4º',
     etapa: 7,
     telas: ['jornada.detalhe', 'contratos.detalhe'],
@@ -221,6 +221,17 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: ['pagamentos'],
     implementacao: 'api: GET /pagamentos; POST /pagamentos/:id/atestar',
   },
+  {
+    id: 'RN-19',
+    tipo: 'RN',
+    titulo: 'Multa moratória por atraso injustificado',
+    descricao:
+      'O atraso injustificado na execução sujeita o contratado à multa de mora na forma prevista no edital ou no contrato. O simulador aplica o percentual diário definido no contrato sobre o valor da parcela em atraso, limitado ao número máximo de dias previsto na cláusula, e apresenta a memória de cálculo. A multa de mora não impede a conversão em multa compensatória nem a extinção do contrato com outras sanções. É proposta para apoio à decisão: a aplicação cabe à autoridade competente, após o prazo de defesa.',
+    fundamento: 'Lei 14.133/2021, art. 162',
+    etapa: 7,
+    telas: ['sancoes'],
+    implementacao: 'calcularMultaMoratoria',
+  },
 
   // ───────────────────────── Inteligência assistiva ─────────────────────────
   {
@@ -272,11 +283,11 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     tipo: 'RIA',
     titulo: 'Tarjamento de dados pessoais e de informações sigilosas',
     descricao:
-      'Antes da publicação, identifica nos documentos dados pessoais (CPF, e-mail, telefone, nomes) e informações sigilosas e sugere tarjas. Os atos do processo são públicos, ressalvadas as informações cujo sigilo seja imprescindível à segurança da sociedade e do Estado; a publicidade é diferida quanto ao conteúdo das propostas, até a abertura, e quanto ao orçamento sigiloso (art. 24). As tarjas são revisadas por um agente antes da divulgação.',
+      'Os atos do processo são públicos, ressalvadas as informações cujo sigilo seja imprescindível à segurança da sociedade e do Estado; a publicidade é diferida quanto ao conteúdo das propostas, até a abertura, e quanto ao orçamento sigiloso (art. 24). Dados pessoais aparecem mascarados nas telas e na transparência, e o inteiro teor publicado do edital e dos anexos sai com CPF, e-mail e telefone tarjados automaticamente. A sugestão de tarjas para informações sigilosas por segurança (art. 13), com revisão por um agente antes da divulgação, ainda não está implementada.',
     fundamento: 'Lei 14.133/2021, art. 13; Lei 13.709/2018 (LGPD)',
     etapa: 5,
     telas: ['jornada.detalhe', 'transparencia'],
-    implementacao: 'mascararCpf, mascararEmail, mascararTelefone, mascararNome; api: POST /processos/:id/publicar',
+    implementacao: 'mascararCpf, mascararEmail, mascararTelefone, mascararNome; api: GET /publico/editais/:id/documentos/:tipo',
   },
   {
     id: 'RIA-06',
@@ -534,6 +545,28 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     etapa: null,
     telas: ['jornada', 'jornada.detalhe'],
     implementacao: 'api: GET /processos; GET /processos/:id; POST /processos/:id/avancar',
+  },
+  {
+    id: 'RF-16',
+    tipo: 'RF',
+    titulo: 'Importação da cesta de preços por planilha',
+    descricao:
+      'Importa as cotações da pesquisa de preços a partir de uma planilha (CSV ou linhas coladas), com o parâmetro do art. 23, § 1º, a identificação da fonte, o valor unitário, a data e a justificativa da pesquisa direta. O servidor valida cada linha e mostra a prévia, com os erros apontados por linha, antes de gravar; as cotações podem ser acrescentadas às existentes ou substituí-las, e a importação fica na trilha de auditoria. Depois da importação, a análise estatística sugere os expurgos, que continuam dependendo de aceite humano com justificativa.',
+    fundamento: 'Lei 14.133/2021, art. 23, § 1º; IN SEGES/ME 65/2021',
+    etapa: 3,
+    telas: [],
+    implementacao: 'api: POST /processos/:id/cesta-precos/importacao/previa; POST /processos/:id/cesta-precos/importacao; analisarCestaPrecos',
+  },
+  {
+    id: 'RF-17',
+    tipo: 'RF',
+    titulo: 'Editais publicados com inteiro teor sem login',
+    descricao:
+      'Lista os editais publicados e oferece o inteiro teor do edital, do termo de referência e da minuta do contrato em PDF, gerado no servidor a partir da última versão aprovada, sem cadastro nem login. CPF, e-mail e telefone escritos nos documentos saem tarjados. Quando a publicação for feita no PNCP pela integração do órgão, a página aponta também para o registro oficial no portal.',
+    fundamento: 'Lei 14.133/2021, art. 25, § 3º, e art. 54; Lei 13.709/2018 (LGPD), art. 6º, III',
+    etapa: 5,
+    telas: [],
+    implementacao: 'api: GET /publico/editais; GET /publico/editais/:id; GET /publico/editais/:id/documentos/:tipo; mascararCpf',
   },
 ]);
 

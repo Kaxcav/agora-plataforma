@@ -46,6 +46,15 @@ export function linkPncpContrato(idPncp: string | null): string | null {
   return `https://pncp.gov.br/app/contratos/${cnpj}/${ano}/${Number(sequencial)}`;
 }
 
+/** Edital (contratação) no portal do PNCP: identificador "{cnpj}-1-{sequencial}/{ano}". */
+export function linkPncpCompra(idPncp: string | null): string | null {
+  if (!idPncp) return null;
+  const partes = /^(\d{14})-1-(\d{6})\/(\d{4})$/.exec(idPncp);
+  if (!partes) return `https://pncp.gov.br/app/editais?q=${encodeURIComponent(idPncp)}`;
+  const [, cnpj, sequencial, ano] = partes;
+  return `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${Number(sequencial)}`;
+}
+
 export function linkPncpAta(idPncp: string): string {
   const partes = /^(\d{14})-1-(\d{6})\/(\d{4})-(\d{6})$/.exec(idPncp);
   if (!partes) return `https://pncp.gov.br/app/atas?q=${encodeURIComponent(idPncp)}`;

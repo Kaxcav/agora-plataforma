@@ -10,3 +10,8 @@
 playwright-report
 test-results
 apps/web/test-results
+
+# Documentação, apresentação e testes de navegador não entram na imagem
+docs
+apresentacao
+e2e

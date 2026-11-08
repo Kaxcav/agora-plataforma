@@ -196,6 +196,8 @@ export function prazoDefesa(intimacao: DataISO, opcoes?: OpcoesCalendario): { ve
 export function prazoRegistroCeisCnep(aplicacao: DataISO, opcoes?: OpcoesCalendario): { vencimento: DataISO; fundamento: string } // 15 dias úteis — art. 161
 export function vigenciaSancao(tipo: 'impedimento_licitar' | 'declaracao_inidoneidade', inicio: DataISO, anos: number): { fim: DataISO; fundamento: string }
 // impedimento: 1 ≤ anos ≤ 3; inidoneidade: 3 ≤ anos ≤ 6; fora → ErroDominio('PRAZO_SANCAO_INVALIDO')
+export function calcularMultaMoratoria(e: { valorParcela: Centavos; diasAtraso: number; percentualDia: number; limiteDias: number }): { diasConsiderados: number; percentualAplicado: number; valorMulta: Centavos; limitado: boolean; memoriaCalculo: string[]; fundamento: string; aviso: string }
+// art. 162: percentual diário sobre a parcela em atraso até o limite de dias previsto em contrato. Apoio à decisão.
 ```
 
 ## lei14133/desempate.ts — art. 60 (+ LC 123/2006)

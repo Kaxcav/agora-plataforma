@@ -3,7 +3,7 @@
  * expurgos sugeridos para aceite humano com justificativa (RIA-03) e orçamento sigiloso com motivo (art. 24).
  */
 import { useId, useState, type FormEvent } from 'react';
-import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { CheckCheck, FileSpreadsheet, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import type { ProcessoDetalhe } from '@agora/contratos';
 import { analisarCestaPrecos, diasEntre, formatarData, formatarMoeda, hojeISO, validarDataISO, type Centavos, type Cotacao, type FonteCotacao } from '@agora/dominio';
 import { ehAnaliseCesta, useAceitarExpurgos, useSalvarCestaPrecos, type AnaliseCesta, type CotacaoProcesso } from '../../../api/jornada';
@@ -24,6 +24,7 @@ import {
 import { formatarNumero, formatarPercentual } from '../../../utilitarios/formatacao';
 import { calcular, ErroOperacao, novoId, textoOuNulo } from '../comum';
 import { ehFonteCotacao, FONTES_COTACAO, MOTIVOS_EXPURGO, rotuloFonte } from '../rotulos';
+import { ImportarCesta } from './ImportarCesta';
 import { MINIMO_TEXTO, textoSuficiente, type PropsEtapa } from './tipos';
 
 const LISTA_FONTES = Object.keys(FONTES_COTACAO).filter(ehFonteCotacao);
@@ -118,6 +119,7 @@ export function SecaoCesta({ processo, editavel }: PropsEtapa) {
   const validas = cesta.cotacoes.filter((c) => !c.expurgada);
   const sugestoes = (resultado?.analise.sugeridasExpurgo ?? []).filter((s) => validas.some((c) => c.id === s.id));
 
+  const [importando, definirImportando] = useState(false);
   const [rascunho, definirRascunho] = useState<RascunhoCotacao | null>(null);
   const [tentou, definirTentou] = useState(false);
   const [remover, definirRemover] = useState<CotacaoProcesso | null>(null);
@@ -219,11 +221,19 @@ export function SecaoCesta({ processo, editavel }: PropsEtapa) {
           <p className="secao__descricao">Lei 14.133/2021, art. 23, § 1º; IN SEGES/ME 65/2021. Mínimo de 3 preços válidos após os expurgos.</p>
         </div>
         {editavel ? (
-          <Botao icone={Plus} onClick={() => abrir(null)}>
-            Incluir cotação
-          </Botao>
+          <div className="secao__acoes">
+            <Botao icone={FileSpreadsheet} variante="terciario" onClick={() => definirImportando(true)}>
+              Importar planilha
+            </Botao>
+            <Botao icone={Plus} onClick={() => abrir(null)}>
+              Incluir cotação
+            </Botao>
+          </div>
         ) : null}
       </div>
+      {editavel ? (
+        <ImportarCesta processoId={processo.id} aberto={importando} aoFechar={() => definirImportando(false)} cotacoesAtuais={cesta.cotacoes.length} />
+      ) : null}
 
       {cesta.cotacoes.length === 0 ? (
         <p className="texto-secundario">Nenhuma cotação registrada.</p>
@@ -361,6 +371,19 @@ export function SecaoCesta({ processo, editavel }: PropsEtapa) {
       {sugestoes.length > 0 ? (
         <fieldset className="grupo-campos" disabled={!editavel}>
           <legend>Expurgos sugeridos (RIA-03)</legend>
+          {editavel && sugestoes.length > 1 ? (
+            <div>
+              <Botao
+                variante="terciario"
+                tamanho="compacto"
+                icone={CheckCheck}
+                disabled={sugestoes.every((s) => aceitas.includes(s.id))}
+                onClick={() => definirAceitas(sugestoes.map((s) => s.id))}
+              >
+                Marcar todas as sugestões
+              </Botao>
+            </div>
+          ) : null}
           {sugestoes.map((s) => {
             const cotacao = validas.find((c) => c.id === s.id);
             return (

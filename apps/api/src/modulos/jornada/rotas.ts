@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { INCISOS_ETP, type IncisoEtp } from '@agora/dominio';
-import type { EtapaJornada, Pagina, ProcessoDetalhe, ProcessoResumo, UsuarioDesignavel } from '@agora/contratos';
+import type { EtapaJornada, Pagina, PreviaImportacaoCesta, ProcessoDetalhe, ProcessoResumo, UsuarioDesignavel } from '@agora/contratos';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { escopoUasgs, exigir, exigirAlguma, exigirPermissaoNoHandler, sessaoDe } from '../../autorizacao/exigir.ts';
@@ -25,6 +25,7 @@ import {
   TITULOS_ETAPA,
 } from './constantes.ts';
 import { geradoComParametrosAnteriores } from './parametros-edital.ts';
+import { lerPlanilhaCesta, MAXIMO_CARACTERES_IMPORTACAO, modeloPlanilhaCesta } from './importacao-cesta.ts';
 import {
   avaliarProcesso,
   carregarProcesso,
@@ -152,6 +153,11 @@ const esquemaCesta = z.object({
 const esquemaExpurgos = z.object({
   aceitar: z.array(uuid).min(1).max(50),
   justificativa: z.string().trim().min(20).max(2000),
+});
+
+const esquemaImportacaoCesta = z.object({
+  conteudo: z.string().min(1).max(MAXIMO_CARACTERES_IMPORTACAO),
+  modo: z.enum(['acrescentar', 'substituir']),
 });
 
 const esquemaParametrosEdital = z.object({
@@ -489,6 +495,62 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       };
     });
   });
+
+  // Importação por planilha (RF-16): prévia sem gravar, depois importação só se todas as linhas forem válidas.
+  app.post('/processos/:id/cesta-precos/importacao/previa', edicao, async (request): Promise<PreviaImportacaoCesta> => {
+    const entrada = esquemaImportacaoCesta.parse(request.body);
+    const linha = await obterLinhaProcesso(ctx.banco, idDaRota(request.params), escopoUasgs(sessaoDe(request)), false);
+    if (!linha) throw naoEncontrado('Processo não encontrado.');
+    exigirEtapaAte(linha, 3, 'A pesquisa de preços');
+    return lerPlanilhaCesta(entrada.conteudo, { hoje: ctx.hoje(), modo: entrada.modo, cotacoesNaCesta: linha.cesta.cotacoes.length });
+  });
+
+  app.post('/processos/:id/cesta-precos/importacao', edicao, async (request) => {
+    const entrada = esquemaImportacaoCesta.parse(request.body);
+    return alterar(request, async (tx, linha, c) => {
+      exigirEtapaAte(linha, 3, 'A pesquisa de preços');
+      const previa = lerPlanilhaCesta(entrada.conteudo, { hoje: c.hoje, modo: entrada.modo, cotacoesNaCesta: linha.cesta.cotacoes.length });
+      if (previa.errosGerais.length > 0 || previa.comErro > 0) {
+        throw regraNegocio('A planilha tem erros. Confira a prévia e corrija antes de importar.', [
+          ...previa.errosGerais.map((mensagem) => ({ campo: 'conteudo', mensagem })),
+          ...previa.linhas.flatMap((l) => l.erros.map((mensagem) => ({ campo: `linha ${l.linha}`, mensagem }))),
+        ]);
+      }
+      const novas: CotacaoArmazenada[] = [];
+      for (const l of previa.linhas) {
+        if (l.fonte === null || l.valorUnitario === null || l.dataCotacao === null) continue;
+        novas.push({
+          id: randomUUID(),
+          fonte: l.fonte,
+          descricaoFonte: l.descricaoFonte,
+          valorUnitario: l.valorUnitario,
+          dataCotacao: l.dataCotacao,
+          ...(l.justificativaEscolhaFornecedor ? { justificativaEscolhaFornecedor: l.justificativaEscolhaFornecedor } : {}),
+          expurgada: false,
+          motivoExpurgo: null,
+        });
+      }
+      const substituidas = entrada.modo === 'substituir' ? linha.cesta.cotacoes.length : 0;
+      const cesta: CestaArmazenada = { ...linha.cesta, cotacoes: entrada.modo === 'acrescentar' ? [...linha.cesta.cotacoes, ...novas] : novas };
+      await gravarJson(tx, linha.id, 'cesta', cesta, c.agora);
+      const analise = analisarCesta(cesta, c.hoje);
+      return {
+        acao: 'cesta.importar',
+        resumo:
+          entrada.modo === 'acrescentar'
+            ? `Importou ${novas.length} cotação(ões) de planilha para a pesquisa de preços`
+            : `Importou ${novas.length} cotação(ões) de planilha, substituindo ${substituidas} anterior(es)`,
+        dados: { importadas: novas.length, modo: entrada.modo, substituidas, sugeridasExpurgo: analise?.sugeridasExpurgo.length ?? 0 },
+      };
+    });
+  });
+
+  app.get('/cesta-precos/modelo.csv', leitura, async (_request, reply) =>
+    reply
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', 'attachment; filename="modelo-cesta-de-precos.csv"')
+      .send(`﻿${modeloPlanilhaCesta()}`),
+  );
 
   // ───────── documentos (etapas 1 a 5) ─────────
 

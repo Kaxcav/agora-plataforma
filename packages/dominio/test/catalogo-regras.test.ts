@@ -111,7 +111,7 @@ describe('regrasPorTela', () => {
   it('lista as regras da tela por correspondência exata', () => {
     const ids = regrasPorTela('jornada.dfd').map((r) => r.id);
     for (const id of ['RN-01', 'RN-02', 'RN-14', 'RIA-01']) assert.ok(ids.includes(id), id);
-    assert.deepEqual(regrasPorTela('sancoes').map((r) => r.id).sort(), ['RF-14', 'RN-12', 'RN-13']);
+    assert.deepEqual(regrasPorTela('sancoes').map((r) => r.id).sort(), ['RF-14', 'RN-12', 'RN-13', 'RN-19']);
     assert.ok(regrasPorTela('contratos.detalhe').some((r) => r.id === 'RN-10'));
   });
 

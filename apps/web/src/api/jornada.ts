@@ -6,18 +6,20 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import type {
   DocumentoGerado,
   EntradaDisputa,
+  EntradaImportacaoCesta,
   EntradaNovoProcesso,
   EtapaJornada,
   Id,
   OrgaoRequisitante,
   Pagina,
   ParametrosEdital,
+  PreviaImportacaoCesta,
   ProcessoDetalhe,
   ProcessoResumo,
   UsuarioDesignavel,
 } from '@agora/contratos';
 import type { analisarCestaPrecos, aplicarDesempate } from '@agora/dominio';
-import { api, ErroApi } from './cliente';
+import { api, ErroApi, urlApi } from './cliente';
 
 const segmento = (id: string) => encodeURIComponent(id);
 
@@ -141,6 +143,21 @@ export function useSalvarCestaPrecos(id: string) {
 export function useAceitarExpurgos(id: string) {
   return useMutacaoProcesso(id, (entrada: EntradaExpurgos) => api.criar<ProcessoDetalhe>(caminho(id, 'cesta-precos/expurgos'), entrada));
 }
+
+/** POST /processos/:id/cesta-precos/importacao/previa — o servidor lê e valida a planilha, sem gravar (RF-16). */
+export function usePreviaImportacaoCesta(id: string) {
+  return useMutation({
+    mutationFn: (entrada: EntradaImportacaoCesta) => api.criar<PreviaImportacaoCesta>(caminho(id, 'cesta-precos/importacao/previa'), entrada),
+  });
+}
+
+/** POST /processos/:id/cesta-precos/importacao — grava as cotações da planilha, só se todas as linhas forem válidas (RF-16). */
+export function useImportarCesta(id: string) {
+  return useMutacaoProcesso(id, (entrada: EntradaImportacaoCesta) => api.criar<ProcessoDetalhe>(caminho(id, 'cesta-precos/importacao'), entrada));
+}
+
+/** Modelo de planilha da cesta, gerado no servidor. */
+export const URL_MODELO_CESTA = urlApi('/cesta-precos/modelo.csv');
 
 /** POST /processos/:id/documentos/gerar — rascunho por modelo (IA só se habilitada no servidor). */
 export function useGerarDocumento(id: string) {

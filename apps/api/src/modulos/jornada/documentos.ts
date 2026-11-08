@@ -48,7 +48,7 @@ export interface Autoria {
   modeloIa: string | null;
 }
 
-const ORGAOS_POR_EXTENSO: Record<OrgaoRequisitante, string> = {
+export const ORGAOS_POR_EXTENSO: Record<OrgaoRequisitante, string> = {
   PF: 'Polícia Federal',
   PRF: 'Polícia Rodoviária Federal',
   SENASP: 'Secretaria Nacional de Segurança Pública',

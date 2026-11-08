@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Calculator, Gavel } from 'lucide-react';
-import type { EntradaDosimetria, ResultadoDosimetria, TipoSancao } from '@agora/contratos';
+import type { EntradaDosimetria, ResultadoDosimetria, ResultadoMultaMoratoria, TipoSancao } from '@agora/contratos';
 import {
   formatarData,
   formatarMoeda,
@@ -11,7 +11,15 @@ import {
   type Centavos,
   type IncisoInfracao,
 } from '@agora/dominio';
-import { useFornecedor, useFornecedores, useInstaurarSancao, useSancoes, useSimularDosimetria, type FiltroSancoes } from '../../api/fornecedores';
+import {
+  useFornecedor,
+  useFornecedores,
+  useInstaurarSancao,
+  useSancoes,
+  useSimularDosimetria,
+  useSimularMultaMoratoria,
+  type FiltroSancoes,
+} from '../../api/fornecedores';
 import {
   Alerta,
   AreaTexto,
@@ -460,6 +468,176 @@ function SimuladorDosimetria() {
   );
 }
 
+function ResultadoMoratoria({ resultado }: { resultado: ResultadoMultaMoratoria }) {
+  return (
+    <div className="resultado-simulacao" role="status">
+      <h3 className="secao__titulo">Proposta de multa moratória</h3>
+      <ListaDefinicoes
+        colunas={4}
+        itens={[
+          { termo: 'Dias considerados', valor: <span className="numero">{resultado.diasConsiderados} {resultado.diasConsiderados === 1 ? 'dia' : 'dias'}</span> },
+          { termo: 'Percentual aplicado', valor: <strong className="numero">{formatarPercentual(resultado.percentualAplicado, 2)}</strong> },
+          { termo: 'Valor proposto da multa', valor: <strong className="numero">{formatarMoeda(resultado.valorMulta)}</strong> },
+          {
+            termo: 'Teto contratual',
+            valor: resultado.limitado ? (
+              <Etiqueta tom="aviso" compacta>
+                Limitado ao teto do contrato
+              </Etiqueta>
+            ) : (
+              <Etiqueta tom="sucesso" compacta>
+                Dentro do limite
+              </Etiqueta>
+            ),
+          },
+        ]}
+      />
+      <div className="pilha pilha--compacta">
+        <h4>Memória de cálculo</h4>
+        <ol className="memoria-calculo">
+          {resultado.memoriaCalculo.map((linha, i) => (
+            <li key={i}>{linha}</li>
+          ))}
+        </ol>
+      </div>
+      <p className="texto-pequeno texto-secundario">Fundamento: {resultado.fundamento}</p>
+      <Alerta tipo="aviso" titulo="Apoio à decisão — não aplica penalidade">
+        <p>{resultado.aviso}</p>
+        <p>A sanção é decidida pela autoridade competente; esta simulação não aplica penalidade.</p>
+      </Alerta>
+    </div>
+  );
+}
+
+function SimuladorMoratoria() {
+  const simular = useSimularMultaMoratoria();
+  const [valorParcela, definirValorParcela] = useState<Centavos | null>(null);
+  const [diasAtraso, definirDiasAtraso] = useState('');
+  const [percentualDia, definirPercentualDia] = useState('0,5');
+  const [limiteDias, definirLimiteDias] = useState('30');
+
+  const [erroParcela, definirErroParcela] = useState<string | null>(null);
+  const [erroDiasAtraso, definirErroDiasAtraso] = useState<string | null>(null);
+  const [erroPercentualDia, definirErroPercentualDia] = useState<string | null>(null);
+  const [erroLimiteDias, definirErroLimiteDias] = useState<string | null>(null);
+
+  const calcular = (evento: FormEvent) => {
+    evento.preventDefault();
+    let temErro = false;
+
+    if (valorParcela === null || valorParcela < 0) {
+      definirErroParcela('Informe o valor da parcela em atraso.');
+      temErro = true;
+    } else {
+      definirErroParcela(null);
+    }
+
+    const diasLimpo = diasAtraso.trim();
+    const diasNum = Number(diasLimpo);
+    if (diasLimpo === '' || !/^\d+$/.test(diasLimpo) || !Number.isSafeInteger(diasNum) || diasNum < 0 || diasNum > 3650) {
+      definirErroDiasAtraso('Informe a quantidade de dias de atraso (número inteiro de 0 a 3650).');
+      temErro = true;
+    } else {
+      definirErroDiasAtraso(null);
+    }
+
+    const pctLimpo = percentualDia.trim().replace(',', '.');
+    const pctNum = Number(pctLimpo);
+    if (pctLimpo === '' || Number.isNaN(pctNum) || !Number.isFinite(pctNum) || pctNum <= 0 || pctNum > 10) {
+      definirErroPercentualDia('Informe um percentual diário maior que 0 e menor ou igual a 10.');
+      temErro = true;
+    } else {
+      definirErroPercentualDia(null);
+    }
+
+    const limiteLimpo = limiteDias.trim();
+    const limiteNum = Number(limiteLimpo);
+    if (limiteLimpo === '' || !/^\d+$/.test(limiteLimpo) || !Number.isSafeInteger(limiteNum) || limiteNum < 1 || limiteNum > 3650) {
+      definirErroLimiteDias('Informe o limite de dias (número inteiro de 1 a 3650).');
+      temErro = true;
+    } else {
+      definirErroLimiteDias(null);
+    }
+
+    if (temErro) return;
+
+    simular.mutate({
+      valorParcela: valorParcela as Centavos,
+      diasAtraso: diasNum,
+      percentualDia: pctNum,
+      limiteDias: limiteNum,
+    });
+  };
+
+  return (
+    <Secao
+      titulo="Simulador de multa moratória (art. 162)"
+      id="moratoria"
+      descricao="Calcula a multa de mora pelo atraso injustificado na execução, com o percentual diário e o limite de dias da cláusula do contrato. Não grava nada."
+    >
+      <form className="formulario" onSubmit={calcular} noValidate>
+        <div className="formulario__linha">
+          <CampoMoeda
+            rotulo="Valor da parcela em atraso"
+            obrigatorio
+            valor={valorParcela}
+            aoMudar={(v) => {
+              definirValorParcela(v);
+              if (erroParcela) definirErroParcela(null);
+            }}
+            erro={erroParcela}
+          />
+          <CampoTexto
+            rotulo="Dias de atraso"
+            obrigatorio
+            value={diasAtraso}
+            onChange={(e) => {
+              definirDiasAtraso(e.target.value);
+              if (erroDiasAtraso) definirErroDiasAtraso(null);
+            }}
+            erro={erroDiasAtraso}
+            inputMode="numeric"
+          />
+        </div>
+        <div className="formulario__linha">
+          <CampoTexto
+            rotulo="Percentual ao dia (%)"
+            ajuda="Conforme a cláusula de multa moratória do contrato."
+            value={percentualDia}
+            onChange={(e) => {
+              definirPercentualDia(e.target.value);
+              if (erroPercentualDia) definirErroPercentualDia(null);
+            }}
+            erro={erroPercentualDia}
+          />
+          <CampoTexto
+            rotulo="Limite de dias"
+            ajuda="Conforme a cláusula de multa moratória do contrato."
+            value={limiteDias}
+            onChange={(e) => {
+              definirLimiteDias(e.target.value);
+              if (erroLimiteDias) definirErroLimiteDias(null);
+            }}
+            erro={erroLimiteDias}
+            inputMode="numeric"
+          />
+        </div>
+        <div className="linha">
+          <Botao type="submit" variante="primario" icone={Calculator} carregando={simular.isPending}>
+            Calcular multa moratória
+          </Botao>
+        </div>
+      </form>
+      {simular.isError ? (
+        <Alerta tipo="erro" anunciar titulo="Não foi possível calcular">
+          <p>{simular.error.message}</p>
+        </Alerta>
+      ) : null}
+      {simular.data ? <ResultadoMoratoria resultado={simular.data} /> : null}
+    </Secao>
+  );
+}
+
 // ───────────────────────── Página ─────────────────────────
 
 export default function Sancoes() {
@@ -559,6 +737,7 @@ export default function Sancoes() {
         </>
       )}
       <SimuladorDosimetria />
+      <SimuladorMoratoria />
       {podeInstruir ? <DialogoInstaurar aberto={instaurando} aoFechar={() => definirInstaurando(false)} /> : null}
     </Pagina>
   );

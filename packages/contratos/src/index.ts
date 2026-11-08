@@ -759,6 +759,23 @@ export interface ResultadoDosimetria {
   aviso: string;
 }
 
+/** POST /sancoes/moratoria/simular (somente leitura; art. 162). Parâmetros da cláusula de multa moratória do contrato. */
+export interface EntradaMultaMoratoria {
+  valorParcela: Centavos;
+  diasAtraso: number;
+  percentualDia: number; // ex.: 0.5 (% ao dia)
+  limiteDias: number; // teto de dias de incidência previsto no contrato
+}
+export interface ResultadoMultaMoratoria {
+  diasConsiderados: number;
+  percentualAplicado: number;
+  valorMulta: Centavos;
+  limitado: boolean;
+  memoriaCalculo: string[];
+  fundamento: string;
+  aviso: string;
+}
+
 // ───────────────────────── Jornada da contratação (7 etapas) ─────────────────────────
 
 export type OrgaoRequisitante = 'PF' | 'PRF' | 'SENASP' | 'SENAPPEN' | 'MJSP';
@@ -931,6 +948,32 @@ export interface ProcessoDetalhe extends ProcessoResumo {
 // POST /processos/:id/avancar   → ProcessoDetalhe (422 RespostaErro com codigo 'REGRA_NEGOCIO' e detalhes = bloqueios)
 // POST /processos/:id/contratar → ProcessoDetalhe (RN-09; cria contrato na carteira)
 
+/** Importação da cesta de preços por planilha (RF-16). O texto é lido e validado no servidor; o navegador só envia o conteúdo. */
+export interface EntradaImportacaoCesta {
+  conteudo: string; // CSV (separado por ponto e vírgula, vírgula ou tabulação) ou linhas coladas de uma planilha
+  modo: 'acrescentar' | 'substituir';
+}
+export interface LinhaImportacaoCesta {
+  linha: number; // linha da planilha, contando o cabeçalho
+  fonte: 'painel_precos' | 'contratacao_similar' | 'midia_especializada' | 'fornecedor_direto' | 'nota_fiscal' | null;
+  descricaoFonte: string;
+  valorUnitario: Centavos | null;
+  dataCotacao: DataISO | null;
+  justificativaEscolhaFornecedor: string | null;
+  erros: string[]; // vazio = linha válida
+}
+export interface PreviaImportacaoCesta {
+  linhas: LinhaImportacaoCesta[];
+  validas: number;
+  comErro: number;
+  cabecalhoReconhecido: boolean; // false = colunas lidas na ordem do modelo
+  errosGerais: string[]; // problemas da planilha inteira (vazia, colunas obrigatórias ausentes, limite de linhas)
+  totalAposImportacao: number; // cotações na cesta depois da importação (limite de 50)
+}
+// POST /processos/:id/cesta-precos/importacao/previa  body EntradaImportacaoCesta → PreviaImportacaoCesta (nada é gravado)
+// POST /processos/:id/cesta-precos/importacao         body EntradaImportacaoCesta → ProcessoDetalhe (422 se houver erro)
+// GET  /cesta-precos/modelo.csv → modelo de planilha com as colunas aceitas
+
 // ───────────────────────── Transparência (sem login) ─────────────────────────
 
 export interface ContratoPublico {
@@ -948,6 +991,28 @@ export interface ContratoPublico {
   linkPncp: string | null;
 }
 // GET /publico/contratos?busca&pagina → Pagina<ContratoPublico> ; GET /publico/contratos/:id → ContratoPublico
+
+/** Edital publicado (art. 25, § 3º, e art. 54): inteiro teor do edital e dos anexos, sem cadastro nem login. */
+export interface DocumentoEditalPublico {
+  tipo: 'edital' | 'tr' | 'minuta_contrato';
+  titulo: string;
+  versao: number;
+  url: string; // PDF gerado no servidor, com dados pessoais tarjados (RIA-05)
+}
+export interface EditalPublico {
+  id: Id;
+  numeroSei: string;
+  objeto: string;
+  orgaoRequisitante: string;
+  modalidade: string | null;
+  publicadoEm: DataISO;
+  dataMinimaPropostas: DataISO | null;
+  idPncp: string | null;
+  linkPncp: string | null; // só quando a publicação foi feita no PNCP real
+  documentos: DocumentoEditalPublico[];
+}
+// GET /publico/editais?busca&pagina → Pagina<EditalPublico> ; GET /publico/editais/:id → EditalPublico
+// GET /publico/editais/:id/documentos/:tipo → application/pdf (inteiro teor, sem login)
 // GET /publico/catalogo-regras → regras do @agora/dominio (Caderno de Regras)
 
 // ───────────────────────── Saúde ─────────────────────────

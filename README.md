@@ -95,6 +95,7 @@ docs                 arquitetura, interface, jornada, segurança, LGPD
 
 ## Documentação
 
+- [Manual do usuário](docs/MANUAL-DO-USUARIO.md)
 - [Arquitetura técnica](docs/ARQUITETURA.md)
 - [Interface e acessibilidade](docs/INTERFACE.md)
 - [Jornada da contratação (7 etapas)](docs/JORNADA.md)

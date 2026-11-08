@@ -61,3 +61,13 @@ Nunca usar, sugerir ou reinstalar o gortex.
 
 - Padrão Digital de Governo (gov.br DS 3.7): Rawline (fallback Raleway), tokens oficiais, contraste AA, teclado, zoom 200%.
 - Textos da interface em pt-BR.
+
+## Regra 7 — A conversa do cliente é a bíblia do projeto
+
+Antes de decidir qualquer requisito, regra de negócio, perfil, prazo ou prioridade, consulte a conversa do cliente com o Gemini: `reference/gemini-compartilhado.txt`, na pasta do workspace, fora do repositório. É a conversa compartilhada "[MJSP] Prompt para Portal de Compras do MJSP".
+
+- O que ela contém: ETP, matriz de riscos, TR (com a prova de conceito e o IMR), minutas e especificação funcional.
+- Ao decidir com base nela, cite a parte usada. O que não estiver lá vira pergunta ao usuário.
+- **Tudo o que está na conversa, sem exceção, deve estar no projeto.** A rastreabilidade de cada pedido fica em `plataforma/docs/RASTREABILIDADE-REQUISITOS.md` e o que ainda falta entra em `plataforma/docs/PLANO-NOVAS-FUNCOES.md`.
+- Quando um pedido, ao pé da letra, violar a lei ou as regras 3 a 5 (por exemplo: IA que decide, CDN no navegador, parentesco por cruzamento de dados), implemente o equivalente lícito que atende ao mesmo objetivo, registre a decisão na rastreabilidade e avise o usuário.
+- A regra 3 continua valendo: use a conversa como fonte de requisitos, sem copiar trechos longos, valores ou dados para o código, os testes ou os commits.

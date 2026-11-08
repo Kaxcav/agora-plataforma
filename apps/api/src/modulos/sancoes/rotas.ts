@@ -1,5 +1,5 @@
-import { INFRACOES_ART_155, calcularDosimetriaMulta, prazoDefesa, sancoesCabiveis, type IncisoInfracao } from '@agora/dominio';
-import type { Pagina, ResultadoDosimetria, Sancao } from '@agora/contratos';
+import { INFRACOES_ART_155, calcularDosimetriaMulta, calcularMultaMoratoria, prazoDefesa, sancoesCabiveis, type IncisoInfracao } from '@agora/dominio';
+import type { Pagina, ResultadoDosimetria, ResultadoMultaMoratoria, Sancao } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { escopoUasgs, exigir, sessaoDe } from '../../autorizacao/exigir.ts';
@@ -39,6 +39,13 @@ const esquemaDosimetria = z.object({
   atenuantes: z.array(z.string().trim().min(1).max(200)).max(20),
   programaIntegridade: z.boolean(),
   danoAdministracao: z.boolean(),
+});
+
+const esquemaMoratoria = z.object({
+  valorParcela: centavos,
+  diasAtraso: z.number().int().min(0).max(3650),
+  percentualDia: z.number().positive().max(10),
+  limiteDias: z.number().int().min(1).max(3650),
 });
 
 export async function rotasSancoes(app: FastifyInstance): Promise<void> {
@@ -124,6 +131,21 @@ export async function rotasSancoes(app: FastifyInstance): Promise<void> {
     const r = calcularDosimetriaMulta(entrada);
     return {
       percentualCalculado: r.percentualCalculado,
+      percentualAplicado: r.percentualAplicado,
+      valorMulta: r.valorMulta,
+      limitado: r.limitado,
+      memoriaCalculo: r.memoriaCalculo,
+      fundamento: r.fundamento,
+      aviso: r.aviso,
+    };
+  });
+
+  /** Simulação de multa moratória (somente leitura; art. 162). */
+  app.post('/sancoes/moratoria/simular', { preHandler: exigir('sancoes:ler') }, async (request): Promise<ResultadoMultaMoratoria> => {
+    const entrada = esquemaMoratoria.parse(request.body);
+    const r = calcularMultaMoratoria(entrada);
+    return {
+      diasConsiderados: r.diasConsiderados,
       percentualAplicado: r.percentualAplicado,
       valorMulta: r.valorMulta,
       limitado: r.limitado,

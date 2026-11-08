@@ -1141,3 +1141,11 @@
     background: #fff;
   }
 }
+
+/* Prévia da importação da cesta de preços (RF-16): erros de cada linha */
+.lista-erros {
+  margin: 0;
+  padding-left: var(--esp-4);
+  color: var(--vermelho-60);
+  font-size: var(--fonte-pequena);
+}

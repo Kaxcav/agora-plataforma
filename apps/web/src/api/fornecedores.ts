@@ -2,12 +2,14 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import type {
   EntradaDosimetria,
   EntradaInstaurarSancao,
+  EntradaMultaMoratoria,
   FaixaIdc,
   FornecedorDetalhe,
   FornecedorResumo,
   Pagina,
   ParametrosLista,
   ResultadoDosimetria,
+  ResultadoMultaMoratoria,
   Sancao,
   TipoSancao,
 } from '@agora/contratos';
@@ -67,5 +69,12 @@ export function useInstaurarSancao() {
 export function useSimularDosimetria() {
   return useMutation({
     mutationFn: (entrada: EntradaDosimetria) => api.criar<ResultadoDosimetria>('/sancoes/dosimetria/simular', entrada),
+  });
+}
+
+/** POST /sancoes/moratoria/simular — somente leitura (art. 162). */
+export function useSimularMultaMoratoria() {
+  return useMutation({
+    mutationFn: (entrada: EntradaMultaMoratoria) => api.criar<ResultadoMultaMoratoria>('/sancoes/moratoria/simular', entrada),
   });
 }

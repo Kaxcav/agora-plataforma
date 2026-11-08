@@ -239,3 +239,58 @@ export function vigenciaSancao(
   }
   return { fim: adicionarMeses(inicio, anos * 12), fundamento: `Lei 14.133/2021, art. 156, ${faixa.paragrafo}` };
 }
+
+/**
+ * Multa moratória por atraso injustificado na execução do contrato (Lei 14.133/2021, art. 162).
+ * Aplica o percentual diário previsto em contrato sobre a parcela em atraso, limitado ao teto de dias fixado na cláusula.
+ * Proposta para apoio à decisão: a aplicação cabe à autoridade competente após o prazo de defesa.
+ */
+export function calcularMultaMoratoria(e: {
+  valorParcela: Centavos;
+  diasAtraso: number;
+  percentualDia: number;
+  limiteDias: number;
+}): {
+  diasConsiderados: number;
+  percentualAplicado: number;
+  valorMulta: Centavos;
+  limitado: boolean;
+  memoriaCalculo: string[];
+  fundamento: string;
+  aviso: string;
+} {
+  exigirInteiro(e.valorParcela, 'valorParcela', 'MULTA_MORATORIA_INVALIDA', 0);
+  exigirInteiro(e.diasAtraso, 'diasAtraso', 'MULTA_MORATORIA_INVALIDA', 0);
+  if (typeof e.percentualDia !== 'number' || !Number.isFinite(e.percentualDia) || e.percentualDia <= 0 || e.percentualDia > 10) {
+    throw new ErroDominio(
+      'MULTA_MORATORIA_INVALIDA',
+      `percentualDia deve ser um número maior que 0 e menor ou igual a 10 (recebido: ${String(e.percentualDia)}).`,
+    );
+  }
+  exigirInteiro(e.limiteDias, 'limiteDias', 'MULTA_MORATORIA_INVALIDA', 1);
+
+  const limitado = e.diasAtraso > e.limiteDias;
+  const diasConsiderados = limitado ? e.limiteDias : e.diasAtraso;
+  const percentualAplicado = arredondar(e.percentualDia * diasConsiderados, 4);
+  const valorMulta = Math.round((e.valorParcela * percentualAplicado) / 100);
+
+  const memoriaCalculo = [
+    `Valor da parcela em atraso: ${formatarMoeda(e.valorParcela)}.`,
+    `Dias de atraso: ${e.diasAtraso} ${e.diasAtraso === 1 ? 'dia' : 'dias'}${limitado ? ` (limitado ao teto contratual de ${e.limiteDias} ${e.limiteDias === 1 ? 'dia' : 'dias'})` : ''}.`,
+    `Dias considerados no cálculo: ${diasConsiderados} ${diasConsiderados === 1 ? 'dia' : 'dias'}.`,
+    `Percentual diário de mora: ${formatarNumero(e.percentualDia)}% ao dia.`,
+    `Percentual aplicado: ${formatarNumero(percentualAplicado)}% (${formatarNumero(e.percentualDia)}% × ${diasConsiderados} ${diasConsiderados === 1 ? 'dia' : 'dias'}).`,
+    `Valor proposto da multa: ${formatarMoeda(valorMulta)} (${formatarNumero(percentualAplicado)}% de ${formatarMoeda(e.valorParcela)}).`,
+  ];
+
+  return {
+    diasConsiderados,
+    percentualAplicado,
+    valorMulta,
+    limitado,
+    memoriaCalculo,
+    fundamento: 'Lei 14.133/2021, art. 162; cláusula de multa moratória do contrato',
+    aviso:
+      'Proposta de multa moratória para apoio à decisão: a aplicação cabe à autoridade competente após o prazo de defesa (arts. 157 e 158). A multa de mora não impede a conversão em compensatória nem a extinção do contrato com outras sanções (art. 162, parágrafo único).',
+  };
+}

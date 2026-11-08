@@ -1,13 +1,14 @@
 import { CATALOGO_REGRAS, mascararDocumento } from '@agora/dominio';
-import type { ContratoPublico, Pagina } from '@agora/contratos';
+import type { ContratoPublico, EditalPublico, Pagina } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Executor } from '../../banco/tipos.ts';
 import { linkPncpContrato } from '../../compartilhado/instrumentos.ts';
 import { padraoContem } from '../../compartilhado/texto.ts';
 import { naoEncontrado } from '../../http/erros.ts';
-import { camposPaginacao, deslocamento, idDaRota, pagina, textoBusca } from '../../http/validacao.ts';
+import { camposPaginacao, deslocamento, idDaRota, pagina, textoBusca, uuid } from '../../http/validacao.ts';
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
+import { consultarEditais, DOCUMENTOS_PUBLICOS, pdfDocumentoPublico } from './editais.ts';
 
 interface LinhaPublica {
   id: string;
@@ -81,6 +82,39 @@ export async function rotasPublico(app: FastifyInstance): Promise<void> {
     const contrato = itens[0];
     if (!contrato) throw naoEncontrado('Contrato não encontrado.');
     return contrato;
+  });
+
+  // Editais publicados: inteiro teor sem cadastro nem login (art. 25, § 3º).
+  const pncpReal = () => ctx.config.integracoes === 'online';
+
+  app.get('/publico/editais', async (request): Promise<Pagina<EditalPublico>> => {
+    const f = z.object({ busca: textoBusca, ...camposPaginacao }).parse(request.query);
+    const { itens, total } = await consultarEditais(ctx.banco, {
+      busca: f.busca ?? null,
+      id: null,
+      limite: f.tamanhoPagina,
+      inicio: deslocamento(f.pagina, f.tamanhoPagina),
+      pncpReal: pncpReal(),
+    });
+    return pagina(itens, total, f.pagina, f.tamanhoPagina);
+  });
+
+  app.get('/publico/editais/:id', async (request): Promise<EditalPublico> => {
+    const id = idDaRota(request.params);
+    const { itens } = await consultarEditais(ctx.banco, { busca: null, id, limite: 1, inicio: 0, pncpReal: pncpReal() });
+    const edital = itens[0];
+    if (!edital) throw naoEncontrado('Edital não encontrado ou ainda não publicado.');
+    return edital;
+  });
+
+  app.get('/publico/editais/:id/documentos/:tipo', async (request, reply) => {
+    const { id, tipo } = z.object({ id: uuid, tipo: z.enum(DOCUMENTOS_PUBLICOS) }).parse(request.params);
+    const arquivo = await pdfDocumentoPublico(ctx.banco, id, tipo);
+    if (!arquivo) throw naoEncontrado('Documento não encontrado ou edital não publicado.');
+    return reply
+      .header('content-type', 'application/pdf')
+      .header('content-disposition', `inline; filename="${arquivo.nomeArquivo}"`)
+      .send(arquivo.pdf);
   });
 
   app.get('/publico/catalogo-regras', async () => CATALOGO_REGRAS);

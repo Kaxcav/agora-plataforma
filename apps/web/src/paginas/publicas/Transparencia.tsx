@@ -94,7 +94,8 @@ export default function Transparencia() {
     >
       <p className="texto-secundario">
         Os dados pessoais de fornecedores pessoa física aparecem mascarados. A fonte oficial de divulgação das contratações é o Portal Nacional de
-        Contratações Públicas (PNCP); o link de cada contrato leva ao registro correspondente.
+        Contratações Públicas (PNCP); o link de cada contrato leva ao registro correspondente. O inteiro teor dos editais está em{' '}
+        <Link to="/transparencia/editais">Transparência: editais publicados</Link>.
       </p>
       {consulta.isError && consulta.data === undefined ? (
         <FalhaConsulta consulta={consulta} />

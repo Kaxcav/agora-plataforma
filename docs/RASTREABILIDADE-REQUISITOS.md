@@ -1,0 +1,246 @@
+# Rastreabilidade: requisitos do cliente × Ágora
+
+Data: 8 de novembro de 2026.
+
+**Fonte dos requisitos:** a conversa do cliente com o Gemini ("[MJSP] Prompt para Portal de Compras do MJSP"), com 2.365 linhas. Ela traz o prompt do portal, o ETP, a matriz de riscos, o TR (com a prova de conceito e o IMR), as minutas do edital e do contrato, a especificação funcional e o checklist de documentos. As linhas citadas são da cópia local em `reference/gemini-compartilhado.txt`, que fica fora do repositório.
+
+**Método:**
+
+- A conversa foi lida inteira, em 4 partes.
+- Cada requisito foi conferido no código com o Kaxcav Vortex (kvx), no catálogo de regras (`packages/dominio/src/catalogo-regras.ts`) e no plano (`docs/PLANO-NOVAS-FUNCOES.md`).
+- Duplicatas foram juntadas: o prompt aparece repetido na conversa.
+- Só conta como "implementado" o que tem evidência no código.
+
+**Status usados:**
+
+| Status | Significado |
+|---|---|
+| ✅ Implementado | Existe, com evidência no código |
+| 🟡 Parcial | Existe em parte; a coluna diz o que falta |
+| 📋 Planejado | Não existe, mas está no plano (F1 a F17) |
+| ➕ Nova função | Não existe nem estava no plano; entra no plano como F18 a F29 (seção 12) |
+| ⛔ Contrário às regras | Como pedido, viola uma regra do projeto; a Ágora oferece alternativa |
+| 📄 Contratual | Obrigação da contratação ou da proposta comercial, não do software |
+
+## 1. Resumo
+
+**Já está pronto o núcleo pedido pelo cliente:**
+
+- as 7 etapas da contratação, com os mesmos códigos de regra do protótipo (RN-01 a RN-09, RIA-01 a RIA-07);
+- o modo especificação técnica e o caderno de regras;
+- a geração do DFD, do ETP, da matriz de riscos, da nota técnica de preços, do TR, do edital e da minuta;
+- a gestão de contratos, atas, empenhos e pagamentos em ordem cronológica;
+- o índice de desempenho do fornecedor e as sanções com dosimetria;
+- a trilha de auditoria, a LGPD e o login gov.br;
+- desde esta rodada: a importação da cesta de preços, a multa moratória e os editais públicos com inteiro teor em PDF.
+
+**O que ainda falta, em quatro blocos:**
+
+1. **Prova de conceito:** publicação real no PNCP (F11), leitura de atestados (F13) e, nova, a **consulta real ao CEIS/CNEP** (F18).
+2. **Execução contratual como ato** (nova, F22): aditivos, prorrogação, recebimentos e garantias hoje são só simulação ou texto da minuta.
+3. **Funções planejadas da gestão e do controle:** cautelares (F2), score ligado à técnica e preço (F3), IMR (F7) e 3 linhas de defesa (F8).
+4. **Itens que o cliente pediu e não estavam no plano:** documentos da fase preparatória, dotação orçamentária, sigilo de segurança pública, modelos da AGU com IA ancorada, consulta automática de preços, canal com a sociedade e notificações. Todos entram agora como F18 a F29.
+
+**Situação da prova de conceito:**
+
+| Roteiro | Situação |
+|---|---|
+| PoC-01 | 🟡 Funciona; falta impedir a geração da minuta com item de luxo sem justificativa |
+| PoC-02 | ✅ Com teste ponta a ponta |
+| PoC-03 | 📋 Depende de F4 e F13 |
+| PoC-04 | ✅ Funciona; a consulta real ao CEIS/CNEP é a F18 |
+| PoC-05 | 🟡 Download público pronto (F17); falta o envio ao sandbox do PNCP (F11) |
+
+## 2. Interface e identidade visual
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Padrão gov.br, acessibilidade (eMAG, WCAG 2.1 AA), responsivo | 331, 650, 1686 | ✅ | Tokens oficiais, componentes próprios, testes com axe e teclado (RNF-04) |
+| Cores da bandeira com os hex pedidos (#002776, #009C3B, #FFDF00) | 9, 118–126, 1086, 1754 | 🟡 | Usa os tokens oficiais equivalentes do gov.br (regra 6). O amarelo pedido sobre branco não passa no contraste AA. Ver seção 13 |
+| Símbolos da Justiça (balança, escudo, brasão, martelo) | 30, 128, 1760 | 🟡 | Há ícones pontuais (martelo, balança, escudo), servidos pela aplicação. Falta uma identidade visual com essa simbologia |
+| Menu lateral retrátil, painel sem recarregar | 31, 132 | ✅ | `MenuLateral`, gaveta no celular, SPA |
+| Modo especificação técnica (RF/RN/RIA de cada tela) | 31, 1096, 1765 | ✅ | `ModoEspecificacao`, `PainelRegras` |
+| Caderno de regras exportável | 85, 245, 1749 | ✅ | `/regras`, pronto para impressão |
+| Barra das 7 etapas e seletor de processos por órgão | 1763–1764 | ✅ | `TrilhaEtapas`; filtro por órgão |
+| Dados fictícios realistas | 84, 1154 | ✅ | Seed sintético (regra 3) |
+| Entrega em HTML único com Tailwind e ícones por CDN | 19, 1153, 1835 | ⛔ | Viola a regra 4. A Ágora serve tudo pela própria aplicação |
+
+## 3. Planejamento: demanda, PCA, equipe, ETP e riscos
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Formulário do DFD | 40, 1775 | ✅ | `PUT /processos/:id/dfd`, `modeloDfd` |
+| DFD ligado ao catálogo CATMAT/CATSER, com sugestão do item | 44, 47, 1445, 1775 | ➕ F19 | Hoje o código é digitado |
+| DFD conferido com o PCA publicado | 40, 643, 1775 | 📋 F10 | Hoje só há a marcação "previsto no PCA" |
+| PCA consolidado a partir dos DFDs e publicado | 1410 | ➕ F10 ampliada | |
+| Adequação orçamentária (dotação, LOA) | 44, 817–827, 2284 | ➕ F20 | Hoje é só um item do checklist do parecer |
+| Lições aprendidas de contratos anteriores no DFD | 1120, 1776 | 📋 F6 | |
+| Bloqueio de artigo de luxo (art. 20) | 43, 1778 | ✅ | RN-01 |
+| Justificativa para não usar o catálogo de padronização (art. 19, § 2º) | 1779 | ✅ | RN-02 |
+| Consolidação de demandas entre órgãos (IRP) | 1780 | 📋 F5 | O alerta de fracionamento já existe (RIA-01, RN-14) |
+| Designação da equipe, com segregação de funções | 1785–1787 | ✅ | RN-03 `verificarSegregacao` |
+| Vínculo efetivo e capacitação dos agentes (arts. 7º e 8º) | 1785 | ➕ F14 ampliada | |
+| Declaração de ausência de parentesco dos designados | 1785 | 📋 F14 | |
+| ETP com os 13 incisos e trava dos obrigatórios | 42, 1792–1795 | ✅ | RN-04 `validarEtp` |
+| Sustentabilidade e logística reversa obrigatórias em todo ETP e TR | 467 | ➕ F21 | A lei não obriga; seria política do órgão. Ver seção 13 |
+| Matriz de riscos registrada e gerada | 485–502, 1792 | ✅ | `modeloMatrizRiscos` |
+| Revisão periódica da matriz pelas linhas de defesa | 592 | 📋 F8 ampliada | |
+| Projeção de variação cambial e inflacionária | 55 | ➕ F23 | Baixa prioridade |
+
+## 4. Pesquisa de preços (art. 23)
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Fontes do art. 23 e importação da cesta | 50, 681, 1460 | ✅ | `FonteCotacao`; RF-16 (importação por planilha) |
+| Consulta automática ao Painel de Preços, notas fiscais, contratações similares, Sinapi/Sicro | 50, 655, 1460, 1793 | ➕ F23 | |
+| Média, mediana e menor preço; cotação direta com 3 fornecedores, até 6 meses, com justificativa | 52, 1796 | ✅ | RN-05 `analisarCestaPrecos` |
+| Expurgo de valores fora da curva e nota técnica | 55, 683, 1473 | ✅ | RIA-03 e `modeloNotaTecnica`. O expurgo é sugerido e aceito por uma pessoa, também em lote |
+| Orçamento sigiloso motivado (art. 24) | 50, 655, 1466 | ✅ | `orcamentoSigiloso` com motivo |
+
+## 5. TR, edital e minuta
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Geração assistida de ETP, TR, edital e minuta, com revisão humana | 40, 652, 1801 | ✅ | RIA-04: modelos determinísticos; LLM auto-hospedado opcional |
+| Modelos padronizados da AGU como base | 652, 1417, 1801 | ➕ F24 | Os modelos atuais são próprios |
+| IA com RAG na lei e nos manuais, com conferência das citações (IMR-02 "precisão normativa") | 510, 757, 1438 | ➕ F24 | Hoje há fontes e premissas em cada rascunho, mas sem índice RAG |
+| Conferência cruzada entre documentos (prazos, quantidades, dotação) | 1805 | ➕ F24 | Hoje só detecta documento gerado com parâmetros antigos |
+| Minuta com as 19 cláusulas do art. 92 e a cessão do art. 93 | 912–1061, 1801 | ✅ | `modeloMinuta` |
+| Habilitação sem faturamento mínimo, PL de até 10%, sem cadastro complementar | 811, 897, 1804 | ✅ | RN-06 |
+| Empresa com menos de 2 anos (art. 69, § 6º) e limites de atestados (art. 67) | 505, 814 | ➕ F13 ampliada | |
+| Técnica e preço 70/30, com desempenho anterior (art. 37, III) | 799, 1118, 2304 | 📋 F3 | |
+| Cláusula de prova de conceito | 671, 879, 1802 | 📋 F1 | |
+| IMR no TR | 730–790, 1802 | 📋 F7 | O IMR do próprio TR do cliente serve de modelo |
+| Visualizador lado a lado com destaque das cláusulas | 1802 | 🟡 | O visualizador mostra premissas e fontes, sem destaque por cor |
+| Exportar documentos (PDF, DOCX) | 595–610 | 🟡 | PDF do inteiro teor público (RF-17) e dossiê imprimível. DOCX exigiria biblioteca nova |
+| Impedir a geração da minuta com item de luxo sem justificativa (PoC-01) | 675–677, 1717 | ➕ Fase 1 | |
+
+## 6. Controle jurídico, publicação e transparência
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Checklist do parecer jurídico (art. 53); publicação só com parecer favorável | 1063, 1809 | ✅ | `PUT /processos/:id/parecer` |
+| Nota técnica de encaminhamento à CONJUR | 1721, 2225 | ➕ F20 | |
+| Publicação real no PNCP (edital e anexos), começando pelo sandbox (PoC-05) | 664, 689, 1810 | 📋 F11 | Hoje é simulada; especificação em `docs/integracoes/PNCP-PUBLICACAO.md` |
+| Publicação no PNCP de atas, contratos, aditivos e PCA | 664, 864, 1582 | ➕ F11 ampliada | |
+| Extrato no DOU e em jornal | 864, 1810 | 📋 F11 | Registro manual na Fase 1; INCom na Fase 5 |
+| Inteiro teor do edital e dos anexos sem login (art. 25, § 3º) | 77, 691, 1812 | ✅ | RF-17: `/transparencia/editais`, PDF gerado no servidor |
+| Dados pessoais tarjados no que é publicado | 267, 1813 | ✅ | RIA-05: telas mascaradas e tarja automática no inteiro teor |
+| Sigilo de segurança pública (art. 13), contratos sigilosos (art. 91, § 1º), cofre de anexos táticos | 324, 664, 1602, 1813 | ➕ F25 | Hoje só existe o orçamento sigiloso. Crítico para o MJSP |
+| Adjudicação e homologação como atos; documentos preparatórios divulgados após a homologação (art. 54, § 3º) | 908 | ➕ F26 | |
+| Despacho de autorização de abertura | 2317 | ➕ F20 | |
+
+## 7. Seleção do fornecedor
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Sala de disputa com lances ao vivo (modos aberto e fechado, diálogo competitivo) | 58, 658, 1489, 1817 | ➕ a decidir | Hoje a Ágora registra o resultado. Ver seção 13: integrar com o sistema oficial pode ser o caminho |
+| Dispensa eletrônica com aviso de 3 dias úteis | 58, 702, 1817 | 🟡 | A regra existe no domínio (`prazoAvisoDispensaEletronica`), mas a API não a usa. Entra pelas rotas de contratação (F9) |
+| Sicx (Lei 15.266/2025) | 58, 1817 | 📋 F9 | |
+| Cartão de pagamento | 1496 | ➕ F9 ampliada | |
+| Desempate do art. 60 e LC 123 | 60, 880, 1820 | ✅ | RN-08 `aplicarDesempate` |
+| Desempenho anterior vindo do índice, não digitado | 1117, 1820 | 📋 F3 | |
+| Sinal de sócio em comum entre licitantes e com agentes | 63, 658 | ✅ | RIA-06 e RN-03 |
+| Vínculos informados por fonte lícita; extensão de sanção (art. 160) | 1132, 1830 | 📋 F4 | |
+| Parentesco descoberto por cruzamento de dados; bots e IP em tempo real | 63, 1132, 1509, 1821 | ⛔ | Sem fonte lícita (LGPD); a Ágora não recebe IP nem lances; a IA não desclassifica. Alternativas: F4 e F14 |
+| Leitura de atestados por OCR (PoC-03) | 64, 687, 1818 | 📋 F13 | |
+| Prova de conceito nos processos do órgão | 1817 | 📋 F1 | |
+| Fase recursal com controle de prazos | 61 | ➕ F26 | O cliente pede 5 dias úteis; a lei dá 3 (art. 165). Ver seção 13 |
+
+## 8. Contratos e execução
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Painel de vigências 30/60/90, saldos, empenhos, ordem cronológica | 67, 1107, 1825 | ✅ | RF-01, RN-17, RN-18 |
+| Faixa de 120 dias no semáforo | 1106 | ➕ F22 | Ajuste pequeno |
+| Bloqueio antes da assinatura (CEIS/CNEP e regularidade) | 69, 688, 1829 | 🟡 | RN-09 bloqueia, mas sobre a base local. Consulta real: F18 |
+| **Aditivos e prorrogação como atos registrados, com travas** (art. 125, regularidade, risco da matriz) | 586, 638, 1358, 1829 | ➕ F22 | Hoje só o simulador. As travas existem, mas não bloqueiam um ato real |
+| Recebimento provisório e definitivo (art. 140), com prazos | 67, 982, 1532 | ➕ F22 | Hoje é tarefa do plano de gestão e cláusula da minuta |
+| Garantias: alerta de vencimento pelo servidor, liberação, execução e renovação | 67, 1107 | 🟡 → F22 | Os dados existem; o alerta só vem do seed |
+| Prazos de liquidação e pagamento | 732, 958 | ➕ F22 | |
+| Reajuste (índice e cálculo), repactuação e reequilíbrio, extinção, período antes da ordem de serviço | 942–1001, 1058 | ➕ F22 | Hoje só como cláusulas |
+| Alerta de limite de prorrogação e de nova licitação | 1111 | ➕ F22 | A queima de saldo já existe (RIA-07) |
+| Papel de fiscal requisitante | 715–725 | ➕ F22 | |
+| IMR, medição mensal e conferência da nota fiscal | 734–790, 1140 | 📋 F7 | |
+| Desconto da multa na garantia ou na fatura (com confirmação humana) | 1129 | ➕ F22 | |
+| Manter a habilitação durante a execução (antes do atesto e do pagamento) | 1041 | ➕ F18 e F22 | |
+| Divulgação de aditivos no PNCP | 78 | ➕ F11 ampliada e F22 | Contratos: RN-11 ✅ |
+| Notificações externas (e-mail, SEI) a fiscais e contratadas | 1108, 1532 | ➕ F27 | Hoje só a fila interna de pendências |
+| Gestão compartilhada com a sociedade e relatório final (art. 174, § 3º, VI) | 1148, 1589, 1825 | ➕ F28 | |
+| Percentuais do Decreto 11.430/2023 na execução | 1042 | ➕ F22 | A cláusula da minuta existe |
+
+## 9. Fornecedores, sanções e índice de desempenho
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Índice de desempenho de 0 a 100 com faixas, só com indicadores objetivos | 1115, 1122, 1827 | ✅ | RF-13 `calcularIdc`, com metodologia e aviso. Componente de IMR: F7 |
+| Selos "Diamante, Ouro, Prata… Impedido" | 1115 | 🟡 | Faixas próprias. "Impedido" não é faixa: a sanção aparece à parte. Ver seção 13 |
+| Documento de avaliação de desempenho e envio ao cadastro de atesto do PNCP | 1119, 1827 | 📋 F3 | |
+| Processo sancionatório com prazo de defesa | 67, 1128 | ✅ | RF-14, RN-13. As alegações finais ficam para a F22 |
+| Dosimetria das multas compensatória (0,5% a 30%) e moratória | 72, 688, 1129, 1826 | ✅ | RN-12 e RN-19, com simuladores |
+| **Consulta real ao CEIS/CNEP e às certidões (Receita, CNDT)** | 69, 661, 922, 1110 | ➕ F18 | Hoje é base local. Crítico para a PoC-04 |
+| **Envio da sanção ao CEIS/CNEP em até 15 dias úteis (art. 161)** | 70, 1031, 1131, 1826 | ➕ F18 | Hoje só o prazo é calculado |
+
+## 10. Auditoria e controle
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Trilha imutável de todo o processo | 415, 1142 | ✅ | RNF-03: encadeamento por hash e verificação de integridade |
+| Logs assinados ou com carimbo de tempo ICP-Brasil | 1142 | ➕ F25 | |
+| Painel das 3 linhas de defesa (art. 169) | 644, 1136, 1826 | 📋 F8 | |
+| Cautelares do TCU (10 dias úteis, art. 171, § 2º) | 1139, 1826 | 📋 F2 | |
+| Matriz de achados preventivos e relatório executivo de auditoria | 1140, 1155 | 📋 F8 ampliada | |
+| Auditoria contínua de notas, medições e aditivos (sobrepreço, desequilíbrio) | 1143 | 📋 F7 e F22 | |
+
+## 11. Integrações, IA e infraestrutura
+
+| Requisito | Linhas | Status | Evidência ou o que falta |
+|---|---|---|---|
+| Login único gov.br | 318, 1689 | ✅ | `/sessao/govbr/*` |
+| Integração com o SEI | 327, 1784 | 📋 F12 | Hoje simulada |
+| Assinatura ICP-Brasil dentro da aplicação | 318, 512, 1689, 1784 | ⛔ | Exigiria componente de terceiros no navegador. Alternativa: assinar no SEI e refletir (F12) |
+| IA privada em contêiner do órgão, sem treino externo | 521, 1693 | ✅ | `ia/provedor.ts`: nenhum provedor ou LLM auto-hospedado |
+| Escopo por UASG (Administração Central, PF, PRF, SENASP, SENAPPEN) | 295, 336 | ✅ | RNF-05 |
+| Dados abertos | 75, 327 | 🟡 → F28 | `GET /publico/*` em JSON, sem catálogo de dados abertos |
+| Fila de mensageria (RabbitMQ ou Kafka) com novas tentativas | 522, 1697 | 🟡 | Há novas tentativas no conector do PNCP. Ver seção 13 sobre mensageria |
+| Microsserviços | 389 | 🟡 | Monólito modular em contêiner, com escala por réplicas. Ver seção 13 |
+| TI verde: autoescalonamento e desligamento fora do expediente | 464 | ➕ F29 | |
+| Volume de 4.500 processos/ano e 12.000 documentos; disponibilidade de 99,8% | 341, 573, 1697 | ➕ F29 | Teste de carga e medição de disponibilidade. O resto é contratual |
+
+## 12. Novas funções acrescentadas ao plano
+
+Detalhe no `PLANO-NOVAS-FUNCOES.md`.
+
+| # | Função | Prioridade |
+|---|---|---|
+| F18 | Integração CEIS/CNEP e certidões (consulta real, envio da sanção em 15 dias úteis, recheque antes do atesto e do pagamento) | **Fase 1 (PoC-04)** |
+| F19 | Catálogo CATMAT/CATSER: consulta ao catálogo oficial e sugestão do item | Fase 2 |
+| F20 | Documentos que faltam ao cliente: portaria de designação, declaração orçamentária, despacho de autorização, nota técnica à CONJUR e anexos operacionais (modelo de proposta, ordem de serviço, termo de sigilo, termos de recebimento), mais a dotação estruturada | Fase 2 |
+| F21 | Políticas do órgão: exigências configuráveis, como sustentabilidade obrigatória | Fase 3 |
+| F22 | Execução contratual como ato: aditivos e prorrogação com travas, recebimentos, garantias, prazos de pagamento, reajuste, repactuação, extinção, fiscal requisitante, desconto de multa, alertas de 120 dias e de limite de prorrogação | **Fase 2** (Módulo 4 do TR) |
+| F23 | Consulta automática de preços (Painel de Preços e contratações similares por dados abertos; Sinapi/Sicro) e projeções | Fase 3 |
+| F24 | IA ancorada: modelos padronizados da AGU, RAG sobre a lei e os manuais, conferência de citações e conferência cruzada entre documentos (IMR-02) | Fase 3 |
+| F25 | Sigilo de segurança pública: classificação de sigilo por processo e documento, tarja do art. 13, contratos sigilosos (art. 91, § 1º), cofre de anexos e carimbo de tempo da trilha | **Fase 2** (crítico para o MJSP) |
+| F26 | Atos da seleção: recurso com prazos (art. 165), adjudicação, homologação e divulgação pós-homologação (art. 54, § 3º) | Fase 2 |
+| F27 | Notificações externas (e-mail institucional, SEI) a fiscais e contratadas | Fase 3 |
+| F28 | Gestão compartilhada com a sociedade (art. 174, § 3º, VI) e catálogo de dados abertos | Fase 3 |
+| F29 | Operação: autoescalonamento, teste de carga, medição de disponibilidade e indicadores de tempo por etapa (metas do ETP) | Antes da produção |
+
+**Ampliações de funções existentes:**
+
+- **F10:** consolidar e publicar o PCA.
+- **F11:** publicar também atas, contratos, aditivos e PCA no PNCP.
+- **F13:** incluir as regras do art. 67 e o art. 69, § 6º.
+- **F14:** incluir vínculo efetivo e capacitação dos agentes.
+- **F8:** incluir a revisão periódica da matriz e o relatório executivo de auditoria.
+- **F9:** incluir o cartão de pagamento.
+
+## 13. Pontos para confirmar com o cliente
+
+1. **Prazo de recurso.** O cliente fala em 5 dias úteis, mas a Lei 14.133 (art. 165, I) dá **3 dias úteis**. Os 5 dias eram da Lei 8.666. A Ágora usa 3.
+2. **Cores.** Os hex da bandeira pedidos não passam no contraste AA (o amarelo sobre branco, por exemplo). A Ágora usa os tokens oficiais do gov.br DS, que são as mesmas cores em versões acessíveis. Conferir se atende.
+3. **Sala de disputa.** A conversa pede sala própria de lances. As sessões públicas dos órgãos federais acontecem no sistema oficial de compras do governo. Integrar com ele e trazer o resultado, como a Ágora já faz ao registrar a disputa, pode ser mais seguro e mais rápido do que construir uma sala nova. Confirmar o que o cliente espera.
+4. **Microsserviços e mensageria.** A Ágora é um monólito modular em contêineres, com escala por réplicas, novas tentativas nos conectores e Kubernetes. Atende ao objetivo (disponibilidade e escala) com operação mais simples. Confirmar se o termo "microsserviços" é exigência formal do edital.
+5. **Selos de desempenho.** "Impedido" mistura sanção com índice de desempenho. A Ágora mostra as duas coisas separadas, que é mais seguro juridicamente. Confirmar se os nomes dos selos (Diamante, Ouro...) são desejados.
+6. **Sustentabilidade obrigatória.** A lei não obriga o inciso XII em todo ETP. Torná-lo obrigatório seria uma política do órgão, configurável (F21).
+7. **Metas do ETP** (−60% no tempo de instrução, economia de 8% a 14%). Para medir, a Ágora precisa registrar o tempo por etapa (F29). Ela não calcula "economia pela IA" (plano, seção 7).
