@@ -121,6 +121,8 @@ describe('autorização: RBAC por perfil e escopo por UASG', () => {
     assert.ok(!porCodigo.get('planejamento')?.permissoes.includes('disputa:conduzir'), 'segregação: quem planeja não conduz a sessão');
     assert.ok(porCodigo.get('gestor_contratos')?.permissoes.includes('jornada:homologar'));
     assert.ok(!porCodigo.get('agente_contratacao')?.permissoes.includes('jornada:homologar'));
+    assert.ok(porCodigo.get('agente_contratacao')?.permissoes.includes('documentos:analisar'));
+    assert.ok(!porCodigo.get('fiscal')?.permissoes.includes('documentos:ler'));
     assert.ok(porCodigo.get('auditor')?.permissoes.includes('lgpd:revelar'));
     assert.ok(!porCodigo.get('auditor')?.permissoes.includes('pendencias:resolver'));
     assert.ok(porCodigo.get('fiscal')?.permissoes.includes('pagamentos:atestar'));

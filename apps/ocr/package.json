@@ -1,0 +1,15 @@
+{
+  "name": "@agora/ocr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Serviço interno de OCR da Ágora (Tesseract em português + pdftoppm), chamado só pela API. Sem dependências npm.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/servidor.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

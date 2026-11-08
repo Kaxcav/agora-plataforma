@@ -189,3 +189,58 @@ export function mensagemDeErro(erro: unknown): string {
   if (erro instanceof Error) return erro.message;
   return 'Ocorreu um erro inesperado.';
 }
+
+/**
+ * POST com corpo arbitrário (arquivo ou JSON) e cabeçalhos próprios, com CSRF e o mesmo tratamento de erros.
+ * Usado no envio e no download de documentos do processo (o arquivo trafega só entre o navegador e a API).
+ */
+async function postarBruto(caminho: string, corpo: BodyInit, cabecalhosExtras: Record<string, string>, parametros?: Parametros): Promise<Response> {
+  const cabecalhos: Record<string, string> = { ...cabecalhosExtras };
+  if (tokenCsrf) cabecalhos['X-Agora-CSRF'] = tokenCsrf;
+  let resposta: Response;
+  try {
+    resposta = await fetch(urlApi(caminho, parametros), { method: 'POST', headers: cabecalhos, body: corpo, credentials: 'same-origin' });
+  } catch {
+    throw new ErroApi({
+      status: 0,
+      codigo: 'REDE',
+      mensagem: 'Não foi possível conectar ao servidor da Ágora. Verifique a conexão e tente novamente.',
+      idRequisicao: null,
+    });
+  }
+  if (resposta.status === 401) aoNaoAutenticado?.();
+  if (!resposta.ok) {
+    const erro = await lerErro(resposta);
+    if (erro.status === 403 && erro.codigo === CODIGO_TROCA_SENHA) aoExigirTrocaSenha?.();
+    throw erro;
+  }
+  return resposta;
+}
+
+/** Envia um arquivo como corpo binário; o servidor confere o tipo pelo conteúdo. Devolve o JSON da resposta. */
+export async function enviarArquivo<T>(caminho: string, arquivo: Blob, nomeArquivo: string, parametros?: Parametros): Promise<T> {
+  const resposta = await postarBruto(
+    caminho,
+    arquivo,
+    { Accept: 'application/json', 'Content-Type': 'application/octet-stream', 'X-Agora-Nome-Arquivo': encodeURIComponent(nomeArquivo) },
+    parametros,
+  );
+  return (await resposta.json()) as T;
+}
+
+/** Baixa um arquivo por POST (a requisição leva a finalidade do acesso quando há dado pessoal). */
+export async function baixarArquivoApi(caminho: string, corpo: unknown): Promise<{ conteudo: Blob; nome: string | null }> {
+  const resposta = await postarBruto(caminho, JSON.stringify(corpo ?? {}), { Accept: '*/*', 'Content-Type': 'application/json' });
+  const disposicao = resposta.headers.get('content-disposition') ?? '';
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposicao)?.[1];
+  const ascii = /filename="([^"]+)"/i.exec(disposicao)?.[1];
+  let nome: string | null = ascii ?? null;
+  if (utf8) {
+    try {
+      nome = decodeURIComponent(utf8);
+    } catch {
+      nome = ascii ?? null;
+    }
+  }
+  return { conteudo: await resposta.blob(), nome };
+}

@@ -1,0 +1,20 @@
+/* Documentos do processo e leitura assistida de atestados (RF-21, RIA-08). Carregado só com a página. */
+
+.documentos__detalhe {
+  display: block;
+  margin-top: var(--esp-1);
+}
+
+.documentos__evidencias {
+  margin-top: var(--esp-1);
+  padding-left: var(--esp-4);
+  border-left: 2px solid var(--cor-borda, currentColor);
+}
+
+.documentos__evidencias li + li {
+  margin-top: var(--esp-1);
+}
+
+.documentos__contribuicao + .documentos__contribuicao {
+  margin-top: var(--esp-3);
+}

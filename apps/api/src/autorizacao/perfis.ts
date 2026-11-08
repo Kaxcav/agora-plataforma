@@ -40,6 +40,9 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'jornada:homologar',
   'certidoes:registrar',
   'regularidade:consultar',
+  'documentos:ler',
+  'documentos:enviar',
+  'documentos:analisar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -81,6 +84,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'jornada:homologar',
       'certidoes:registrar',
       'regularidade:consultar',
+      'documentos:ler',
     ],
   },
   {
@@ -132,7 +136,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
     codigo: 'planejamento',
     nome: 'Planejamento',
     descricao: 'Conduz a fase preparatória da contratação (DFD, ETP, riscos e preços).',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar'],
   },
   {
     codigo: 'agente_contratacao',
@@ -153,13 +157,16 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'controle_externo:ler',
       'certidoes:registrar',
       'regularidade:consultar',
+      'documentos:ler',
+      'documentos:enviar',
+      'documentos:analisar',
     ],
   },
   {
     codigo: 'juridico',
     nome: 'Assessoria jurídica',
     descricao: 'Realiza o controle prévio de legalidade (art. 53) e aprova a fase jurídica.',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler', 'documentos:ler'],
   },
   {
     codigo: 'auditor',

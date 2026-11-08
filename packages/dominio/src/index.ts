@@ -28,3 +28,5 @@ export * from './lei14133/controle.ts';
 export * from './lei14133/selecao.ts';
 export * from './lei14133/sustentabilidade.ts';
 export * from './lei14133/regularidade.ts';
+export * from './lei14133/qualificacao-tecnica.ts';
+export * from './atestados.ts';

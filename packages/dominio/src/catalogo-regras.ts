@@ -774,6 +774,40 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: ['fornecedores', 'jornada.detalhe', 'contratos.detalhe'],
     implementacao: 'avaliarChecklistRegularidade, classificarRegistroSancaoExterna, validarCertidao; api: GET /fornecedores/:id/regularidade; POST /fornecedores/:id/regularidade/consultar; POST /fornecedores/:id/certidoes',
   },
+  {
+    id: 'RF-21',
+    tipo: 'RF',
+    titulo: 'Documentos do processo e de habilitação',
+    descricao:
+      'Recebe os documentos do processo e os de habilitação dos licitantes (atestados, balanços, certidões e propostas) em PDF, PNG ou JPEG. O servidor confere o tipo pelo conteúdo do arquivo, e não pela extensão, recusa PDF com código ativo, aplica o limite de tamanho, calcula o SHA-256, passa o arquivo pelo antivírus do órgão quando configurado e o guarda fora do banco, no armazenamento da própria Ágora. O download só acontece pela API, com permissão e escopo da UASG do processo. Baixar documento marcado com dado pessoal exige finalidade e fica registrado (LGPD, art. 37). Envio, leitura e download ficam na trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, arts. 12, VI, 62 e 67; Lei 13.709/2018 (LGPD), arts. 6º, 37 e 46',
+    etapa: null,
+    telas: ['jornada.documentos'],
+    implementacao: 'api: GET /processos/:id/arquivos; POST /processos/:id/arquivos; POST /processos/:id/arquivos/:arquivoId/baixar',
+  },
+  {
+    id: 'RIA-08',
+    tipo: 'RIA',
+    titulo: 'Leitura assistida de atestados de capacidade técnica',
+    descricao:
+      'Lê o atestado em PDF pela camada de texto ou, se o PDF for digitalizado, pelo serviço de reconhecimento óptico (OCR) hospedado pelo órgão. Localiza os quantitativos executados por parcela, com a unidade e o trecho-fonte (página e linha), confere o valor escrito por extenso, soma os atestados do mesmo licitante e compara o resultado com os mínimos exigidos no edital. O resultado é um sinal com evidências, premissas e data, que requer revisão humana: a habilitação técnica é decisão do agente de contratação.',
+    fundamento: 'Lei 14.133/2021, art. 67, II, e §§ 1º e 2º; art. 18, IX',
+    etapa: 6,
+    telas: ['jornada.documentos'],
+    implementacao: 'extrairQuantitativosAtestado, somarQuantitativosAtestados; api: POST /processos/:id/arquivos/:arquivoId/leitura; GET /processos/:id/qualificacao-tecnica',
+  },
+  {
+    id: 'RN-25',
+    tipo: 'RN',
+    titulo: 'Parcelas de maior relevância, quantitativos mínimos e exercícios do balanço',
+    descricao:
+      'O edital só pode exigir atestado das parcelas de maior relevância ou valor significativo, que são as de valor individual igual ou superior a 4% do valor total estimado da contratação, e o quantitativo mínimo exigido nos atestados não pode passar de 50% da parcela, vedadas limitações de tempo e de local. A Ágora recusa exigência que descumpra esses limites. Na habilitação econômico-financeira, exige-se o balanço dos 2 últimos exercícios sociais, ou só do último quando a empresa foi constituída há menos de 2 anos.',
+    fundamento: 'Lei 14.133/2021, art. 18, IX; art. 67, §§ 1º e 2º; art. 69, I e § 6º',
+    etapa: 4,
+    telas: ['jornada.documentos'],
+    implementacao:
+      'classificarParcelaRelevancia, limiteQuantitativoMinimo, avaliarExigenciasQualificacaoTecnica, exerciciosBalancoExigiveis, avaliarBalancosApresentados; api: PUT /processos/:id/qualificacao-tecnica',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

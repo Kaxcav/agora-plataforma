@@ -65,6 +65,9 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'jornada:homologar': 'Decidir recursos, adjudicar e homologar (autoridade competente designada)',
   'certidoes:registrar': 'Registrar certidões de regularidade',
   'regularidade:consultar': 'Consultar o CEIS e o CNEP',
+  'documentos:ler': 'Consultar documentos do processo',
+  'documentos:enviar': 'Enviar documentos do processo',
+  'documentos:analisar': 'Ler atestados com apoio da IA',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

@@ -14,6 +14,7 @@ import { gerarProcessos } from './processos.ts';
 import { gerarReferenciasPrecos } from './precos.ts';
 import { gerarControle } from './controle.ts';
 import { gerarRegularidade } from './regularidade.ts';
+import { gerarQualificacaoTecnica } from './qualificacao-tecnica.ts';
 import { SENHA_DEMONSTRACAO } from './usuarios-demonstracao.ts';
 import { gerarVinculoSalaDisputa } from './disputa.ts';
 
@@ -35,6 +36,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'sala-disputa', executar: gerarVinculoSalaDisputa },
   { nome: 'controle', executar: gerarControle },
   { nome: 'regularidade', executar: gerarRegularidade },
+  { nome: 'qualificacao-tecnica', executar: gerarQualificacaoTecnica },
 ];
 
 function dadosVazios(): DadosSeed {
