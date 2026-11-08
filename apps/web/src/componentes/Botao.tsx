@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode, Ref } from 
 import { Link, type LinkProps } from 'react-router';
 import { ExternalLink, LoaderCircle, type LucideIcon } from 'lucide-react';
 
-export type VarianteBotao = 'primario' | 'secundario' | 'terciario' | 'perigo';
+export type VarianteBotao = 'primario' | 'secundario' | 'terciario' | 'perigo' | 'avanco';
 export type TamanhoBotao = 'padrao' | 'compacto';
 
 function classesBotao(variante: VarianteBotao, tamanho: TamanhoBotao, somenteIcone: boolean, extra?: string): string {
