@@ -18,7 +18,7 @@ const MAXIMO_CARACTERES = 100_000;
 async function lerArquivoComoTexto(arquivo: File): Promise<string> {
   const bytes = await arquivo.arrayBuffer();
   const utf8 = new TextDecoder('utf-8').decode(bytes);
-  return utf8.includes('�') ? new TextDecoder('windows-1252').decode(bytes) : utf8;
+  return utf8.includes('\uFFFD') ? new TextDecoder('windows-1252').decode(bytes) : utf8;
 }
 
 interface PropsImportarCesta {

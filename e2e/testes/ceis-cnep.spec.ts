@@ -3,7 +3,7 @@
  * recheque no atesto (RN-23) e registro do envio da sanção ao CEIS/CNEP (RN-24). Dados sintéticos: a base simulada
  * do CEIS traz uma inidoneidade vigente para um dos fornecedores da carga de demonstração.
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Page } from '@playwright/test';
 import { entrar, esperarAviso, esperarPaginaOk, monitorarErros, verificarAcessibilidade } from './apoio.ts';
 
 interface ProcessoLista {
@@ -37,8 +37,42 @@ async function idFornecedor(page: Page, busca: string): Promise<string> {
   return fornecedor?.id ?? '';
 }
 
+const MOTIVACAO = 'Motivação sintética registrada pelo teste ponta a ponta da Ágora.';
+
+/**
+ * Pratica, pela API, os atos da seleção até a homologação, no caminho sem recurso (RN-20, RN-22 e RF-18): o agente
+ * conduz a prova de conceito (se exigida), a habilitação e o registro de intenções; a autoridade competente designada
+ * no processo (gestor de demonstração) adjudica e homologa. Sem eles, o avanço da etapa 6 para a 7 é recusado.
+ */
+async function concluirSelecao(page: Page, autoridade: Page, processoId: string): Promise<void> {
+  const base = `/api/v1/processos/${processoId}/selecao`;
+  const atos: Partial<Record<string, [Page, string, unknown]>> = {
+    convocar_prova_conceito: [page, `${base}/prova-conceito/convocacao`, {}],
+    registrar_resultado_prova_conceito: [
+      page,
+      `${base}/prova-conceito/resultado`,
+      { resultado: 'aprovado', motivacao: MOTIVACAO, linkGravacao: 'https://video.orgao.exemplo/sessoes/prova-conceito-radios' },
+    ],
+    registrar_habilitacao: [page, `${base}/habilitacao`, { resultado: 'habilitado', motivacao: MOTIVACAO }],
+    registrar_intencao_recurso: [page, `${base}/recurso/encerrar-intencao`, {}],
+    adjudicar: [autoridade, `${base}/adjudicacao`, { motivacao: null }],
+    homologar: [autoridade, `${base}/homologacao`, { motivacao: null }],
+  };
+  let detalhe = (await (await page.request.get(`/api/v1/processos/${processoId}`)).json()) as { selecao: { proximoAto: string } };
+  for (let passo = 0; passo < 12 && detalhe.selecao.proximoAto !== 'concluida'; passo++) {
+    const ato = atos[detalhe.selecao.proximoAto];
+    expect(ato, `ato da seleção sem atalho no teste: ${detalhe.selecao.proximoAto}`).toBeTruthy();
+    if (!ato) return;
+    const [quem, url, corpo] = ato;
+    const resposta = await quem.request.post(url, { headers: { 'x-agora-csrf': await csrf(quem) }, data: corpo });
+    expect(resposta.status(), `${url} → ${await resposta.text()}`).toBe(200);
+    detalhe = (await resposta.json()) as typeof detalhe;
+  }
+  expect(detalhe.selecao.proximoAto).toBe('concluida');
+}
+
 /** Leva o processo dos rádios à etapa 7 com um vencedor que tem sanção vigente no CEIS (base simulada). */
-async function prepararProcessoComVencedorSancionado(page: Page): Promise<ProcessoLista | null> {
+async function prepararProcessoComVencedorSancionado(page: Page, browser: Browser): Promise<ProcessoLista | null> {
   const token = await csrf(page);
   const cabecalhos = { 'x-agora-csrf': token };
   const buscar = async () => {
@@ -59,6 +93,14 @@ async function prepararProcessoComVencedorSancionado(page: Page): Promise<Proces
       data: { licitantes: [{ id: mirante, valorProposta: 780_000_000 }, { id: vigilant, valorProposta: 790_000_000 }] },
     });
     expect(disputa.status()).toBe(200);
+    const contexto = await browser.newContext({ locale: 'pt-BR', timezoneId: 'America/Sao_Paulo' });
+    try {
+      const autoridade = await contexto.newPage();
+      await entrar(autoridade, 'gestor');
+      await concluirSelecao(page, autoridade, processo.id);
+    } finally {
+      await contexto.close();
+    }
     expect((await page.request.post(`/api/v1/processos/${processo.id}/avancar`, { headers: cabecalhos })).status()).toBe(200);
     processo = await buscar();
   }
@@ -66,11 +108,11 @@ async function prepararProcessoComVencedorSancionado(page: Page): Promise<Proces
 }
 
 test.describe('CEIS, CNEP e certidões (frente C)', () => {
-  test('PoC-04 — contratar CNPJ com sanção vigente no CEIS é bloqueado, com a fonte e a data da consulta', async ({ page }) => {
+  test('PoC-04 — contratar CNPJ com sanção vigente no CEIS é bloqueado, com a fonte e a data da consulta', async ({ page, browser }) => {
     const erros = monitorarErros(page);
     erros.permitir(422, /\/api\/v1\/processos\/[0-9a-f-]+\/contratar$/);
     await entrar(page, 'agente');
-    const processo = await prepararProcessoComVencedorSancionado(page);
+    const processo = await prepararProcessoComVencedorSancionado(page, browser);
     test.skip(!processo, 'processo dos rádios indisponível para o roteiro');
     await page.goto(`/jornada/${processo?.id ?? ''}`);
     await esperarPaginaOk(page);
