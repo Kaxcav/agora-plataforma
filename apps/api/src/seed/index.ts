@@ -22,6 +22,10 @@ import { gerarFila } from './fila.ts';
 import { gerarExecucaoContratual } from './execucao-contratual.ts';
 import { gerarOperacaoMetas } from './operacao-metas.ts';
 import { gerarImr } from './imr.ts';
+import { gerarPreparatorios } from './preparatorios.ts';
+import { gerarSociedade } from './sociedade.ts';
+import { gerarAlteracoes } from './alteracoes.ts';
+import { gerarSeiDou } from './sei-dou.ts';
 
 /** Semente fixa do gerador (Lei 14.133): a mesma data de referência produz sempre os mesmos dados. */
 export const SEMENTE_DEMONSTRACAO = 14_133;
@@ -49,6 +53,10 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'execucao-contratual', executar: gerarExecucaoContratual },
   { nome: 'operacao-metas', executar: gerarOperacaoMetas },
   { nome: 'imr', executar: gerarImr },
+  { nome: 'preparatorios', executar: gerarPreparatorios },
+  { nome: 'sociedade', executar: gerarSociedade },
+  { nome: 'alteracoes', executar: gerarAlteracoes },
+  { nome: 'sei-dou', executar: gerarSeiDou },
 ];
 
 function dadosVazios(): DadosSeed {

@@ -1,9 +1,8 @@
 import { Link, useParams } from 'react-router';
-import { Banknote, CircleDollarSign, FilePen, ListTodo, Package, Receipt, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
-import type { Aditivo, ContratoDetalhe as DadosContrato, ItemContrato } from '@agora/contratos';
+import { Banknote, CircleDollarSign, ListTodo, Package, Receipt, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import type { ContratoDetalhe as DadosContrato, ItemContrato } from '@agora/contratos';
 import { classificarVigencia, formatarData, formatarMoeda, formatarMoedaCompacta, hojeISO } from '@agora/dominio';
 import {
-  useAditivosContrato,
   useContrato,
   useEmpenhosContrato,
   useHistoricoContrato,
@@ -40,9 +39,8 @@ import { formatarNumero, formatarPercentual } from '../../utilitarios/formatacao
 import { COLUNAS_EMPENHO, COLUNAS_PAGAMENTO, semColunas } from '../compartilhado/colunasFinanceiro';
 import { Historico } from '../compartilhado/Historico';
 import { PlanoGestao } from '../compartilhado/PlanoGestao';
-import { ORIGENS_CONTRATO, TIPOS_ADITIVO } from '../compartilhado/rotulos';
-import { ProrrogacaoContrato } from './ProrrogacaoContrato';
-import { SimuladorAditivo } from './SimuladorAditivo';
+import { ORIGENS_CONTRATO } from '../compartilhado/rotulos';
+import { AbaAlteracoes } from './alteracoes/AbaAlteracoes';
 import { BotaoNotificar } from '../notificacoes/DialogoNotificar';
 import { AbaRiscosContrato } from '../controle/AbaRiscosContrato';
 import { AbaFiscalizacao } from './execucao/AbaFiscalizacao';
@@ -108,33 +106,6 @@ const COLUNAS_ITENS: ColunaTabela<ItemContrato>[] = [
       />
     ),
   },
-];
-
-const COLUNAS_ADITIVOS: ColunaTabela<Aditivo>[] = [
-  { id: 'numero', cabecalho: 'Termo', identificadora: true, fixa: true, celula: (a) => a.numero },
-  { id: 'tipo', cabecalho: 'Tipo', prioritaria: true, celula: (a) => TIPOS_ADITIVO[a.tipo] },
-  {
-    id: 'valor',
-    cabecalho: 'Valor',
-    alinhamento: 'fim',
-    prioritaria: true,
-    ordenavel: true,
-    valorOrdenacao: (a) => a.valor,
-    celula: (a) => <span className="numero">{a.tipo === 'supressao' ? `− ${formatarMoeda(Math.abs(a.valor))}` : formatarMoeda(a.valor)}</span>,
-  },
-  {
-    id: 'novaVigenciaFim',
-    cabecalho: 'Nova vigência',
-    celula: (a) => (a.novaVigenciaFim ? <span className="numero">até {formatarData(a.novaVigenciaFim)}</span> : <span className="texto-secundario">—</span>),
-  },
-  {
-    id: 'assinadoEm',
-    cabecalho: 'Assinado em',
-    ordenavel: true,
-    valorOrdenacao: (a) => a.assinadoEm,
-    celula: (a) => <span className="numero">{formatarData(a.assinadoEm)}</span>,
-  },
-  { id: 'justificativa', cabecalho: 'Justificativa', larguraMinima: '16rem', celula: (a) => <TextoLongo texto={a.justificativa} /> },
 ];
 
 function AbaPlano({ id }: { id: string }) {
@@ -217,29 +188,6 @@ function AbaPagamentos({ id }: { id: string }) {
         </div>
       )}
     </ConteudoConsulta>
-  );
-}
-
-function AbaAditivos({ contrato }: { contrato: DadosContrato }) {
-  const consulta = useAditivosContrato(contrato.id);
-  return (
-    <div className="pilha pilha--ampla">
-      <ConteudoConsulta consulta={consulta} carregando={<EsqueletoTabela linhas={3} />} rotuloCarregando="Carregando termos aditivos">
-        {(aditivos) => (
-          <Tabela
-            id="contrato-aditivos"
-            legenda="Termos aditivos"
-            colunas={COLUNAS_ADITIVOS}
-            linhas={aditivos}
-            chave={(a) => a.id}
-            ordenacaoInicial={{ por: 'assinadoEm', ordem: 'asc' }}
-            vazio={<EstadoVazio icone={FilePen} titulo="Nenhum termo aditivo assinado" descricao="O contrato mantém as condições originais." />}
-          />
-        )}
-      </ConteudoConsulta>
-      <SimuladorAditivo contrato={contrato} />
-      <ProrrogacaoContrato contrato={contrato} />
-    </div>
   );
 }
 
@@ -452,7 +400,7 @@ function ConteudoContrato({ contrato }: { contrato: DadosContrato }) {
           { id: 'itens', rotulo: 'Itens', conteudo: () => <AbaItens id={contrato.id} /> },
           { id: 'empenhos', rotulo: 'Empenhos', conteudo: () => <AbaEmpenhos id={contrato.id} /> },
           { id: 'pagamentos', rotulo: 'Pagamentos', conteudo: () => <AbaPagamentos id={contrato.id} /> },
-          { id: 'aditivos', rotulo: 'Aditivos', conteudo: () => <AbaAditivos contrato={contrato} /> },
+          { id: 'alteracoes', rotulo: 'Alterações', conteudo: () => <AbaAlteracoes contrato={contrato} /> },
           { id: 'historico', rotulo: 'Histórico', conteudo: () => <AbaHistorico id={contrato.id} /> },
           { id: 'riscos', rotulo: 'Matriz de riscos', conteudo: () => <AbaRiscosContrato contrato={contrato} /> },
           { id: 'fiscalizacao', rotulo: 'Fiscalização', conteudo: () => <AbaFiscalizacao contrato={contrato} /> },

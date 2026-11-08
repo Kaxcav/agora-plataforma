@@ -10,6 +10,7 @@ import { gerarPdfTexto } from '../../compartilhado/pdf-texto.ts';
 import { linkPncpCompra } from '../../compartilhado/instrumentos.ts';
 import { padraoContem } from '../../compartilhado/texto.ts';
 import { ORGAOS_POR_EXTENSO } from '../jornada/documentos.ts';
+import { SQL_PROCESSO_SEM_SIGILO } from '../sigilo/sql.ts';
 
 export const DOCUMENTOS_PUBLICOS = ['edital', 'tr', 'minuta_contrato'] as const;
 export type TipoDocumentoPublico = (typeof DOCUMENTOS_PUBLICOS)[number];
@@ -45,6 +46,7 @@ const CONDICOES = `
     FROM processos p
    WHERE p.publicacao->>'pncp' = 'publicado'
      AND ($1::text IS NULL OR p.busca_normalizada LIKE $1 ESCAPE '\\')
+     AND ($1::text IS NULL OR ${SQL_PROCESSO_SEM_SIGILO})
      AND ($2::uuid IS NULL OR p.id = $2)`;
 
 async function documentosAprovados(executor: Executor, processoIds: string[]): Promise<LinhaDocumento[]> {

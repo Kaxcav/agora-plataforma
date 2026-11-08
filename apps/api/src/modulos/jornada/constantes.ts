@@ -1,6 +1,12 @@
 import type { PapelProcesso } from '@agora/dominio';
 import type { EtapaJornada } from '@agora/contratos';
 import type { DfdProcesso, DisputaArmazenada, ParametrosEdital, ParecerArmazenado, PublicacaoProcesso, TipoDocumento } from './tipos.ts';
+import {
+  DOCUMENTOS_COMPLEMENTARES_SEM_IA,
+  ETAPA_DOCUMENTO_COMPLEMENTARES,
+  TIPOS_DOCUMENTO_COMPLEMENTARES,
+  TITULOS_DOCUMENTO_COMPLEMENTARES,
+} from '../preparatorios/constantes.ts';
 
 /** Mínimo de caracteres das justificativas e descrições textuais exigidas pelas regras da jornada. */
 export const MINIMO_CARACTERES_TEXTO = 30;
@@ -17,6 +23,7 @@ export const TIPOS_DOCUMENTO: readonly TipoDocumento[] = [
   'edital',
   'minuta_contrato',
   'parecer_checklist',
+  ...TIPOS_DOCUMENTO_COMPLEMENTARES,
 ];
 
 export const TITULOS_DOCUMENTO: Record<TipoDocumento, string> = {
@@ -28,6 +35,7 @@ export const TITULOS_DOCUMENTO: Record<TipoDocumento, string> = {
   edital: 'Minuta do Edital',
   minuta_contrato: 'Minuta do Contrato',
   parecer_checklist: 'Lista de Verificação do Controle Prévio de Legalidade (art. 53)',
+  ...TITULOS_DOCUMENTO_COMPLEMENTARES,
 };
 
 /** Última etapa em que cada documento pode ser (re)gerado. */
@@ -40,10 +48,11 @@ export const ETAPA_DOCUMENTO: Record<TipoDocumento, EtapaJornada> = {
   edital: 4,
   minuta_contrato: 4,
   parecer_checklist: 5,
+  ...ETAPA_DOCUMENTO_COMPLEMENTARES,
 };
 
 /** Documentos que a IA nunca redige: o checklist do parecer orienta uma conclusão jurídica, que é decisão humana. */
-export const DOCUMENTOS_SEM_IA: ReadonlySet<TipoDocumento> = new Set<TipoDocumento>(['parecer_checklist']);
+export const DOCUMENTOS_SEM_IA: ReadonlySet<TipoDocumento> = new Set<TipoDocumento>(['parecer_checklist', ...DOCUMENTOS_COMPLEMENTARES_SEM_IA]);
 
 export const TITULOS_ETAPA: Record<EtapaJornada, string> = {
   1: 'Demanda e PCA',

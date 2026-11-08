@@ -77,7 +77,8 @@ export type CodigoPerfil =
   | 'juridico'
   | 'auditor'
   | 'consulta'
-  | 'controle_interno';
+  | 'controle_interno'
+  | 'cidadao';
 
 export type Permissao =
   | 'painel:ler'
@@ -138,7 +139,23 @@ export type Permissao =
   | 'metas:configurar'
   | 'imr:configurar'
   | 'imr:medir'
-  | 'pagamentos:conferir';
+  | 'pagamentos:conferir'
+  | 'jornada:autorizar'
+  | 'sociedade:ler'
+  | 'sociedade:manifestar'
+  | 'sociedade:moderar'
+  | 'sociedade:responder'
+  | 'sociedade:registrar'
+  | 'sociedade:relatorio_final'
+  | 'alteracoes:parecer'
+  | 'alteracoes:decidir'
+  | 'normas:ler'
+  | 'qualidade_ia:ler'
+  | 'sigilo:ler'
+  | 'sigilo:classificar'
+  | 'sigilo:credenciar'
+  | 'sigilo:controle'
+  | 'auditoria:ancorar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -447,7 +464,7 @@ export interface ItemContrato {
 export interface Aditivo {
   id: Id;
   numero: string; // "1º Termo Aditivo"
-  tipo: 'acrescimo' | 'supressao' | 'prorrogacao' | 'reajuste';
+  tipo: 'acrescimo' | 'supressao' | 'prorrogacao' | 'reajuste' | 'qualitativa' | 'reequilibrio';
   valor: Centavos;
   novaVigenciaFim: DataISO | null;
   assinadoEm: DataISO;
@@ -893,7 +910,7 @@ export interface Sinal {
 
 export interface DocumentoGerado {
   id: Id;
-  tipo: 'dfd' | 'etp' | 'matriz_riscos' | 'nota_tecnica_precos' | 'tr' | 'edital' | 'minuta_contrato' | 'parecer_checklist';
+  tipo: 'dfd' | 'etp' | 'matriz_riscos' | 'nota_tecnica_precos' | 'tr' | 'edital' | 'minuta_contrato' | 'parecer_checklist' | TipoDocumentoComplementar;
   titulo: string;
   versao: number;
   conteudo: string; // Markdown
@@ -1033,6 +1050,8 @@ export interface ContratoPublico {
   valorGlobal: Centavos;
   valorPago: Centavos;
   linkPncp: string | null;
+  /** Contrato sigiloso (art. 91, § 1º): só o registro mínimo é divulgado; fornecedor, objeto e valores ficam ocultos (valores zerados). */
+  sigilo?: SigiloContratoPublico;
 }
 // GET /publico/contratos?busca&pagina → Pagina<ContratoPublico> ; GET /publico/contratos/:id → ContratoPublico
 
@@ -1058,6 +1077,8 @@ export interface EditalPublico {
   homologadoEm: DataISO | null;
   /** Documentos da fase preparatória divulgados após a homologação (art. 54, § 3º; RF-18). Vazio antes dela. */
   documentosPreparatorios: DocumentoPreparatorioPublico[];
+  /** Sigilo de segurança pública (RN-40): registro mínimo, documentos retidos e orçamento sigiloso (art. 24). */
+  sigilo?: SigiloEditalPublico;
 }
 // GET /publico/editais?busca&pagina → Pagina<EditalPublico> ; GET /publico/editais/:id → EditalPublico
 // GET /publico/editais/:id/documentos/:tipo → application/pdf (inteiro teor, sem login)
@@ -1223,8 +1244,8 @@ export type CanalNotificacao = 'email' | 'sei' | 'govbr';
 export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel';
 export type SituacaoEnvio = 'pendente' | 'enviando' | 'enviado' | 'falhou' | 'suprimido';
 export type FaixaVencimento = 30 | 60 | 90 | 120;
-/** smtp = servidor de e-mail do órgão; simulado = driver de demonstração (nada sai do servidor). */
-export type ModoCanalNotificacao = 'simulado' | 'smtp' | 'desligado';
+/** smtp = servidor de e-mail do órgão; webservice = SEI do órgão (SeiWS); simulado = driver de demonstração (nada sai do servidor). */
+export type ModoCanalNotificacao = 'simulado' | 'smtp' | 'desligado' | 'webservice';
 
 export interface EnvioNotificacao {
   id: Id;
@@ -2108,10 +2129,20 @@ export interface EntradaProrrogarContrato {
   novaVigenciaFim: DataISO;
   valor: Centavos;
   justificativa: string;
+  /** RN-33 (arts. 105 a 114): travas da prorrogação, conforme a natureza do contrato. */
+  natureza?: NaturezaDuracaoContrato;
+  vantajosidadeAtestada?: boolean;
+  precoCompativel?: boolean;
+  previsaoEdital?: boolean;
+  creditoOrcamentario?: boolean;
+  causaAtraso?: 'sem_culpa_contratado' | 'culpa_contratado';
+  moraConstituida?: boolean;
 }
 export interface RespostaProrrogacao {
   aditivo: Aditivo;
   verificacao: VerificacaoRegularidade;
+  /** Registro do termo na aba Alterações (RF-27), com a divulgação no PNCP. */
+  alteracao?: AlteracaoContratual;
 }
 
 /** Resposta de POST /pagamentos/:id/atestar: o pagamento e o recheque de regularidade (RN-23). */
@@ -2508,7 +2539,15 @@ export interface VinculosFornecedor {
 // ───────────────────────── Fila de integrações (RNF-07) ─────────────────────────
 
 /** Tarefa da fila durável de integrações (RabbitMQ ou PostgreSQL), executada pelo serviço trabalhador. */
-export type TipoTarefaFila = 'sincronizacao' | 'pncp.compra' | 'pncp.arquivo' | 'pncp.contrato';
+export type TipoTarefaFila =
+  | 'sincronizacao'
+  | 'pncp.compra'
+  | 'pncp.arquivo'
+  | 'pncp.contrato'
+  | 'pncp.termo'
+  | 'sei.envio'
+  | 'sei.assinaturas'
+  | 'dou.conferencia';
 /** 'pendente' inclui a espera de nova tentativa (`tentativas` > 0 e `proximaTentativaEm`); 'erro' é a fila de erro (dead letter). */
 export type SituacaoTarefaFila = 'pendente' | 'executando' | 'concluida' | 'erro';
 export interface TarefaFila {
@@ -2574,6 +2613,8 @@ export interface PublicacaoPncp {
   envios: EnvioPncp[];
   /** Divulgação do contrato (art. 94), quando já solicitada. */
   contrato: EnvioPncp | null;
+  /** Documentos que não vão ao PNCP por estarem classificados (RN-40; art. 13). */
+  retidosPorSigilo?: DocumentoRetidoPorSigilo[];
 }
 // GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
@@ -3379,3 +3420,1175 @@ export interface EntradaJustificativaConferencia {
 // POST /pagamentos/:id/conferencia (pagamentos:conferir; só pagamento previsto) → ContextoConferenciaNota: registra ou corrige a nota
 // POST /pagamentos/:id/conferencia/justificativa (pagamentos:conferir; só conferência divergente) → ContextoConferenciaNota
 // POST /pagamentos/:id/atestar: 422 enquanto a conferência estiver divergente sem justificativa ou, em contrato com IMR, sem conferência.
+// ───────────────────────── Fase preparatória: peças complementares e dotação (frente P — RF-32 e RN-39) ─────────────────────────
+
+/**
+ * Peças complementares da instrução, geradas pelo mesmo painel de documentos da jornada (POST /processos/:id/documentos/gerar),
+ * com versões, aprovação e entrada na árvore do SEI. Portaria, declaração orçamentária e despacho são aprovados e assinados
+ * pela autoridade competente designada no processo (`jornada:autorizar`).
+ */
+export type TipoDocumentoComplementar =
+  | 'portaria_designacao'
+  | 'declaracao_orcamentaria'
+  | 'despacho_autorizacao'
+  | 'nota_tecnica_conjur'
+  | 'modelo_proposta'
+  | 'ordem_servico'
+  | 'termo_sigilo'
+  | 'termo_recebimento_provisorio'
+  | 'termo_recebimento_definitivo'
+  | 'caderno_prova_conceito'
+  | 'checklist_documentos';
+
+/** Crédito orçamentário da contratação (RN-39; art. 150 e art. 6º, XXIII, "j"). */
+export interface LinhaDotacao {
+  unidadeGestora: string; // 6 dígitos
+  programaTrabalho: string; // 00.000.0000.0000.0000 (função.subfunção.programa.ação.localizador)
+  naturezaDespesa: string; // 4.4.90.52 (categoria.grupo.modalidade.elemento)
+  fonteRecursos: string; // 10 dígitos (ou 3 a 4 na classificação anterior)
+  exercicio: number;
+  valor: Centavos;
+  preEmpenho: string | null; // AAAAPE000000
+}
+export interface EntradaDotacao {
+  linhas: LinhaDotacao[];
+}
+export type SituacaoDeclaracaoOrcamentaria = 'nao_gerada' | 'rascunho' | 'aprovada' | 'desatualizada';
+export interface DotacaoProcesso {
+  linhas: LinhaDotacao[];
+  registradaEm: InstanteISO | null;
+  registradaPor: UsuarioResumo | null;
+  exercicioReferencia: number;
+  total: Centavos;
+  totalExercicio: Centavos;
+  /** Campos completos e coerentes (validarDotacaoOrcamentaria). */
+  valida: boolean;
+  pendencias: string[];
+  sinais: string[];
+  /** Declaração de adequação orçamentária (documento `declaracao_orcamentaria`) frente à dotação atual. */
+  declaracao: {
+    situacao: SituacaoDeclaracaoOrcamentaria;
+    versao: number | null;
+    aprovadaPor: UsuarioResumo | null;
+    numeroSei: string | null;
+  };
+  /** Dotação válida e declaração aprovada com ela: o que a RN-39 exige para seguir ao edital. */
+  declarada: boolean;
+  /** Pode ser alterada (até a etapa 4, processo sem contrato). */
+  editavel: boolean;
+  fundamento: string;
+}
+// GET /processos/:id/dotacao → DotacaoProcesso (jornada:ler)
+// PUT /processos/:id/dotacao body EntradaDotacao → DotacaoProcesso (jornada:editar; até a etapa 4; mudar a dotação desatualiza a declaração)
+
+export type SituacaoPecaProcesso = 'pronta' | 'rascunho' | 'desatualizada' | 'falta' | 'nao_aplicavel';
+export interface ItemChecklistDocumentos {
+  tipo: DocumentoGerado['tipo'];
+  titulo: string;
+  fundamento: string;
+  obrigatoriedade: 'obrigatoria' | 'condicional' | 'recomendada';
+  situacao: SituacaoPecaProcesso;
+  versao: number | null;
+  /** Assinada na árvore do SEI (só para peça aprovada). */
+  assinado: boolean | null;
+  /** Peça exigida que ainda não está pronta. */
+  falta: boolean;
+}
+export interface ChecklistDocumentosProcesso {
+  etapaAtual: EtapaJornada;
+  etapas: { etapa: EtapaJornada; titulo: string; itens: ItemChecklistDocumentos[]; prontas: number; faltantes: number }[];
+  prontas: number;
+  faltantes: number;
+  recomendadasPendentes: number;
+  fundamento: string;
+}
+// GET /processos/:id/checklist-documentos → ChecklistDocumentosProcesso (jornada:ler)
+// GET /processos/:id/documentos/:docId/pdf → application/pdf (jornada:ler; escopo de UASG): qualquer versão de documento da jornada
+// ───────────────────────── Gestão compartilhada com a sociedade (RF-37) ─────────────────────────
+
+export type AssuntoManifestacao = 'execucao' | 'qualidade' | 'prazo' | 'atendimento' | 'outro';
+export type SituacaoManifestacao = 'em_moderacao' | 'publicada' | 'recusada';
+export type SituacaoPrazoResposta = 'aguardando' | 'vence_em_breve' | 'vencido' | 'respondida_no_prazo' | 'respondida_fora_do_prazo';
+export type FormatoMidiaSociedade = 'jpeg' | 'png' | 'mp4';
+export type ConclusaoRelatorioFinal = 'atingidos' | 'parcialmente_atingidos' | 'nao_atingidos';
+
+/** Resposta identificada: servidor com a função ou contratado com o preposto (art. 174, § 3º, VI, "c"). */
+export interface RespostaManifestacao {
+  id: Id;
+  origem: 'administracao' | 'contratado';
+  /** "Rafael A. V." (servidor) ou razão social do contratado. */
+  autor: string;
+  /** "Gestor do contrato", "Fiscal do contrato" ou "Preposto: <nome>". */
+  funcao: string;
+  texto: string; // dados pessoais tarjados
+  respondidaEm: InstanteISO;
+}
+
+/** Manifestação publicada pela moderação: autor só com primeiro nome e iniciais; texto com dados pessoais tarjados. */
+export interface ManifestacaoPublica {
+  id: Id;
+  assunto: AssuntoManifestacao;
+  autor: string;
+  texto: string;
+  recebidaEm: InstanteISO;
+  publicadaEm: InstanteISO | null;
+  /** Imagem sem metadados de localização, servida pela Ágora; null sem imagem. */
+  imagemUrl: string | null;
+  prazoResposta: DataISO;
+  situacaoPrazo: SituacaoPrazoResposta;
+  respostas: RespostaManifestacao[];
+}
+
+/** Foto ou vídeo do acompanhamento da execução publicado pela fiscalização (art. 19, III). */
+export interface RegistroExecucaoPublico {
+  id: Id;
+  titulo: string;
+  descricao: string;
+  midia: 'imagem' | 'video';
+  formato: FormatoMidiaSociedade;
+  url: string;
+  /** Dia em que a foto ou o vídeo foi feito. */
+  registradoEm: DataISO;
+  publicadoEm: InstanteISO;
+  sha256: string;
+  bytes: number;
+}
+
+export interface RelatorioFinalPublico {
+  objetivos: string;
+  resultados: string;
+  conclusao: ConclusaoRelatorioFinal;
+  publicadoEm: InstanteISO;
+  publicadoPor: string; // "Gestor do contrato — Rafael A. V."
+  /** Dados da execução congelados na publicação. */
+  execucao: {
+    vigenciaInicio: DataISO;
+    vigenciaFim: DataISO;
+    valorGlobal: Centavos;
+    valorPago: Centavos;
+    aditivos: number;
+    manifestacoesPublicadas: number;
+    registrosPublicados: number;
+  };
+  /** SHA-256 do conteúdo publicado (objetivos, resultados, conclusão e dados da execução). */
+  sha256: string;
+  fundamento: string;
+}
+
+export interface GestaoCompartilhadaPublica {
+  contratoId: Id;
+  numero: string;
+  manifestacoes: ManifestacaoPublica[];
+  registros: RegistroExecucaoPublico[];
+  relatorioFinal: RelatorioFinalPublico | null;
+  /** O relatório final é publicado a partir do fim da vigência. */
+  vigenciaFim: DataISO;
+  prazoRespostaDias: number;
+  fundamento: string;
+}
+// GET /publico/contratos/:id/gestao-compartilhada → GestaoCompartilhadaPublica (sem login)
+// GET /publico/contratos/:id/manifestacoes/:manifestacaoId/imagem e /publico/contratos/:id/registros/:registroId/midia → bytes (só o publicado)
+
+export interface EntradaManifestacao {
+  assunto: AssuntoManifestacao;
+  texto: string; // 20 a 2.000 caracteres
+}
+// POST /sociedade/contratos/:id/manifestacoes (sociedade:manifestar) body EntradaManifestacao → MinhaManifestacao (201, em moderação)
+// POST /sociedade/manifestacoes/:id/imagem (sociedade:manifestar; corpo binário PNG ou JPEG; só o autor e só em moderação) → MinhaManifestacao
+
+export interface MinhaManifestacao {
+  id: Id;
+  contrato: { id: Id; numero: string; objeto: string };
+  assunto: AssuntoManifestacao;
+  texto: string;
+  situacao: SituacaoManifestacao;
+  motivoModeracao: string | null;
+  recebidaEm: InstanteISO;
+  moderadaEm: InstanteISO | null;
+  temImagem: boolean;
+  /** Metadados removidos da imagem enviada (ex.: "EXIF e localização (APP1)"). */
+  metadadosRemovidos: string[];
+  prazoResposta: DataISO;
+  respostas: RespostaManifestacao[];
+}
+// GET /sociedade/minhas-manifestacoes (sociedade:manifestar) → MinhaManifestacao[]
+
+/** Manifestação vista pela moderação e pela Administração (escopo de UASG do contrato). */
+export interface ManifestacaoModeracao {
+  id: Id;
+  contrato: { id: Id; numero: string; uasg: string; objeto: string };
+  assunto: AssuntoManifestacao;
+  autor: string; // primeiro nome e iniciais
+  /** Texto como sairá em público (dados pessoais tarjados). */
+  texto: string;
+  dadosPessoaisTarjados: boolean;
+  situacao: SituacaoManifestacao;
+  motivoModeracao: string | null;
+  moderadaPor: string | null;
+  moderadaEm: InstanteISO | null;
+  recebidaEm: InstanteISO;
+  /** Imagem para a moderação (rota autenticada); null sem imagem. */
+  imagemUrl: string | null;
+  metadadosRemovidos: string[];
+  prazoResposta: DataISO;
+  situacaoPrazo: SituacaoPrazoResposta;
+  respostas: RespostaManifestacao[];
+}
+// GET /sociedade/manifestacoes?situacao&pagina&tamanhoPagina (sociedade:ler) → Pagina<ManifestacaoModeracao>
+// GET /sociedade/manifestacoes/:id/imagem (sociedade:ler) → bytes
+
+export interface EntradaModeracao {
+  decisao: 'publicar' | 'recusar';
+  motivo: string; // 10 a 500 caracteres, sempre
+}
+// POST /sociedade/manifestacoes/:id/moderacao (sociedade:moderar) → ManifestacaoModeracao
+
+export interface EntradaRespostaManifestacao {
+  origem: 'administracao' | 'contratado';
+  texto: string;
+  /** Nome do preposto, obrigatório quando a resposta é do contratado. */
+  representante: string | null;
+}
+// POST /sociedade/manifestacoes/:id/respostas (sociedade:responder) → ManifestacaoModeracao
+
+export interface RegistroExecucaoInterno {
+  id: Id;
+  titulo: string;
+  descricao: string;
+  midia: 'imagem' | 'video';
+  formato: FormatoMidiaSociedade;
+  registradoEm: DataISO;
+  sha256: string;
+  bytes: number;
+  publicado: boolean;
+  /** Motivo de não publicar (ponto de checagem do sigilo). */
+  motivoRetencao: string | null;
+  enviadoPor: string;
+  enviadoEm: InstanteISO;
+  metadadosRemovidos: string[];
+  url: string; // rota autenticada
+}
+
+export interface GestaoCompartilhadaContrato {
+  contrato: { id: Id; numero: string; uasg: string; objeto: string; vigenciaInicio: DataISO; vigenciaFim: DataISO; encerrado: boolean };
+  manifestacoes: ManifestacaoModeracao[];
+  registros: RegistroExecucaoInterno[];
+  relatorioFinal: RelatorioFinalPublico | null;
+  armazenamentoDisponivel: boolean;
+  tamanhoMaximoImagemBytes: number;
+  tamanhoMaximoVideoBytes: number;
+  formatosAceitos: FormatoMidiaSociedade[];
+  prazoRespostaDias: number;
+}
+// GET /sociedade/contratos/:id (sociedade:ler) → GestaoCompartilhadaContrato
+// POST /sociedade/contratos/:id/registros?titulo&descricao&registradoEm&sigiloso (sociedade:registrar; corpo binário JPEG, PNG ou MP4) → RegistroExecucaoInterno
+// GET /sociedade/contratos/:id/registros/:registroId/midia (sociedade:ler) → bytes
+
+export interface EntradaRelatorioFinal {
+  objetivos: string;
+  resultados: string;
+  conclusao: ConclusaoRelatorioFinal;
+}
+// POST /sociedade/contratos/:id/relatorio-final (sociedade:relatorio_final; só após o fim da vigência; um por contrato) → RelatorioFinalPublico
+
+// ───────────────────────── Dados abertos (RF-38) ─────────────────────────
+
+export type TipoColunaDadosAbertos = 'identificador' | 'texto' | 'inteiro' | 'decimal' | 'data' | 'booleano';
+export interface ColunaDicionarioDados {
+  nome: string;
+  tipo: TipoColunaDadosAbertos;
+  descricao: string;
+}
+export interface ArquivoConjuntoDados {
+  formato: 'csv' | 'json';
+  url: string;
+  tipoMidia: string;
+  sha256: string;
+  bytes: number;
+}
+export interface ConjuntoDadosAbertos {
+  id: string;
+  titulo: string;
+  descricao: string;
+  fundamento: string;
+  publicador: string;
+  licenca: { nome: string; identificador: string; url: string };
+  /** Última alteração dos dados do conjunto (null quando vazio). */
+  atualizadoEm: InstanteISO | null;
+  periodicidade: string;
+  registros: number;
+  arquivos: ArquivoConjuntoDados[];
+  dicionario: ColunaDicionarioDados[];
+}
+export interface CatalogoDadosAbertos {
+  publicador: string;
+  geradoEm: InstanteISO;
+  conjuntos: ConjuntoDadosAbertos[];
+  limiteRequisicoesPorMinuto: number;
+  /** Conjuntos previstos que ainda não existem na Ágora (ex.: plano de contratações anual). */
+  indisponiveis: { id: string; titulo: string; motivo: string }[];
+}
+// GET /publico/dados-abertos → CatalogoDadosAbertos ; GET /publico/dados-abertos/:conjunto → ConjuntoDadosAbertos
+// GET /publico/dados-abertos/:conjunto/csv e /json → arquivo (sem login; limite de requisições por IP; cabeçalho X-Agora-SHA256)
+// ───────── Frente K (F22a): execução contratual como ato — RN-32, RN-33 e RF-27 ─────────
+
+/** Natureza do contrato quanto à duração (Lei 14.133/2021, arts. 105 a 114). */
+export type NaturezaDuracaoContrato = 'continuo' | 'ti_estruturante' | 'escopo' | 'receita_sem_investimento' | 'receita_com_investimento';
+export type RegimeMaoDeObra = 'dedicacao_exclusiva' | 'predominancia' | 'sem_dedicacao';
+export type EspecieAlteracaoContratual = 'aditivo' | 'apostila' | 'rescisao';
+export type TipoAlteracaoContratual = 'acrescimo' | 'supressao' | 'qualitativa' | 'prazo' | 'reequilibrio' | 'reajuste' | 'repactuacao' | 'extincao';
+export type SituacaoAlteracaoContratual =
+  | 'aguardando_parecer'
+  | 'pronto_para_assinatura'
+  | 'devolvido'
+  | 'em_contraditorio'
+  | 'aguardando_decisao'
+  | 'assinado'
+  | 'indeferido'
+  | 'arquivado';
+export type ResultadoParecerAlteracao = 'favoravel' | 'favoravel_com_ressalvas' | 'desfavoravel';
+export type EnquadramentoReequilibrio =
+  | 'forca_maior'
+  | 'caso_fortuito'
+  | 'fato_principe'
+  | 'fato_imprevisivel'
+  | 'previsivel_consequencias_incalculaveis'
+  | 'tributo_superveniente'
+  | 'alteracao_unilateral';
+export type FormaExtincaoContrato = 'unilateral' | 'consensual' | 'judicial_arbitral';
+export type MotivoExtincaoContrato =
+  | 'art137_I'
+  | 'art137_II'
+  | 'art137_III'
+  | 'art137_IV'
+  | 'art137_V'
+  | 'art137_VI'
+  | 'art137_VII'
+  | 'art137_VIII'
+  | 'art137_IX'
+  | 'art137_p2_I'
+  | 'art137_p2_II'
+  | 'art137_p2_III'
+  | 'art137_p2_IV'
+  | 'art137_p2_V';
+export type EfeitoExtincaoContrato =
+  | 'assuncao_objeto'
+  | 'ocupacao_local'
+  | 'execucao_garantia'
+  | 'retencao_creditos'
+  | 'devolucao_garantia'
+  | 'pagamentos_devidos'
+  | 'custo_desmobilizacao'
+  | 'ressarcimento_prejuizos';
+
+/** Divulgação do termo no PNCP pela fila de integrações (art. 94 para o aditivo; art. 174 para apostila e rescisão). */
+export interface DivulgacaoAlteracaoPncp {
+  situacao: SituacaoEnvioPncp | 'nao_solicitada' | 'importado';
+  modo: 'offline' | 'online' | null;
+  tarefaId: Id | null;
+  protocolo: string | null;
+  numeroControle: string | null;
+  hashDados: string | null;
+  enviadoEm: InstanteISO | null;
+  ultimoErro: string | null;
+  prazo: {
+    situacao: 'divulgado_no_prazo' | 'divulgado_fora_do_prazo' | 'pendente_no_prazo' | 'pendente_vencido' | 'sem_prazo_de_eficacia';
+    limite: DataISO | null;
+    explicacao: string;
+  } | null;
+}
+
+/** Um ato do histórico de alterações (termo aditivo, apostila, reequilíbrio ou extinção). */
+export interface AlteracaoContratual {
+  id: Id;
+  contratoId: Id;
+  especie: EspecieAlteracaoContratual;
+  tipo: TipoAlteracaoContratual;
+  situacao: SituacaoAlteracaoContratual;
+  /** "2º Termo Aditivo", "1º Apostilamento", "Termo de Rescisão" (definido na assinatura). */
+  numero: string | null;
+  /** Efeito no valor global, com sinal (supressão e redução negativas). */
+  valor: Centavos;
+  novaVigenciaFim: DataISO | null;
+  justificativa: string;
+  /** 'importado': termo assinado antes da Ágora (carga do Contratos.gov.br), sem o ciclo de parecer e assinatura. */
+  origem: 'agora' | 'importado';
+  /** Linhas de resumo do ato, já formatadas pelo servidor (índice, percentuais, componentes, motivo...). */
+  detalhes: { rotulo: string; valor: string }[];
+  /** Explicação da trava aplicada (RN-32, RN-33...), com o fundamento. */
+  avaliacao: { explicacao: string; fundamento: string } | null;
+  parecer: { resultado: ResultadoParecerAlteracao; numero: string; texto: string; emitidoPor: UsuarioResumo | null; emitidoEm: InstanteISO } | null;
+  decisao: { resultado: string; fundamentacao: string; decididoPor: UsuarioResumo | null; decididoEm: InstanteISO } | null;
+  contraditorio: {
+    prazoDiasUteis: number;
+    prazoFim: DataISO;
+    notificadoEm: InstanteISO;
+    defesa: { apresentadaEm: DataISO; resumo: string } | null;
+    semManifestacao: boolean;
+  } | null;
+  propostoPor: UsuarioResumo | null;
+  propostoEm: InstanteISO;
+  assinadoPor: UsuarioResumo | null;
+  assinadoEm: DataISO | null;
+  verificacaoRegularidadeId: Id | null;
+  divulgacao: DivulgacaoAlteracaoPncp;
+  /** Termo em PDF (GET), quando assinado. */
+  linkTermo: string | null;
+  /** Próximos passos possíveis pela situação (o servidor ainda confere a permissão de quem pede). */
+  acoes: { parecer: boolean; assinar: boolean; indeferir: boolean; defesa: boolean; decidirExtincao: boolean; divulgar: boolean };
+}
+
+/** GET /contratos/:id/alteracoes → PainelAlteracoesContrato (contratos:ler) */
+export interface PainelAlteracoesContrato {
+  contratoId: Id;
+  natureza: NaturezaDuracaoContrato | null;
+  regimeMaoDeObra: RegimeMaoDeObra | null;
+  extintoEm: DataISO | null;
+  /** Art. 125: acréscimos e supressões acumulados sobre o valor inicial atualizado. */
+  limites: {
+    valorInicial: Centavos;
+    reajustes: Centavos;
+    valorInicialAtualizado: Centavos;
+    acrescimos: Centavos;
+    supressoes: Centavos;
+    percentualAcrescimos: number;
+    percentualSupressoes: number;
+    limiteAcrescimos: number;
+    limiteSupressoes: number;
+    margemAcrescimos: Centavos;
+    margemSupressoes: Centavos;
+    nivel: 'regular' | 'proximo' | 'excedido';
+    explicacao: string;
+    fundamento: string;
+  };
+  prorrogacao: {
+    tipo: 'planejar_prorrogacao' | 'limite_prorrogacao' | 'nova_licitacao' | 'prorrogacao_automatica' | 'natureza_nao_informada';
+    limiteVigencia: DataISO | null;
+    diasRestantes: number;
+    mensagem: string;
+    fundamento: string;
+  };
+  reajuste: {
+    indice: string;
+    dataBase: DataISO;
+    ciclosAplicados: number;
+    proximoAniversario: DataISO;
+    /** O interregno de 12 meses do próximo ciclo já se completou. */
+    disponivel: boolean;
+    saldoContratual: Centavos;
+  };
+  alteracoes: AlteracaoContratual[];
+}
+
+/** POST /contratos/:id/alteracoes → 201 AlteracaoContratual (contratos:editar). Recusa com 422 (RN-32, RN-33). */
+export type EntradaProporAlteracao =
+  | {
+      tipo: 'acrescimo' | 'supressao';
+      valor: Centavos;
+      reformaEdificioOuEquipamento?: boolean;
+      justificativa: string;
+    }
+  | {
+      tipo: 'qualitativa';
+      valor: Centavos;
+      efeitoFinanceiro: 'acrescimo' | 'supressao' | 'nenhum';
+      descricaoAlteracao: string;
+      justificativa: string;
+    }
+  | ({ tipo: 'prazo'; justificativa: string } & Omit<EntradaProrrogarContrato, 'justificativa'>)
+  | {
+      tipo: 'reequilibrio';
+      enquadramento: EnquadramentoReequilibrio;
+      /** Risco da matriz de riscos do contrato ao qual o evento se refere; ausente = evento não previsto na matriz. */
+      riscoId?: Id | null;
+      dataEvento: DataISO;
+      solicitadoEm: DataISO;
+      solicitante: 'contratada' | 'administracao';
+      sentido: 'aumento' | 'reducao';
+      valor: Centavos;
+      demonstracao: string;
+      justificativa: string;
+    };
+
+/** POST /contratos/:id/alteracoes/:alteracaoId/parecer (alteracoes:parecer) */
+export interface EntradaParecerAlteracao {
+  resultado: ResultadoParecerAlteracao;
+  numero: string;
+  texto: string;
+}
+/** POST /contratos/:id/alteracoes/:alteracaoId/assinar (alteracoes:decidir) → AlteracaoContratual. No reequilíbrio, o valor reconhecido pode ser menor que o pleiteado. */
+export interface EntradaAssinarAlteracao {
+  confirmacao: true;
+  valorReconhecido?: Centavos;
+  fundamentacao?: string;
+}
+/** POST /contratos/:id/alteracoes/:alteracaoId/indeferir (alteracoes:decidir) */
+export interface EntradaIndeferirAlteracao {
+  fundamentacao: string;
+}
+/** POST /contratos/:id/reajustes → 201 AlteracaoContratual (alteracoes:decidir): apostila (art. 136, I). */
+export interface EntradaReajusteContrato {
+  percentual: number;
+  fonteIndice: string;
+  observacao?: string | null;
+}
+/** POST /contratos/:id/repactuacoes → 201 AlteracaoContratual (alteracoes:decidir): apostila (art. 135 e art. 136, I). */
+export interface EntradaRepactuacaoContrato {
+  regimeMaoDeObra?: RegimeMaoDeObra;
+  solicitadaEm: DataISO;
+  efeitosDesde: DataISO;
+  componentes: {
+    descricao: string;
+    origem: 'mao_de_obra' | 'insumos';
+    dataBase: DataISO;
+    valorMensalAnterior: Centavos;
+    valorMensalNovo: Centavos;
+    documento: string;
+  }[];
+  clausulasNaoTrabalhistasExcluidas: boolean;
+  justificativa: string;
+}
+/** POST /contratos/:id/extincao → 201 AlteracaoContratual (contratos:editar) */
+export interface EntradaInstaurarExtincao {
+  forma: FormaExtincaoContrato;
+  motivo: MotivoExtincaoContrato;
+  fundamentacao: string;
+  prazoDefesaDiasUteis?: number | null;
+  interesseAdministracao?: boolean;
+  referenciaDecisao?: string | null;
+}
+/** POST /contratos/:id/alteracoes/:alteracaoId/defesa (contratos:editar) */
+export type EntradaDefesaExtincao = { semManifestacao: true } | { semManifestacao?: false; apresentadaEm: DataISO; resumo: string };
+/** POST /contratos/:id/alteracoes/:alteracaoId/decidir-extincao (alteracoes:decidir) */
+export interface EntradaDecidirExtincao {
+  decisao: 'extinguir' | 'arquivar';
+  dataEfeitos: DataISO;
+  fundamentacao: string;
+  culpaAdministracao: boolean;
+  efeitos: EfeitoExtincaoContrato[];
+  autorizacaoMinistro?: boolean;
+}
+// GET /contratos/:id/alteracoes/:alteracaoId/termo.pdf (contratos:ler) — termo assinado em PDF, para juntar ao processo
+// POST /contratos/:id/alteracoes/:alteracaoId/divulgar-pncp (alteracoes:decidir) — reabre a divulgação que está na fila de erro
+// ───────────────────────── IA ancorada: base normativa (RNF-08), citações (RIA-14) e conferência cruzada (RIA-15) ─────────────────────────
+
+/** Origem do texto da lei guardado na Ágora: órgão, endereço, data e hash do arquivo e do texto. */
+export interface ProvenienciaBaseNormativa {
+  fonte: string;
+  url: string;
+  obtidoEm: InstanteISO;
+  formato: string;
+  sha256Arquivo: string;
+  sha256Texto: string;
+  observacao: string;
+}
+
+/** GET /normas (normas:ler) */
+export interface ResumoBaseNormativa {
+  norma: { id: string; titulo: string; ementa: string };
+  proveniencia: ProvenienciaBaseNormativa;
+  totalArtigos: number;
+  /** Divisões da lei (títulos e capítulos) com o primeiro e o último artigo. */
+  divisoes: { titulo: string; primeiroArtigo: string; ultimoArtigo: string }[];
+}
+
+export interface TrechoLei {
+  referencia: string;
+  texto: string;
+}
+
+/** GET /normas/busca?q&limite (normas:ler) — BM25 local, sem serviço externo */
+export interface ResultadoBuscaNormas {
+  consulta: string;
+  resultados: { artigo: string; rotulo: string; divisao: string | null; pontuacao: number; exato: boolean; trechos: TrechoLei[] }[];
+}
+
+export interface IncisoLeiApi {
+  numero: string;
+  texto: string;
+  alineas: { letra: string; texto: string }[];
+}
+
+/** GET /normas/artigos/:numero (normas:ler) */
+export interface ArtigoLeiApi {
+  numero: string;
+  rotulo: string;
+  caput: string;
+  incisos: IncisoLeiApi[];
+  paragrafos: { numero: string; rotulo: string; texto: string; incisos: IncisoLeiApi[] }[];
+  titulos: string[];
+  /** Texto que o artigo insere em outra lei (não é dispositivo desta lei). */
+  textoAlterador: string[];
+  anterior: string | null;
+  proximo: string | null;
+  norma: string;
+  proveniencia: ProvenienciaBaseNormativa;
+}
+
+/** GET /normas/modelos (normas:ler) — estrutura obrigatória dos modelos padronizados (art. 19, IV) */
+export interface ModeloPadronizadoApi {
+  tipo: string;
+  documento: string;
+  fundamento: string;
+  secoes: { id: string; titulo: string; fundamento: string }[];
+}
+
+export type SituacaoCitacaoLegal = 'confere' | 'inexistente' | 'sem_efeito' | 'suspeita' | 'outra_norma';
+
+export interface CitacaoLegalConferida {
+  trecho: string;
+  referencias: string[];
+  norma: string;
+  situacao: SituacaoCitacaoLegal;
+  motivo: string;
+  sugestao: string | null;
+  contexto: string;
+  posicao: number;
+}
+
+/** Conferência das citações de um texto com a base normativa — sinal que requer revisão humana. */
+export interface ConferenciaCitacoesApi {
+  norma: string;
+  total: number;
+  conferem: number;
+  inexistentes: number;
+  semEfeito: number;
+  suspeitas: number;
+  outrasNormas: number;
+  /** Inexistentes + sem efeito: a aprovação do documento exige revisão humana registrada. */
+  bloqueantes: number;
+  problemas: number;
+  fiel: boolean;
+  citacoes: CitacaoLegalConferida[];
+  premissas: string[];
+  aviso: string;
+  conferidoEm: InstanteISO;
+}
+// POST /normas/conferir { texto } → ConferenciaCitacoesApi (normas:ler; sem gravação)
+
+export interface EstruturaModeloDocumento {
+  aplicavel: boolean;
+  documento: string | null;
+  fundamento: string | null;
+  presentes: number;
+  total: number;
+  percentual: number;
+  ausentes: { id: string; titulo: string; fundamento: string }[];
+}
+
+export interface RevisaoCitacoes {
+  revisadoPor: UsuarioResumo;
+  revisadoEm: InstanteISO;
+  justificativa: string;
+}
+
+export interface CitacoesDocumento {
+  documentoId: Id;
+  tipo: DocumentoGerado['tipo'];
+  titulo: string;
+  versao: number;
+  situacao: DocumentoGerado['situacao'];
+  geradoPor: DocumentoGerado['geradoPor'];
+  geradoEm: InstanteISO;
+  conferencia: ConferenciaCitacoesApi;
+  estrutura: EstruturaModeloDocumento;
+  revisao: RevisaoCitacoes | null;
+  /** Citação inexistente ou sem efeito sem revisão registrada: o servidor recusa a aprovação (RIA-14). */
+  aprovacaoBloqueada: boolean;
+}
+// GET /processos/:id/citacoes → CitacoesDocumento[] (jornada:ler; versões mais recentes primeiro)
+// POST /processos/:id/documentos/:docId/citacoes/revisao { justificativa } → CitacoesDocumento (jornada:editar, ou aprovar_juridico no checklist; auditado)
+
+export type AspectoConferenciaDocumentos = 'objeto' | 'quantidade' | 'valor_estimado' | 'prazo' | 'dotacao' | 'modalidade' | 'criterio_julgamento';
+
+export interface DivergenciaDocumentosApi {
+  aspecto: AspectoConferenciaDocumentos;
+  chave: string;
+  titulo: string;
+  descricao: string;
+  fundamento: string;
+  ocorrencias: { tipo: DocumentoGerado['tipo']; documento: string; versao: number; valor: string; trecho: string }[];
+}
+
+/** GET /processos/:id/conferencia-cruzada (jornada:ler) — versão mais recente de cada documento */
+export interface ConferenciaCruzadaApi {
+  processoId: Id;
+  geradoEm: InstanteISO;
+  documentos: { tipo: DocumentoGerado['tipo']; titulo: string; versao: number; fatos: number }[];
+  aspectos: { aspecto: AspectoConferenciaDocumentos; rotulo: string; comparacoes: number; divergencias: number }[];
+  divergencias: DivergenciaDocumentosApi[];
+  consistente: boolean;
+  premissas: string[];
+  fontes: string[];
+  aviso: string;
+}
+
+export interface IndicadorImr02 {
+  total: number;
+  fieis: number;
+  /** null quando não houve minuta no período. */
+  percentual: number | null;
+  situacao: 'atingida' | 'abaixo' | 'sem_minutas';
+}
+
+export interface ApontamentoCitacao {
+  processo: ReferenciaControle;
+  documentoId: Id;
+  tipoDocumento: DocumentoGerado['tipo'];
+  titulo: string;
+  versao: number;
+  geradoPor: DocumentoGerado['geradoPor'];
+  geradoEm: InstanteISO;
+  trecho: string;
+  referencias: string[];
+  situacao: SituacaoCitacaoLegal;
+  motivo: string;
+  sugestao: string | null;
+  contexto: string;
+  revisado: boolean;
+}
+
+/** GET /qualidade-normativa?mes&uasg (qualidade_ia:ler) — IMR-02: minutas com citações fiéis (meta 100%) */
+export interface PainelQualidadeNormativa {
+  mes: string; // AAAA-MM
+  uasg: string | null;
+  geradoEm: InstanteISO;
+  meta: number;
+  imr02: IndicadorImr02;
+  /** Últimos 6 meses até o mês escolhido. */
+  serie: (IndicadorImr02 & { mes: string })[];
+  porTipo: { tipo: DocumentoGerado['tipo']; rotulo: string; total: number; fieis: number }[];
+  porOrigem: { origem: DocumentoGerado['geradoPor']; total: number; fieis: number }[];
+  estrutura: { conferidos: number; completos: number };
+  apontamentos: ApontamentoCitacao[];
+  base: { norma: string; proveniencia: ProvenienciaBaseNormativa };
+  premissas: string[];
+  fontes: string[];
+  aviso: string;
+}
+
+export interface SinalAuditorIa {
+  tipo: string;
+  nivel: 'risco' | 'atencao';
+  titulo: string;
+  descricao: string;
+  fundamento: string;
+  evidencias: string[];
+  referencia: ReferenciaControle;
+}
+
+/** GET /controle/auditor-ia?uasg (controle:segunda_linha) — auditor contínuo (RIA-15), sinais para revisão humana */
+export interface PainelAuditorIa {
+  geradoEm: InstanteISO;
+  uasg: string | null;
+  indicadores: { contratosVarridos: number; processosVarridos: number; sinaisRisco: number; sinaisAtencao: number };
+  sinais: SinalAuditorIa[];
+  premissas: string[];
+  fontes: string[];
+  aviso: string;
+}
+// ───────────────────────── Integração com o SEI (RF-35) ─────────────────────────
+
+/** Situação de uma tarefa do SEI ou do DOU na fila de integrações. */
+export type SituacaoTarefaSei = 'na_fila' | 'nova_tentativa' | 'executando' | 'concluida' | 'erro';
+export interface TarefaSei {
+  id: Id;
+  tipo: 'sei.envio' | 'sei.assinaturas';
+  situacao: SituacaoTarefaSei;
+  tentativas: number;
+  maximoTentativas: number;
+  proximaTentativaEm: InstanteISO | null;
+  ultimoErro: string | null;
+  criadaEm: InstanteISO;
+  concluidaEm: InstanteISO | null;
+}
+/** Assinatura feita no SEI (certificado ICP-Brasil ou login do servidor), devolvida por `consultarDocumento`. */
+export interface AssinaturaDocumentoSei {
+  nome: string;
+  cargoFuncao: string | null;
+  assinadoEm: InstanteISO;
+}
+export interface DocumentoSei {
+  /** Número do documento na árvore do processo da Ágora (`ProcessoDetalhe.arvoreSei[].numero`). */
+  numeroArvore: string;
+  titulo: string;
+  tipo: DocumentoGerado['tipo'] | null;
+  enviado: boolean;
+  /** Número do documento no SEI (DocumentoFormatado). */
+  numeroSei: string | null;
+  linkSei: string | null;
+  enviadoEm: InstanteISO | null;
+  /** 'restrito' = documento com dado pessoal ou orçamento sigiloso; 'padrao' = nível do tipo de processo no SEI. */
+  nivelAcesso: 'restrito' | 'padrao' | null;
+  /** Bloco de assinatura do SEI em que o documento foi incluído. */
+  blocoAssinatura: string | null;
+  assinaturas: AssinaturaDocumentoSei[];
+  assinado: boolean;
+  /** "Ana Ribeiro (Requisitante)" — vazio enquanto não houver assinatura. */
+  resumoAssinatura: string;
+  consultadoEm: InstanteISO | null;
+}
+export interface IntegracaoSeiProcesso {
+  processoId: Id;
+  /** 'online' = SEI real do órgão (SeiWS); 'offline' = simulação determinística. */
+  modo: 'offline' | 'online';
+  /** Online: endereço, sigla do sistema, identificação do serviço e unidade informados (AGORA_SEI_*). */
+  configurado: boolean;
+  processo: {
+    numero: string;
+    idProcedimento: string;
+    link: string | null;
+    geradoEm: InstanteISO;
+    unidadeDestino: string | null;
+    enviadoUnidadeEm: InstanteISO | null;
+  } | null;
+  documentos: DocumentoSei[];
+  /** Documentos aprovados na Ágora que ainda não foram incluídos no SEI. */
+  pendentesEnvio: number;
+  /** Documentos já no SEI e ainda sem assinatura. */
+  pendentesAssinatura: number;
+  envio: TarefaSei | null;
+  consulta: TarefaSei | null;
+}
+// GET /processos/:id/sei → IntegracaoSeiProcesso (jornada:ler)
+// POST /processos/:id/sei/enviar → IntegracaoSeiProcesso (jornada:editar): gera o processo no SEI, inclui os documentos aprovados, monta o bloco de assinatura e, se configurado, envia à unidade
+// POST /processos/:id/sei/consultar-assinaturas → IntegracaoSeiProcesso (jornada:editar ou jornada:aprovar_juridico): reflete as assinaturas feitas no SEI
+
+// ───────────────────────── Publicação no DOU (RF-36) ─────────────────────────
+
+export type TipoMateriaDou = 'aviso_licitacao' | 'extrato_contrato' | 'extrato_aditivo';
+/** rascunho = gerada, a enviar pelo INCom; enviada = protocolo do INCom registrado; publicada = edição conferida. */
+export type SituacaoMateriaDou = 'rascunho' | 'enviada' | 'publicada';
+export interface MateriaDou {
+  id: Id;
+  tipo: TipoMateriaDou;
+  situacao: SituacaoMateriaDou;
+  /** Seção do DOU (3 = contratos, editais e avisos). */
+  secao: number;
+  titulo: string;
+  identificacao: string;
+  /** Texto no padrão de publicação, sem CPF completo. */
+  texto: string;
+  hashTexto: string;
+  obrigatoria: boolean;
+  fundamento: string;
+  uasg: string;
+  processo: { id: Id | null; numero: string };
+  contrato: { id: Id; numero: string } | null;
+  aditivo: { id: Id; numero: string } | null;
+  /** Gerada sozinha quando o edital foi aceito no PNCP (aviso de licitação). */
+  automatica: boolean;
+  geradaEm: InstanteISO;
+  geradaPor: UsuarioResumo | null;
+  envio: { protocolo: string; enviadaEm: InstanteISO; registradoPor: UsuarioResumo | null; dataPrevista: DataISO } | null;
+  publicacao: {
+    data: DataISO;
+    edicao: string | null;
+    pagina: string | null;
+    url: string | null;
+    /** consulta = conferida na consulta pública do DOU pelo servidor; manual = registrada pelo servidor responsável. */
+    forma: 'consulta' | 'manual';
+    modo: 'offline' | 'online';
+    registradaEm: InstanteISO;
+  } | null;
+  conferencia: {
+    vezes: number;
+    ultimaEm: InstanteISO | null;
+    /** Resultado da última conferência, ex.: "Ainda não localizada no DOU até 10/11/2026". */
+    resultado: string | null;
+    tarefa: { situacao: SituacaoTarefaSei; ultimoErro: string | null; proximaTentativaEm: InstanteISO | null } | null;
+  };
+  /** Publicação do aviso em jornal diário de grande circulação (art. 54, § 1º). */
+  jornal: { nome: string; data: DataISO; registradoEm: InstanteISO } | null;
+}
+export interface ResumoPublicacoesDou {
+  modo: 'offline' | 'online';
+  /** Consulta pública do DOU usada na conferência, pelo servidor. */
+  consulta: string;
+  rascunho: number;
+  enviada: number;
+  publicada: number;
+  /** Avisos de licitação (obrigatórios) ainda sem publicação conferida. */
+  avisosPendentes: number;
+}
+export interface CandidatoMateriaDou {
+  tipo: TipoMateriaDou;
+  processoId: Id | null;
+  contratoId: Id | null;
+  aditivoId: Id | null;
+  /** Ex.: "Contrato 12/2026 — Aquisição de coletes". */
+  rotulo: string;
+  uasg: string;
+  /** Matéria já gerada para este ato, se houver. */
+  materiaId: Id | null;
+}
+export interface EntradaMateriaDou {
+  tipo: TipoMateriaDou;
+  processoId?: Id;
+  contratoId?: Id;
+  aditivoId?: Id;
+}
+export interface EntradaEnvioDou {
+  /** Protocolo devolvido pelo INCom. */
+  protocolo: string;
+  /** Instante do envio pelo INCom (padrão: agora). */
+  enviadaEm?: InstanteISO;
+}
+export interface EntradaPublicacaoDou {
+  data: DataISO;
+  edicao: string;
+  pagina: string;
+  url?: string | null;
+}
+export interface EntradaJornalDou {
+  nome: string;
+  data: DataISO;
+}
+// GET /publicacoes-dou/resumo → ResumoPublicacoesDou (jornada:ler ou contratos:ler)
+// GET /publicacoes-dou?tipo&situacao&processoId&pagina&tamanhoPagina → Pagina<MateriaDou> (aviso: jornada:ler; extratos: contratos:ler; escopo de UASG)
+// GET /publicacoes-dou/candidatos?tipo → CandidatoMateriaDou[]
+// GET /publicacoes-dou/:id → MateriaDou
+// POST /publicacoes-dou body EntradaMateriaDou → MateriaDou (aviso: jornada:publicar; extratos: contratos:editar) — gera ou refaz o rascunho
+// POST /publicacoes-dou/:id/envio body EntradaEnvioDou → MateriaDou: registra o envio pelo INCom e a edição prevista
+// POST /publicacoes-dou/:id/conferir → MateriaDou: confere a publicação na consulta pública do DOU, pela fila
+// POST /publicacoes-dou/:id/publicacao body EntradaPublicacaoDou → MateriaDou: registra manualmente a edição
+// POST /publicacoes-dou/:id/jornal body EntradaJornalDou → MateriaDou: publicação do aviso em jornal (art. 54, § 1º)
+// ───────────────────────── Sigilo de segurança pública (F25: RN-40, RF-33 e RNF-09) ─────────────────────────
+
+export type GrauSigilo = 'reservada' | 'secreta' | 'ultrassecreta';
+/** `lai`: informação classificada (Lei 12.527/2011); `orcamento`: sigilo do orçamento estimado (Lei 14.133/2021, art. 24). */
+export type TipoSigilo = 'lai' | 'orcamento';
+/** Incisos do art. 23 da LAI. */
+export type HipoteseSigiloLai = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI' | 'VII' | 'VIII';
+/** Autoridade classificadora (LAI, art. 27, I a III, e § 1º). */
+export type NivelAutoridadeClassificadora = 'ministro_estado' | 'titular_entidade' | 'direcao_das_101_5' | 'delegacao';
+/** O que é classificado: o processo inteiro, um documento gerado (por tipo), um anexo do processo ou o contrato. */
+export type AlvoSigilo = 'processo' | 'documento' | 'anexo' | 'contrato';
+
+export interface AutoridadeClassificadoraSigilo {
+  nome: string;
+  cargo: string;
+  nivel: NivelAutoridadeClassificadora;
+  atoDelegacao: string | null;
+}
+
+export interface ClassificacaoSigilo {
+  id: Id;
+  alvo: AlvoSigilo;
+  documentoTipo: DocumentoGerado['tipo'] | null;
+  arquivoId: Id | null;
+  contratoId: Id | null;
+  tipo: TipoSigilo;
+  grau: GrauSigilo | null;
+  hipotese: HipoteseSigiloLai | null;
+  razoes: string;
+  dataProducao: DataISO;
+  prazoFim: DataISO | null;
+  eventoFim: string | null;
+  /** No termo por evento, a data em que a informação fica pública mesmo sem o evento (prazo máximo do grau). */
+  prazoLimite: DataISO | null;
+  autoridade: AutoridadeClassificadoraSigilo | null;
+  fundamento: string;
+  /** Código de indexação simplificado (Decreto 7.845/2012, art. 2º, III). */
+  codigoIndexacao: string;
+  /** 'expirada': o prazo passou e a informação ficou pública sozinha (LAI, art. 24, § 4º). */
+  situacao: 'vigente' | 'desclassificada' | 'expirada';
+  versao: number;
+  classificadaEm: InstanteISO;
+  classificadaPor: UsuarioResumo;
+  desclassificadaEm: InstanteISO | null;
+  motivoDesclassificacao: string | null;
+}
+
+export interface EntradaClassificacaoSigilo {
+  alvo: AlvoSigilo;
+  documentoTipo?: DocumentoGerado['tipo'];
+  arquivoId?: Id;
+  tipo: TipoSigilo;
+  grau: GrauSigilo | null;
+  hipotese: HipoteseSigiloLai | null;
+  razoes: string;
+  dataProducao: DataISO;
+  prazoFim: DataISO | null;
+  eventoFim: string | null;
+  autoridade: AutoridadeClassificadoraSigilo | null;
+  /** Obrigatório na reclassificação (já há classificação vigente para o mesmo alvo). */
+  motivoReclassificacao?: string;
+}
+
+export interface CredencialAcessoSigilo {
+  id: Id;
+  usuario: UsuarioResumo;
+  grauMaximo: GrauSigilo;
+  /** Credencial de segurança (Decreto 7.845/2012, art. 18) ou, excepcionalmente, Termo de Compromisso de Manutenção de Sigilo (parágrafo único). */
+  fundamento: 'credencial_seguranca' | 'tcms';
+  necessidade: string;
+  validaAte: DataISO | null;
+  ativa: boolean;
+  concedidaEm: InstanteISO;
+  concedidaPor: UsuarioResumo;
+  revogadaEm: InstanteISO | null;
+  motivoRevogacao: string | null;
+}
+
+export interface EntradaCredencialSigilo {
+  usuarioId: Id;
+  grauMaximo: GrauSigilo;
+  fundamento: 'credencial_seguranca' | 'tcms';
+  necessidade: string;
+  validaAte: DataISO | null;
+}
+
+export interface ItemSigiloProcesso {
+  alvo: 'documento' | 'anexo';
+  documentoTipo: DocumentoGerado['tipo'] | null;
+  arquivoId: Id | null;
+  titulo: string;
+  descricao: string;
+  /** Anexo cifrado no cofre (AES-256-GCM). */
+  noCofre: boolean;
+  classificacao: ClassificacaoSigilo | null;
+}
+
+export interface UsuarioCredenciavel {
+  id: Id;
+  nome: string;
+  perfis: CodigoPerfil[];
+}
+
+export interface SigiloProcesso {
+  processoId: Id;
+  numeroSei: string;
+  titulo: string;
+  processo: ClassificacaoSigilo | null;
+  contrato: { id: Id; numero: string; classificacao: ClassificacaoSigilo | null } | null;
+  itens: ItemSigiloProcesso[];
+  orcamento: {
+    sigiloso: boolean;
+    motivo: string | null;
+    situacao: 'publico' | 'sigiloso' | 'divulgado';
+    divulgadoEm: InstanteISO | null;
+    mensagem: string;
+    fundamento: string;
+  };
+  credenciais: CredencialAcessoSigilo[];
+  /** Usuários com acesso à UASG do processo que podem receber credencial (diálogo de credenciamento). */
+  credenciaveis: UsuarioCredenciavel[];
+  meuAcesso: {
+    orgaoControle: boolean;
+    credencial: CredencialAcessoSigilo | null;
+    podeClassificar: boolean;
+    podeCredenciar: boolean;
+  };
+  cofre: { disponivel: boolean; algoritmo: 'AES-256-GCM'; chaveId: string | null; motivoIndisponivel: string | null };
+  /** Classificações anteriores (desclassificadas ou substituídas), da mais recente para a mais antiga. */
+  historico: ClassificacaoSigilo[];
+}
+
+export type BaseAcessoSigilo =
+  | 'sem_sigilo'
+  | 'controle'
+  | 'credencial'
+  | 'orcamento_divulgado'
+  | 'negado_sem_credencial'
+  | 'negado_credencial_vencida'
+  | 'negado_grau_insuficiente';
+
+export interface AcessoSigiloRegistrado {
+  id: Id;
+  ocorridoEm: InstanteISO;
+  usuario: UsuarioResumo;
+  alvo: AlvoSigilo;
+  titulo: string;
+  operacao: 'consulta' | 'pdf' | 'download';
+  permitido: boolean;
+  base: BaseAcessoSigilo;
+  motivo: string | null;
+}
+
+export interface DocumentoRetidoPorSigilo {
+  documento: 'edital' | 'tr' | 'minuta_contrato';
+  titulo: string;
+  motivo: string;
+}
+
+export interface SigiloEditalPublico {
+  /** Processo classificado pela LAI: só número, data e aviso (Decreto 7.845/2012, art. 20). */
+  registroMinimo: boolean;
+  mensagem: string | null;
+  /** Documentos do edital retidos por classificação (não aparecem e não vão ao PNCP). */
+  documentosRetidos: number;
+  orcamento: {
+    situacao: 'publico' | 'sigiloso' | 'divulgado';
+    /** Valor total estimado: com orçamento sigiloso, só depois da fase de lances ou do julgamento. */
+    valorEstimado: Centavos | null;
+    divulgadoEm: InstanteISO | null;
+    mensagem: string;
+    fundamento: string;
+  };
+}
+
+export interface SigiloContratoPublico {
+  mensagem: string;
+  fundamento: string;
+}
+
+// GET  /processos/:id/sigilo → SigiloProcesso (sigilo:ler)
+// POST /processos/:id/sigilo/classificacoes body EntradaClassificacaoSigilo → SigiloProcesso (sigilo:classificar)
+// POST /processos/:id/sigilo/classificacoes/:classificacaoId/desclassificar body { motivo } → SigiloProcesso (sigilo:classificar)
+// POST /processos/:id/sigilo/credenciais body EntradaCredencialSigilo → SigiloProcesso (sigilo:credenciar)
+// POST /processos/:id/sigilo/credenciais/:credencialId/revogar body { motivo } → SigiloProcesso (sigilo:credenciar)
+// GET  /processos/:id/sigilo/acessos?pagina&tamanhoPagina → Pagina<AcessoSigiloRegistrado> (sigilo:ler)
+// POST /processos/:id/sigilo/documentos/:tipo/pdf body { motivo } → application/pdf com a marcação (sigilo:ler + decisão de acesso)
+// POST /processos/:id/sigilo/anexos?titulo&... (corpo binário) → SigiloProcesso 201 (sigilo:classificar)
+// POST /processos/:id/sigilo/anexos/:arquivoId/baixar body { motivo } → arquivo decifrado (sigilo:ler + decisão de acesso)
+
+// ───────────────────────── Carimbo de tempo da trilha de auditoria (RNF-09) ─────────────────────────
+
+export interface AncoragemTrilha {
+  id: Id;
+  /** Último evento coberto: o hash da cadeia nesse evento garante todos os anteriores. */
+  sequencia: number;
+  hash: string;
+  /** SHA-256 da declaração ancorada (o que a autoridade carimbou). */
+  impressao: string;
+  /** 'rfc3161': token de uma autoridade de carimbo do tempo; 'local': registro do próprio servidor (modo offline). */
+  modo: 'rfc3161' | 'local';
+  origem: 'periodica' | 'manual';
+  ancoradaEm: InstanteISO;
+  /** Endereço da autoridade de carimbo (sem credenciais). */
+  autoridade: string | null;
+  carimboEm: InstanteISO | null;
+  numeroSerie: string | null;
+  politica: string | null;
+  hashToken: string | null;
+  solicitadaPor: UsuarioResumo | null;
+}
+
+export interface SituacaoAncoragens {
+  modo: 'rfc3161' | 'local';
+  autoridade: string | null;
+  intervaloHoras: number;
+  proxima: { devida: boolean; motivo: string };
+  itens: AncoragemTrilha[];
+}
+
+export interface ConferenciaAncoragemTrilha {
+  ancoragemId: Id;
+  sequencia: number;
+  modo: 'rfc3161' | 'local';
+  situacao: 'integra' | 'divergente';
+  problemas: string[];
+  avisos: string[];
+}
+
+export interface VerificacaoAncoragens {
+  verificadoEm: InstanteISO;
+  cadeiaIntegra: boolean;
+  integras: number;
+  divergentes: number;
+  ancoragens: ConferenciaAncoragemTrilha[];
+}
+// GET  /auditoria/ancoragens → SituacaoAncoragens (auditoria:ler)
+// POST /auditoria/ancoragens → AncoragemTrilha (auditoria:ancorar)
+// GET  /auditoria/ancoragens/verificacao → VerificacaoAncoragens (auditoria:ler)

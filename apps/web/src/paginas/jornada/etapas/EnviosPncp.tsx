@@ -9,6 +9,7 @@ import type { EnvioPncp, ProcessoDetalhe, SituacaoEnvioPncp } from '@agora/contr
 import { usePublicacaoPncp } from '../../../api/fila';
 import { Alerta, BotaoCopiar, Etiqueta, LinkBotao, LinkExterno, ListaDefinicoes, type TomEtiqueta } from '../../../componentes';
 import { abreviarHash, formatarInstante } from '../../../utilitarios/formatacao';
+import { RetidosPorSigilo } from '../../sigilo/Publico';
 
 export const SITUACOES_ENVIO: Record<SituacaoEnvioPncp, { rotulo: string; tom: TomEtiqueta }> = {
   na_fila: { rotulo: 'Na fila', tom: 'info' },
@@ -102,7 +103,7 @@ export default function EnviosPncp({ processo }: { processo: ProcessoDetalhe }) 
     void refetch();
   }, [processo.publicacao.pncp, processo.publicacao.idPncp, refetch]);
 
-  if (!publicacao || (publicacao.envios.length === 0 && processo.publicacao.pncp === 'nao_publicado')) return null;
+  if (!publicacao || (publicacao.envios.length === 0 && processo.publicacao.pncp === 'nao_publicado' && (publicacao.retidosPorSigilo ?? []).length === 0)) return null;
   const simulado = publicacao.envios.some((e) => e.modo === 'offline');
 
   return (
@@ -125,6 +126,7 @@ export default function EnviosPncp({ processo }: { processo: ProcessoDetalhe }) 
           ))}
         </ul>
       )}
+      <RetidosPorSigilo retidos={publicacao.retidosPorSigilo} />
       {publicacao.linkPublico || publicacao.linkPncp ? (
         <div className="botoes-fontes">
           {publicacao.linkPublico ? (

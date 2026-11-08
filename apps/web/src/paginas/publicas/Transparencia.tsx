@@ -58,12 +58,12 @@ const COLUNAS: ColunaTabela<ContratoPublico>[] = [
       </span>
     ),
   },
-  { id: 'valorGlobal', cabecalho: 'Valor global', alinhamento: 'fim', prioritaria: true, celula: (c) => <span className="numero">{formatarMoeda(c.valorGlobal)}</span> },
+  { id: 'valorGlobal', cabecalho: 'Valor global', alinhamento: 'fim', prioritaria: true, celula: (c) => (c.sigilo ? <span className="texto-secundario">Sigiloso</span> : <span className="numero">{formatarMoeda(c.valorGlobal)}</span>) },
   {
     id: 'execucao',
     cabecalho: 'Pago',
     larguraMinima: '10rem',
-    celula: (c) => (
+    celula: (c) => c.sigilo ? <span className="texto-secundario">Sigiloso</span> : (
       <BarraProgresso
         valor={c.valorGlobal > 0 ? (c.valorPago / c.valorGlobal) * 100 : 0}
         rotulo={`Valor pago do contrato ${c.numero}`}
@@ -95,7 +95,8 @@ export default function Transparencia() {
       <p className="texto-secundario">
         Os dados pessoais de fornecedores pessoa física aparecem mascarados. A fonte oficial de divulgação das contratações é o Portal Nacional de
         Contratações Públicas (PNCP); o link de cada contrato leva ao registro correspondente. O inteiro teor dos editais está em{' '}
-        <Link to="/transparencia/editais">Transparência: editais publicados</Link>.
+        <Link to="/transparencia/editais">Transparência: editais publicados</Link>. Os conjuntos em CSV e JSON estão em{' '}
+        <Link to="/dados-abertos">Dados abertos</Link>.
       </p>
       {consulta.isError && consulta.data === undefined ? (
         <FalhaConsulta consulta={consulta} />

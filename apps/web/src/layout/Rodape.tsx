@@ -41,6 +41,9 @@ export function Rodape() {
               <Link to="/transparencia">Transparência</Link>
             </li>
             <li>
+              <Link to="/dados-abertos">Dados abertos</Link>
+            </li>
+            <li>
               <Link to="/privacidade">Privacidade e LGPD</Link>
             </li>
             <li>

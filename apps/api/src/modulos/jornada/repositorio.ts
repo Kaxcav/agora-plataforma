@@ -24,6 +24,7 @@ import { padraoContem } from '../../compartilhado/texto.ts';
 import { avaliarRegularidade, rotuloSancao, sancaoVigente } from '../fornecedores/repositorio.ts';
 import { bloqueiosControleExterno } from '../../compartilhado/controle-externo.ts';
 import { sinaisVinculosDaDisputa } from '../impedimentos/jornada.ts';
+import { avaliarDotacaoDoProcesso, carregarDadosPreparatorios } from '../preparatorios/dotacao.ts';
 import { ITENS_PARECER, PAPEIS_PROCESSO, TIPOS_DOCUMENTO } from './constantes.ts';
 import {
   analisarCesta,
@@ -138,7 +139,7 @@ export async function carregarArvore(executor: Executor, processoId: string): Pr
     assinado_em: string | null;
     assinado_por: string | null;
   }>(
-    `SELECT a.numero, a.titulo, a.documento_id, a.incluido_em, a.assinado_em, u.nome AS assinado_por
+    `SELECT a.numero, a.titulo, a.documento_id, a.incluido_em, a.assinado_em, COALESCE(u.nome, a.assinado_por_nome) AS assinado_por
        FROM processos_arvore_sei a
        LEFT JOIN usuarios u ON u.id = a.assinado_por
       WHERE a.processo_id = $1
@@ -219,6 +220,7 @@ export async function carregarProcesso(executor: Executor, linha: LinhaProcesso)
     equipe: await carregarEquipe(executor, linha.id),
     arvore: await carregarArvore(executor, linha.id),
     documentos: await carregarDocumentos(executor, linha.id, linha.edital),
+    preparatorios: await carregarDadosPreparatorios(executor, linha.id),
   };
 }
 
@@ -373,9 +375,11 @@ export async function avaliarProcesso(
   }
   // RN-30: cautelar suspensiva do controle externo bloqueia o avanço em qualquer etapa.
   const controleExterno = await bloqueiosControleExterno(executor, linha.id, linha.etapa_atual, hoje);
+  // RN-39: na etapa 4, o processo só segue para o edital com a dotação declarada e trazida pelo TR e pela minuta.
+  const dotacao = avaliarDotacaoDoProcesso(carga, hoje, valorEstimado);
   return {
-    bloqueios: [...resultado.bloqueios, ...controleExterno],
-    sinais: [...resultado.sinais, ...sinaisDocumentos(carga.documentos)],
+    bloqueios: [...resultado.bloqueios, ...dotacao.bloqueios, ...controleExterno],
+    sinais: [...resultado.sinais, ...dotacao.sinais, ...sinaisDocumentos(carga.documentos)],
     analise,
     valorEstimado,
     politicaSustentabilidade,

@@ -18,6 +18,7 @@ import { sha256Hex } from '../../compartilhado/cripto.ts';
 import { identificadorInstrumento, normalizarBusca } from '../../compartilhado/texto.ts';
 import { regraNegocio } from '../../http/erros.ts';
 import { ErroIa, restaurarTrechosProtegidos, type ProvedorIa } from '../../ia/provedor.ts';
+import { ancorarPromptIa } from '../../ia/ancoragem.ts';
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
 import { CONDICOES_REFERENCIA, DOCUMENTOS_SEM_IA, ETAPA_DOCUMENTO, MINIMO_CARACTERES_TEXTO, TITULOS_DOCUMENTO, TITULOS_ETAPA } from './constantes.ts';
 import { gerarModelo, marcarAprovado, montarConteudo, montarPromptIa, type Autoria, type DadosDocumento } from './documentos.ts';
@@ -178,9 +179,11 @@ export async function gravarEquipe(
 
 /**
  * Usuários ativos no escopo de UASG de quem designa (`$1` nulo = todas): com acesso a todas as UASGs, a alguma
- * UASG do escopo, ou administradores/auditores sem UASG explícita (escopo total por perfil).
+ * UASG do escopo, ou administradores/auditores sem UASG explícita (escopo total por perfil). O perfil cidadão
+ * (gestão compartilhada com a sociedade) não é agente público e nunca é designável.
  */
-const CONDICAO_DESIGNAVEL = `u.ativo AND ($1::text[] IS NULL OR u.todas_uasgs
+const CONDICAO_DESIGNAVEL = `u.ativo AND NOT EXISTS (SELECT 1 FROM usuarios_perfis pc WHERE pc.usuario_id = u.id AND pc.perfil = 'cidadao')
+     AND ($1::text[] IS NULL OR u.todas_uasgs
      OR EXISTS (SELECT 1 FROM usuarios_uasgs uu WHERE uu.usuario_id = u.id AND uu.uasg = ANY($1::text[]))
      OR (NOT EXISTS (SELECT 1 FROM usuarios_uasgs ux WHERE ux.usuario_id = u.id)
          AND EXISTS (SELECT 1 FROM usuarios_perfis px WHERE px.usuario_id = u.id AND px.perfil IN ('administrador', 'auditor'))))`;
@@ -297,7 +300,10 @@ export async function prepararDocumento(
   let falhaIa: string | null = null;
   if (!DOCUMENTOS_SEM_IA.has(tipo)) {
     try {
-      const resposta = await provedor.gerar(montarPromptIa(tipo, modelo, dados), {
+      const prompt = montarPromptIa(tipo, modelo, dados);
+      // RAG (RIA-14): com o LLM do órgão, o prompt leva os dispositivos da base normativa e a estrutura do modelo padronizado.
+      const ancorado = provedor.tipo === 'nenhum' ? prompt : ancorarPromptIa(prompt, { tipo, corpo: modelo.corpo, fontes: modelo.fontes, objeto: carga.linha.titulo });
+      const resposta = await provedor.gerar(ancorado, {
         modeloBase: modelo.corpo,
         finalidade: modelo.titulo,
         fontes: modelo.fontes,

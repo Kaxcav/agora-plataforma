@@ -118,7 +118,8 @@ describe('jornada da contratação: processos sintéticos, regras de avanço e c
 
   test('GET /processos/designaveis lista servidores ativos do escopo, ordenados e sem dados pessoais', async () => {
     const lista = await obterJson<UsuarioDesignavel[]>(app, agente, '/api/v1/processos/designaveis');
-    assert.equal(lista.length, 17 + USUARIOS_DEMONSTRACAO_ADICIONAIS.length);
+    // O perfil cidadão (gestão compartilhada com a sociedade) não tem acesso interno nem é designável.
+    assert.equal(lista.length, 17 + USUARIOS_DEMONSTRACAO_ADICIONAIS.filter((u) => u.perfil !== 'cidadao').length);
     assert.deepEqual(
       lista.map((u) => u.nome),
       [...lista.map((u) => u.nome)].sort((a, b) => a.localeCompare(b, 'pt-BR')),
@@ -451,7 +452,7 @@ describe('jornada da contratação: processos sintéticos, regras de avanço e c
     const pub = publicado.json<ProcessoDetalhe>().publicacao;
     const hoje = hojeISO(new Date(INICIO_TESTES));
     assert.equal(pub.pncp, 'publicado');
-    assert.equal(pub.dou, 'publicado');
+    assert.equal(pub.dou, 'na_fila', 'RF-36: o DOU só fica publicado quando o aviso de licitação é conferido');
     assert.equal(pub.publicadoEm, hoje);
     assert.equal(pub.dataMinimaPropostas, dataMinimaAberturaPropostas(hoje, { objeto: 'bens', criterio: 'menor_preco', regime: 'outro' }).data);
     assert.match(pub.idPncp ?? '', /^\d{14}-1-\d{6}\/\d{4}$/);
@@ -781,6 +782,17 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
     p = await ok(planejamento, 'POST', `${base}/avancar`);
     assert.equal(p.etapaAtual, 4);
 
+    // RN-39: dotação estruturada e declaração de adequação orçamentária aprovada pela autoridade designada antes do edital.
+    await ok(agente, 'PUT', `${base}/dotacao`, {
+      linhas: [
+        { unidadeGestora: '910001', programaTrabalho: '06.181.9990.AG99.0001', naturezaDespesa: '3.3.90.30', fonteRecursos: '1001000000', exercicio: Number(hoje.slice(0, 4)), valor: 25_000_000, preEmpenho: null },
+      ],
+    });
+    const comDeclaracao = await ok(agente, 'POST', `${base}/documentos/gerar`, { tipo: 'declaracao_orcamentaria' });
+    const declaracao = comDeclaracao.documentos.find((d) => d.tipo === 'declaracao_orcamentaria');
+    assert.ok(declaracao);
+    const declarada = await ok(gestor, 'POST', `${base}/documentos/${declaracao.id}/aprovar`);
+    await ok(gestor, 'POST', `${base}/sei/assinar`, { documentoNumero: declarada.documentos.find((d) => d.id === declaracao.id)?.numeroSei });
     for (const tipo of ['tr', 'edital', 'minuta_contrato']) await aprovarEAssinar(agente, tipo);
     p = await ok(agente, 'POST', `${base}/avancar`);
     assert.equal(p.etapaAtual, 5);
@@ -840,6 +852,7 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
       'processo.selecao.homologar',
       'processo.selecao.divulgar_preparatorios',
       'processo.contratar',
+      'processo.dotacao.atualizar',
     ]) {
       assert.ok(doProcesso.includes(acao), `trilha sem ${acao}`);
     }

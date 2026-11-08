@@ -25,6 +25,7 @@ import { registrarEvento } from '../../auditoria/trilha.ts';
 import { sha256Hex } from '../../compartilhado/cripto.ts';
 import { auditar } from '../../http/auditar.ts';
 import { ErroApi, naoAutenticado, naoEncontrado, validacao } from '../../http/erros.ts';
+import { consumirIntencaoCidadao, obterOuCriarCidadao } from '../sociedade/cidadaos.ts';
 
 /** 5 tentativas malsucedidas por e-mail+IP em 15 minutos (ARQUITETURA §3.2). */
 const MAXIMO_TENTATIVAS = 5;
@@ -242,6 +243,8 @@ export async function rotasSessao(app: FastifyInstance): Promise<void> {
   app.get('/sessao/govbr/retorno', async (request, reply) => {
     if (!govbr) throw naoEncontrado('Login Único gov.br não está habilitado.');
     reply.clearCookie(COOKIE_GOVBR, { path: CAMINHO_COOKIE_GOVBR, httpOnly: true, sameSite: 'lax', secure: ctx.config.cookieSeguro });
+    // Gestão compartilhada com a sociedade (RF-37): login iniciado por GET /sessao/govbr/cidadao.
+    const intencaoCidadao = consumirIntencaoCidadao(request, reply, ctx.config.cookieSeguro);
 
     const falhar = async (motivo: string, erro?: unknown) => {
       request.log.warn({ err: erro, motivo }, 'Login Único gov.br recusado');
@@ -274,14 +277,15 @@ export async function rotasSessao(app: FastifyInstance): Promise<void> {
 
     const resultado = await govbr
       .concluir({ code: consulta.data.code, state: consulta.data.state }, estado)
-      .then((r) => ({ ok: true as const, cpf: r.cpf }))
+      .then((r) => ({ ok: true as const, ...r }))
       .catch((erro: unknown) => ({ ok: false as const, erro }));
     if (!resultado.ok) return falhar('validação do gov.br falhou', resultado.erro);
 
     const [usuario] = await ctx.banco.consultar<{ id: string }>('SELECT id FROM usuarios WHERE cpf = $1 AND ativo', [resultado.cpf]);
-    if (!usuario) return falhar('CPF sem usuário ativo vinculado');
+    const usuarioId = usuario?.id ?? (intencaoCidadao ? await obterOuCriarCidadao(ctx, request, resultado) : null);
+    if (!usuarioId) return falhar('CPF sem usuário ativo vinculado');
 
-    await concluirLogin(request, reply, usuario.id, 'govbr', null);
-    return reply.redirect('/', 302);
+    await concluirLogin(request, reply, usuarioId, 'govbr', null);
+    return reply.redirect(intencaoCidadao?.retorno ?? '/', 302);
   });
 }

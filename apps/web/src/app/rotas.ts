@@ -86,6 +86,19 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/metas-etp', permissao: 'metas:ler', pagina: lazy(() => import('../paginas/metas/PainelMetas')) },
   // IMR e conferência da nota fiscal (F7: RF-29 e RN-36)
   { caminho: '/financeiro/pagamentos/:id/conferencia', permissao: 'pagamentos:ler', pagina: lazy(() => import('../paginas/financeiro/ConferenciaNota')) },
+  // Gestão compartilhada com a sociedade (RF-37) e dados abertos (RF-38)
+  { caminho: '/dados-abertos', publica: true, pagina: lazy(() => import('../paginas/publicas/DadosAbertos')) },
+  { caminho: '/sociedade', permissao: 'sociedade:ler', pagina: lazy(() => import('../paginas/sociedade/GestaoCompartilhada')) },
+  { caminho: '/sociedade/contratos/:id', permissao: 'sociedade:ler', pagina: lazy(() => import('../paginas/sociedade/ContratoSociedade')) },
+  { caminho: '/sociedade/minhas-manifestacoes', permissao: 'sociedade:manifestar', pagina: lazy(() => import('../paginas/sociedade/MinhasManifestacoes')) },
+  // IA ancorada: base normativa, qualidade normativa (IMR-02) e conferência dos documentos (F24)
+  { caminho: '/base-normativa', permissao: 'normas:ler', pagina: lazy(() => import('../paginas/ia/BaseNormativa')) },
+  { caminho: '/qualidade-normativa', permissao: 'qualidade_ia:ler', pagina: lazy(() => import('../paginas/ia/QualidadeNormativa')) },
+  { caminho: '/jornada/:id/conferencia', permissao: 'jornada:ler', pagina: lazy(() => import('../paginas/ia/ConferenciaProcesso')) },
+  // Publicações no DOU (RF-36): avisos de licitação e extratos, envio pelo INCom e conferência da publicação
+  { caminho: '/publicacoes-dou', permissao: ['jornada:ler', 'contratos:ler'], pagina: lazy(() => import('../paginas/publicacoes/PublicacoesDou')) },
+  // Sigilo de segurança pública (F25: RN-40, RF-33 e RNF-09)
+  { caminho: '/jornada/:id/sigilo', permissao: 'sigilo:ler', pagina: lazy(() => import('../paginas/sigilo/SigiloProcesso')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

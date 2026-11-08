@@ -24,6 +24,7 @@ export const NOMES_PERFIS: Record<CodigoPerfil, string> = {
   auditor: 'Auditor',
   consulta: 'Consulta',
   controle_interno: 'Controle interno',
+  cidadao: 'Cidadão',
 };
 
 export const NOMES_PERMISSOES: Record<Permissao, string> = {
@@ -86,6 +87,22 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'imr:configurar': 'Configurar o IMR dos contratos (indicadores, metas e faixas de glosa)',
   'imr:medir': 'Registrar as medições do IMR, com evidência',
   'pagamentos:conferir': 'Conferir a nota fiscal e justificar divergências',
+  'jornada:autorizar': 'Aprovar a portaria de designação, a declaração orçamentária e o despacho de autorização (autoridade competente designada)',
+  'sociedade:ler': 'Consultar a gestão compartilhada com a sociedade',
+  'sociedade:manifestar': 'Enviar manifestações sobre contratos (cidadão identificado)',
+  'sociedade:moderar': 'Moderar as manifestações da sociedade',
+  'sociedade:responder': 'Responder às manifestações da sociedade',
+  'sociedade:registrar': 'Publicar fotos e vídeos da execução',
+  'sociedade:relatorio_final': 'Publicar o relatório final do contrato',
+  'alteracoes:parecer': 'Emitir o parecer jurídico das alterações do contrato',
+  'alteracoes:decidir': 'Assinar aditivos e apostilas e decidir reequilíbrio e extinção (autoridade competente)',
+  'normas:ler': 'Consultar a base normativa (Lei 14.133/2021)',
+  'qualidade_ia:ler': 'Acompanhar a qualidade normativa dos rascunhos (IMR-02)',
+  'sigilo:ler': 'Consultar o sigilo do processo',
+  'sigilo:classificar': 'Classificar, reclassificar e desclassificar informação sigilosa',
+  'sigilo:credenciar': 'Credenciar o acesso a informação sigilosa',
+  'sigilo:controle': 'Acesso irrestrito de órgão de controle a informação sigilosa',
+  'auditoria:ancorar': 'Ancorar a trilha de auditoria em carimbo do tempo',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

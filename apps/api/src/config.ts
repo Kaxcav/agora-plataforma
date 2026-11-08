@@ -53,6 +53,14 @@ export interface Config {
   pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
   /** Operação (RNF-10, IMR-01): sonda de disponibilidade e meta configurada pelo órgão. */
   operacao: ConfigOperacao;
+  /** Catálogo de dados abertos (RF-38): limite de requisições por minuto e por IP nas rotas públicas do catálogo. */
+  dadosAbertos: { limitePorMinuto: number };
+  /** Web service do SEI do órgão (RF-35): SeiWS (SOAP), com sigla do sistema e chave de acesso do serviço. */
+  sei: ConfigSei;
+  /** Publicação no DOU (RF-36): consulta pública usada para conferir a publicação e horário de fechamento do INCom. */
+  dou: ConfigDou;
+  /** Sigilo (RNF-09): chave do órgão para o cofre de anexos e autoridade de carimbo do tempo da trilha de auditoria. */
+  sigilo: ConfigSigilo;
 }
 
 export interface ConfigOperacao {
@@ -69,6 +77,55 @@ export interface ConfigOperacao {
   metaDisponibilidade: number | null;
 }
 
+export interface ConfigSei {
+  /** Endereço do serviço SOAP (`soap:address` do WSDL), ex.: https://sei.orgao.gov.br/sei/ws/SeiWS.php. */
+  url: string | null;
+  /** Sigla do sistema cadastrado no SEI (Administração › Sistemas). */
+  siglaSistema: string | null;
+  /** Chave de acesso do serviço (parâmetro IdentificacaoServico). Segredo: fica só no servidor. */
+  identificacaoServico: string | null;
+  /** Id da unidade do SEI onde os processos são gerados. */
+  idUnidade: string | null;
+  /** Id do tipo de processo no SEI (ex.: "Licitação: Pregão eletrônico"). */
+  idTipoProcedimento: string | null;
+  /** Id do tipo de documento externo no SEI para os PDFs da Ágora. */
+  idSerie: string | null;
+  /** Id da unidade para onde o processo é enviado depois da inclusão dos documentos (opcional). */
+  idUnidadeDestino: string | null;
+  /** Hipótese legal dos documentos restritos (opcional; sem ela, a do tipo de processo). */
+  idHipoteseLegal: string | null;
+  /** Monta o bloco de assinatura com os documentos incluídos. */
+  blocoAssinatura: boolean;
+  timeoutMs: number;
+  /** Endereço, sigla, chave, unidade, tipo de processo e tipo de documento informados. */
+  configurado: boolean;
+}
+
+export interface ConfigDou {
+  /** Consulta pública do DOU (Imprensa Nacional), chamada só pelo servidor. */
+  consultaUrl: string;
+  /** Hora de Brasília em que o INCom fecha a edição do dia útil seguinte. */
+  horaFechamento: number;
+  timeoutMs: number;
+}
+
+export interface ConfigSigilo {
+  /** Chave AES-256 do cofre (32 bytes, de AGORA_COFRE_CHAVE em base64 ou hexadecimal); null = cofre só com a chave derivada fora de produção. */
+  cofreChave: Buffer | null;
+  carimboTempo: {
+    /** Autoridade de carimbo do tempo RFC 3161; null = ancoragem local (modo offline). */
+    url: string | null;
+    usuario: string | null;
+    senha: string | null;
+    timeoutMs: number;
+    intervaloHoras: number;
+    /** SHA-256 do certificado da autoridade reconhecido como confiável; null = confere só com o certificado do token. */
+    certificadoSha256: string | null;
+    /** OID da política de carimbo pedida (opcional). */
+    politica: string | null;
+  };
+}
+
 export interface ConfigSmtp {
   host: string;
   porta: number;
@@ -83,7 +140,7 @@ export interface ConfigNotificacoes {
   /** 'api' = varredura e fila no próprio processo da API; 'externo' = processo à parte (`npm run notificacoes -w @agora/api`). */
   agendador: 'api' | 'externo';
   email: 'simulado' | 'smtp';
-  sei: 'simulado' | 'desligado';
+  sei: 'simulado' | 'desligado' | 'webservice';
   govbr: 'simulado' | 'desligado';
   smtp: ConfigSmtp | null;
 }
@@ -150,7 +207,7 @@ const esquemaAmbiente = z.object({
   AGORA_PRECOS_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(15_000),
   AGORA_NOTIFICACOES_AGENDADOR: z.enum(['api', 'externo']).default('api'),
   AGORA_NOTIFICACOES_EMAIL: z.enum(['simulado', 'smtp']).default('simulado'),
-  AGORA_NOTIFICACOES_SEI: z.enum(['simulado', 'desligado']).default('simulado'),
+  AGORA_NOTIFICACOES_SEI: z.enum(['simulado', 'desligado', 'webservice']).default('simulado'),
   AGORA_NOTIFICACOES_GOVBR: z.enum(['simulado', 'desligado']).default('simulado'),
   AGORA_SMTP_HOST: textoOpcional,
   AGORA_SMTP_PORTA: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1).max(65535).optional()),
@@ -181,6 +238,28 @@ const esquemaAmbiente = z.object({
   AGORA_OPERACAO_FILA_ATRASO_MINUTOS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1).max(1440).default(15)),
   AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(0).max(720).default(0)),
   AGORA_OPERACAO_META_DISPONIBILIDADE: z.preprocess(vazioComoAusente, z.coerce.number().gt(0).max(100).optional()),
+  AGORA_DADOS_ABERTOS_LIMITE_MINUTO: z.coerce.number().int().min(1).max(100_000).default(60),
+  AGORA_SEI_URL: textoOpcional,
+  AGORA_SEI_SIGLA_SISTEMA: textoOpcional,
+  AGORA_SEI_IDENTIFICACAO_SERVICO: textoOpcional,
+  AGORA_SEI_ID_UNIDADE: textoOpcional,
+  AGORA_SEI_ID_TIPO_PROCEDIMENTO: textoOpcional,
+  AGORA_SEI_ID_SERIE: textoOpcional,
+  AGORA_SEI_ID_UNIDADE_DESTINO: textoOpcional,
+  AGORA_SEI_ID_HIPOTESE_LEGAL: textoOpcional,
+  AGORA_SEI_BLOCO_ASSINATURA: booleanoOpcional,
+  AGORA_SEI_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(300_000).default(60_000),
+  AGORA_DOU_CONSULTA_URL: z.string().trim().min(1).default('https://www.in.gov.br/consulta/-/buscar/dou'),
+  AGORA_DOU_HORA_FECHAMENTO: z.coerce.number().int().min(0).max(23).default(19),
+  AGORA_DOU_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(20_000),
+  AGORA_COFRE_CHAVE: textoOpcional,
+  AGORA_CARIMBO_TEMPO_URL: textoOpcional,
+  AGORA_CARIMBO_TEMPO_USUARIO: textoOpcional,
+  AGORA_CARIMBO_TEMPO_SENHA: textoOpcional,
+  AGORA_CARIMBO_TEMPO_TIMEOUT_SEGUNDOS: z.coerce.number().int().min(1).max(120).default(15),
+  AGORA_CARIMBO_TEMPO_INTERVALO_HORAS: z.coerce.number().int().min(1).max(720).default(24),
+  AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256: textoOpcional,
+  AGORA_CARIMBO_TEMPO_POLITICA: textoOpcional,
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -301,6 +380,47 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if ((e.AGORA_PNCP_USUARIO === null) !== (e.AGORA_PNCP_SENHA === null)) {
     problemas.push('AGORA_PNCP_USUARIO e AGORA_PNCP_SENHA: defina os dois juntos (ou nenhum)');
   }
+  const camposSei = [e.AGORA_SEI_URL, e.AGORA_SEI_SIGLA_SISTEMA, e.AGORA_SEI_IDENTIFICACAO_SERVICO, e.AGORA_SEI_ID_UNIDADE, e.AGORA_SEI_ID_TIPO_PROCEDIMENTO, e.AGORA_SEI_ID_SERIE];
+  const seiConfigurado = camposSei.every((c) => c !== null);
+  if (!seiConfigurado && camposSei.some((c) => c !== null)) {
+    problemas.push('AGORA_SEI_*: defina URL, SIGLA_SISTEMA, IDENTIFICACAO_SERVICO, ID_UNIDADE, ID_TIPO_PROCEDIMENTO e ID_SERIE juntos (ou nenhum)');
+  }
+  if (e.AGORA_SEI_URL !== null && !urlValida(e.AGORA_SEI_URL)) {
+    problemas.push('AGORA_SEI_URL: URL inválida (ex.: https://sei.orgao.gov.br/sei/ws/SeiWS.php)');
+  }
+  for (const [nome, valor] of [
+    ['AGORA_SEI_ID_UNIDADE', e.AGORA_SEI_ID_UNIDADE],
+    ['AGORA_SEI_ID_TIPO_PROCEDIMENTO', e.AGORA_SEI_ID_TIPO_PROCEDIMENTO],
+    ['AGORA_SEI_ID_SERIE', e.AGORA_SEI_ID_SERIE],
+    ['AGORA_SEI_ID_UNIDADE_DESTINO', e.AGORA_SEI_ID_UNIDADE_DESTINO],
+    ['AGORA_SEI_ID_HIPOTESE_LEGAL', e.AGORA_SEI_ID_HIPOTESE_LEGAL],
+  ] as const) {
+    if (valor !== null && !/^\d{1,20}$/.test(valor)) problemas.push(`${nome}: informe o identificador numérico do SEI`);
+  }
+  if (e.AGORA_NOTIFICACOES_SEI === 'webservice' && !seiConfigurado) {
+    problemas.push('AGORA_NOTIFICACOES_SEI=webservice: configure antes o web service do SEI (AGORA_SEI_*)');
+  }
+  if (!urlValida(e.AGORA_DOU_CONSULTA_URL)) problemas.push('AGORA_DOU_CONSULTA_URL: URL inválida (use https://)');
+  const cofreChave = e.AGORA_COFRE_CHAVE === null ? null : lerChaveCofre(e.AGORA_COFRE_CHAVE);
+  if (e.AGORA_COFRE_CHAVE !== null && cofreChave === null) {
+    problemas.push('AGORA_COFRE_CHAVE: informe 32 bytes em base64 (44 caracteres) ou em hexadecimal (64 caracteres)');
+  }
+  if (e.AGORA_CARIMBO_TEMPO_URL !== null && !urlValida(e.AGORA_CARIMBO_TEMPO_URL)) {
+    problemas.push('AGORA_CARIMBO_TEMPO_URL: URL inválida da autoridade de carimbo do tempo (RFC 3161)');
+  }
+  if ((e.AGORA_CARIMBO_TEMPO_USUARIO === null) !== (e.AGORA_CARIMBO_TEMPO_SENHA === null)) {
+    problemas.push('AGORA_CARIMBO_TEMPO_USUARIO e AGORA_CARIMBO_TEMPO_SENHA: defina os dois juntos (ou nenhum)');
+  }
+  if (e.AGORA_CARIMBO_TEMPO_USUARIO !== null && e.AGORA_CARIMBO_TEMPO_URL !== null && !e.AGORA_CARIMBO_TEMPO_URL.startsWith('https://')) {
+    problemas.push('AGORA_CARIMBO_TEMPO_URL: com usuário e senha, use https:// (as credenciais não trafegam sem criptografia)');
+  }
+  const certificadoTsa = e.AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256 === null ? null : e.AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256.replace(/:/g, '').toLowerCase();
+  if (certificadoTsa !== null && !/^[0-9a-f]{64}$/.test(certificadoTsa)) {
+    problemas.push('AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256: informe a impressão SHA-256 do certificado (64 dígitos hexadecimais)');
+  }
+  if (e.AGORA_CARIMBO_TEMPO_POLITICA !== null && !/^\d+(\.\d+)+$/.test(e.AGORA_CARIMBO_TEMPO_POLITICA)) {
+    problemas.push('AGORA_CARIMBO_TEMPO_POLITICA: informe o OID da política (ex.: 2.16.76.1.6.2)');
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -375,5 +495,44 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       sincronizacaoAtrasoMaximoHoras: e.AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS === 0 ? null : e.AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS,
       metaDisponibilidade: e.AGORA_OPERACAO_META_DISPONIBILIDADE ?? null,
     },
+    dadosAbertos: { limitePorMinuto: e.AGORA_DADOS_ABERTOS_LIMITE_MINUTO },
+    sei: {
+      url: e.AGORA_SEI_URL,
+      siglaSistema: e.AGORA_SEI_SIGLA_SISTEMA,
+      identificacaoServico: e.AGORA_SEI_IDENTIFICACAO_SERVICO,
+      idUnidade: e.AGORA_SEI_ID_UNIDADE,
+      idTipoProcedimento: e.AGORA_SEI_ID_TIPO_PROCEDIMENTO,
+      idSerie: e.AGORA_SEI_ID_SERIE,
+      idUnidadeDestino: e.AGORA_SEI_ID_UNIDADE_DESTINO,
+      idHipoteseLegal: e.AGORA_SEI_ID_HIPOTESE_LEGAL,
+      blocoAssinatura: e.AGORA_SEI_BLOCO_ASSINATURA ?? true,
+      timeoutMs: e.AGORA_SEI_TIMEOUT_MS,
+      configurado: seiConfigurado,
+    },
+    dou: {
+      consultaUrl: e.AGORA_DOU_CONSULTA_URL.replace(/\/+$/, ''),
+      horaFechamento: e.AGORA_DOU_HORA_FECHAMENTO,
+      timeoutMs: e.AGORA_DOU_TIMEOUT_MS,
+    },
+    sigilo: {
+      cofreChave,
+      carimboTempo: {
+        url: e.AGORA_CARIMBO_TEMPO_URL,
+        usuario: e.AGORA_CARIMBO_TEMPO_USUARIO,
+        senha: e.AGORA_CARIMBO_TEMPO_SENHA,
+        timeoutMs: e.AGORA_CARIMBO_TEMPO_TIMEOUT_SEGUNDOS * 1000,
+        intervaloHoras: e.AGORA_CARIMBO_TEMPO_INTERVALO_HORAS,
+        certificadoSha256: certificadoTsa,
+        politica: e.AGORA_CARIMBO_TEMPO_POLITICA,
+      },
+    },
   };
+}
+
+/** Chave AES-256 do cofre: 32 bytes em hexadecimal (64 caracteres) ou base64; null se o formato não fecha. */
+function lerChaveCofre(valor: string): Buffer | null {
+  if (/^[0-9a-fA-F]{64}$/.test(valor)) return Buffer.from(valor, 'hex');
+  if (!/^[A-Za-z0-9+/_-]+={0,2}$/.test(valor)) return null;
+  const chave = Buffer.from(valor.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+  return chave.length === 32 ? chave : null;
 }

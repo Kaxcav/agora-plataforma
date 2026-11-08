@@ -24,6 +24,7 @@ import { avaliarSegregacao, indiciosArtigoLuxo } from './regras.ts';
 import { editalCompleto } from './selecao.ts';
 import { criteriosDoProcesso, SECAO_SUSTENTABILIDADE, sustentabilidadeDoProcesso } from './sustentabilidade.ts';
 import type { AnaliseCesta, CargaProcesso, CotacaoArmazenada, DocumentoCarregado, TipoDocumento } from './tipos.ts';
+import { clausulaCreditoOrcamentario, evidenciaDotacao, MODELOS_COMPLEMENTARES, secaoDotacaoTr } from '../preparatorios/modelos.ts';
 
 /**
  * Modelos de texto determinísticos dos documentos da jornada (docs/JORNADA.md §3). Cada modelo devolve o corpo em
@@ -591,8 +592,8 @@ function modeloTr(d: DadosDocumento): ModeloDocumento {
     '## e) Modelo de execução do objeto',
     '',
     bem
-      ? `A entrega ocorrerá na unidade ${linha.uasg_nome}, em dias úteis e horário de expediente, mediante agendamento. O recebimento será provisório, pelo fiscal técnico, para verificação da conformidade, e definitivo, por servidor ou comissão designada, após a verificação da qualidade e da quantidade (art. 140, I).`
-      : 'A execução será iniciada a partir da ordem de serviço, conforme cronograma aprovado pela fiscalização. O recebimento será provisório, pelo fiscal, e definitivo, por servidor ou comissão designada, mediante termo detalhado (art. 140, II).',
+      ? `A entrega ocorrerá na unidade ${linha.uasg_nome}, em dias úteis e horário de expediente, mediante agendamento. O recebimento será provisório, pelo fiscal técnico, para verificação da conformidade, e definitivo, por servidor ou comissão designada, após a verificação da qualidade e da quantidade (art. 140, II).`
+      : 'A execução será iniciada a partir da ordem de serviço, conforme cronograma aprovado pela fiscalização. O recebimento será provisório, pelo fiscal, e definitivo, por servidor ou comissão designada, mediante termo detalhado (art. 140, I).',
     '',
     '## f) Modelo de gestão do contrato',
     '',
@@ -623,7 +624,7 @@ function modeloTr(d: DadosDocumento): ModeloDocumento {
     '',
     '## j) Adequação orçamentária',
     '',
-    `As despesas correrão à conta de recursos consignados no Orçamento Geral da União para o exercício de ${ano(d)}: ${pendente('programa de trabalho, natureza da despesa e fonte de recursos, a indicar pela área orçamentária')}.`,
+    secaoDotacaoTr(d),
   ].join('\n');
   return {
     titulo: TITULOS_DOCUMENTO.tr,
@@ -864,7 +865,8 @@ function modeloMinuta(d: DadosDocumento): ModeloDocumento {
     {
       titulo: 'DO CRÉDITO ORÇAMENTÁRIO',
       referencia: 'art. 92, VIII',
-      texto: `A despesa correrá à conta do crédito orçamentário: ${pendente('programa de trabalho, natureza da despesa, fonte de recursos e nota de empenho')}.`,
+      protegida: 'credito_orcamentario',
+      texto: clausulaCreditoOrcamentario(d),
     },
     {
       titulo: 'DA MATRIZ DE RISCOS',
@@ -1008,7 +1010,7 @@ function modeloParecerChecklist(d: DadosDocumento): ModeloDocumento {
     minuta_contrato: evidenciaDocumento(carga, 'minuta_contrato'),
     designacoes: carga.equipe.length === 0 ? 'Nenhuma designação registrada.' : carga.equipe.map((m) => `${ROTULOS_PAPEL[m.papel]}: ${m.nome}`).join('; ') + '.',
     segregacao: segregacao.conflitos.length === 0 ? 'Sem acúmulo de funções conflitantes (verificarSegregacao).' : `${segregacao.conflitos.length} conflito(s) de segregação apontado(s).`,
-    previsao_orcamentaria: 'Indicação da dotação a cargo da área orçamentária (TR, alínea "j"); verificar nos autos.',
+    previsao_orcamentaria: evidenciaDotacao(carga),
     pca: linha.dfd.previstoNoPca ? 'Demanda prevista no PCA, conforme o DFD.' : 'Demanda não prevista no PCA, conforme o DFD.',
     publicidade_prazos: `Prazo mínimo de propostas: ${prazo.diasUteis} dias úteis (${prazo.fundamento}). Acesso ao edital sem cadastro previsto na minuta (art. 25, § 3º).${papeis.has('agente_contratacao') || papeis.has('pregoeiro') ? '' : ' Agente de contratação ainda não designado.'}`,
   };
@@ -1064,6 +1066,7 @@ const MODELOS: Record<TipoDocumento, (d: DadosDocumento) => ModeloDocumento> = {
   edital: modeloEdital,
   minuta_contrato: modeloMinuta,
   parecer_checklist: modeloParecerChecklist,
+  ...MODELOS_COMPLEMENTARES,
 };
 
 /** Modelo de texto determinístico do documento. */

@@ -949,8 +949,185 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'validarIndicadorImr, calcularResultadoImr, calcularAjustePagamento, medicaoImrDevida; api: GET /contratos/:id/imr; POST /contratos/:id/imr/indicadores; PUT /contratos/:id/imr/indicadores/:indicadorId; POST /contratos/:id/imr/indicadores/:indicadorId/encerrar; POST /contratos/:id/imr/medicoes',
   },
+  {
+    id: 'RN-39',
+    tipo: 'RN',
+    titulo: 'Dotação orçamentária declarada antes do edital',
+    descricao:
+      'A área responsável informa a dotação orçamentária do processo em campos estruturados: unidade gestora, programa de trabalho, natureza da despesa, fonte de recursos, exercício, valor e, quando houver, o pré-empenho. A Ágora confere o formato de cada campo, a coerência da natureza da despesa e a existência de crédito do exercício em que a contratação é feita; créditos menores que o valor estimado viram sinal. A declaração de adequação orçamentária é aprovada pela autoridade competente designada no processo, e o termo de referência e a minuta do contrato passam a trazer a dotação. O processo só avança da etapa 4 para a 5 com a dotação declarada e com o TR e a minuta gerados com ela; mudar a dotação depois da declaração exige nova declaração.',
+    fundamento: 'Lei 14.133/2021, art. 6º, XXIII, "j", art. 18, caput, e art. 150',
+    etapa: 4,
+    telas: ['jornada.detalhe'],
+    implementacao: 'validarDotacaoOrcamentaria, chaveDotacao, verificarDotacaoParaEdital; api: GET e PUT /processos/:id/dotacao; POST /processos/:id/avancar',
+  },
+  {
+    id: 'RF-32',
+    tipo: 'RF',
+    titulo: 'Documentos complementares da fase preparatória e checklist do processo',
+    descricao:
+      'Gera, com os dados do processo e por modelos de texto determinísticos, as peças que completam a instrução: portaria de designação da equipe e dos agentes, declaração de adequação orçamentária, despacho de autorização da contratação, nota técnica de encaminhamento à assessoria jurídica com quesitos objetivos, modelos de proposta comercial, de ordem de serviço, de termo de compromisso e de sigilo e de termos de recebimento provisório e definitivo, e o caderno de casos de teste da prova de conceito com a planilha de julgamento da comissão. Cada peça tem versões, aprovação humana registrada na trilha de auditoria, entrada na árvore do SEI e PDF gerado no servidor. A portaria, a declaração e o despacho só são aprovados pela autoridade competente designada. O checklist mostra, por etapa, as peças prontas, em rascunho, desatualizadas e as que faltam.',
+    fundamento: 'Lei 14.133/2021, arts. 7º, 8º, 17, § 3º, 18, 53, 72, VIII, e 140',
+    etapa: 4,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'gerarQuesitosControleLegalidade, montarCasosTesteProvaConceito, montarChecklistPecas; api: POST /processos/:id/documentos/gerar; GET /processos/:id/checklist-documentos; GET /processos/:id/documentos/:docId/pdf',
+  },
+  {
+    id: 'RF-37',
+    tipo: 'RF',
+    titulo: 'Gestão compartilhada com a sociedade',
+    descricao:
+      'O cidadão identificado pelo Login Único gov.br, num perfil sem acesso interno, envia mensagem de texto ou imagem sobre um contrato. Nada vai a público sem a decisão de um moderador, sempre com motivo, e o autor aparece só com o primeiro nome e as iniciais. A imagem tem o tipo conferido pelo conteúdo e perde os metadados de localização antes de ser guardada. O fiscal publica fotos e vídeos do acompanhamento da obra ou do serviço, e o registro marcado como sigiloso fica guardado sem publicação. Administração e contratado respondem de forma identificada, com prazo de 30 dias prorrogável uma vez. Ao fim da vigência, o gestor publica o relatório final sobre a consecução dos objetivos da contratação. Cada passo fica na trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, art. 174, § 3º, VI, alíneas "a" a "d", e art. 19, III; Lei 13.460/2017, art. 16; Lei 13.709/2018 (LGPD)',
+    etapa: 7,
+    telas: ['sociedade', 'sociedade.contrato', 'sociedade.minhas'],
+    implementacao:
+      'validarManifestacao, validarDecisaoModeracao, validarResposta, prazoRespostaManifestacao, situacaoPrazoResposta, avaliarPublicacaoRegistroExecucao, validarRelatorioFinal, nomePublicoCidadao, tarjarDadosPessoaisLivres; api: POST /sociedade/contratos/:id/manifestacoes; POST /sociedade/manifestacoes/:id/moderacao; POST /sociedade/manifestacoes/:id/respostas; POST /sociedade/contratos/:id/registros; POST /sociedade/contratos/:id/relatorio-final; GET /publico/contratos/:id/gestao-compartilhada',
+  },
+  {
+    id: 'RF-38',
+    tipo: 'RF',
+    titulo: 'Catálogo de dados abertos',
+    descricao:
+      'A página pública Dados abertos lista, sem login, os conjuntos de editais publicados, contratos, atas de registro de preços, termos aditivos, pagamentos na ordem cronológica por fonte de recursos e sanções aplicadas, em CSV e JSON. Cada conjunto traz dicionário de dados, licença aberta, data da última atualização, periodicidade e o SHA-256 de cada arquivo. Nenhum dado pessoal sai no catálogo: o CPF de fornecedor pessoa física fica de fora, o nome sai mascarado e toda célula de texto passa pela tarja de CPF, e-mail e telefone. As rotas têm limite de requisições por endereço.',
+    fundamento: 'Decreto 8.777/2016; Lei 12.527/2011, art. 8º, § 1º, IV, e § 3º; Lei 14.133/2021, art. 174, § 4º, e art. 141, § 3º; Lei 13.709/2018 (LGPD)',
+    etapa: null,
+    telas: ['dados-abertos'],
+    implementacao:
+      'gerarCsvDadosAbertos, prepararLinhasDadosAbertos, centavosParaDecimal, contemDadoPessoal; api: GET /publico/dados-abertos; GET /publico/dados-abertos/:conjunto; GET /publico/dados-abertos/:conjunto/csv; GET /publico/dados-abertos/:conjunto/json',
+  },
+  {
+    id: 'RN-32',
+    tipo: 'RN',
+    titulo: 'Termo aditivo como ato, com a trava do art. 125',
+    descricao:
+      'O termo aditivo (acréscimo ou supressão quantitativa, alteração qualitativa, prazo ou reequilíbrio) é um ato registrado: proposta com justificativa, parecer jurídico prévio, assinatura pela autoridade competente depois do checklist de regularidade do contratado e divulgação no PNCP pela fila de integrações, no prazo do art. 94. Acréscimos e supressões, inclusive o reflexo de alteração qualitativa, somam-se separadamente sobre o valor inicial atualizado; acima de 25% (ou de 50% para acréscimos em reforma de edifício ou de equipamento) a API recusa a alteração, na proposta e de novo na assinatura. O termo assinado gera PDF para juntar ao processo.',
+    fundamento: 'Lei 14.133/2021, arts. 53, § 4º, 91, § 4º, 94, 124 e 125',
+    etapa: 7,
+    telas: ['contratos.detalhe'],
+    implementacao:
+      'avaliarTermoAditivo, avaliarAditivo, numeroTermoContratual, situacaoDivulgacaoTermoPncp, tipoTermoContratoPncp; api: POST /contratos/:id/alteracoes; POST /contratos/:id/alteracoes/:alteracaoId/parecer; POST /contratos/:id/alteracoes/:alteracaoId/assinar; GET /contratos/:id/alteracoes/:alteracaoId/termo.pdf',
+  },
+  {
+    id: 'RN-33',
+    tipo: 'RN',
+    titulo: 'Prorrogação com os limites dos arts. 105 a 114',
+    descricao:
+      'A prorrogação da vigência só é registrada dentro da vigência máxima da natureza do contrato: serviços e fornecimentos contínuos até 10 anos, com previsão no edital, vantajosidade atestada pela autoridade e preço compatível com o mercado; sistemas estruturantes de TI até 15 anos; contratos que geram receita até 10 ou 35 anos. No contrato por escopo, a vigência se prorroga automaticamente quando o objeto não é concluído sem culpa do contratado; com culpa, só depois de constituída a mora. Exige crédito orçamentário e o checklist de regularidade (RN-09). A partir de 120 dias do fim da vigência, os avisos da central de notificações dizem se cabe prorrogar, até quando, ou se é preciso nova licitação.',
+    fundamento: 'Lei 14.133/2021, arts. 105 a 107, 110, 111 e 114',
+    etapa: 7,
+    telas: ['contratos.detalhe', 'notificacoes'],
+    implementacao:
+      'avaliarProrrogacao, avaliarAlertaProrrogacao, situacaoProrrogacao, vigenciaMaximaAnos; api: POST /contratos/:id/prorrogacoes; POST /contratos/:id/alteracoes (tipo prazo); varredura diária de notificações',
+  },
+  {
+    id: 'RF-27',
+    tipo: 'RF',
+    titulo: 'Alterações do contrato: aditivos, apostilas, reajustes e extinção',
+    descricao:
+      'A aba Alterações do contrato reúne o histórico de termos aditivos, apostilamentos (reajuste e repactuação), reequilíbrios e extinção, com a situação de cada ato, o parecer, a assinatura, a divulgação no PNCP e o termo em PDF, e mostra o percentual acumulado de acréscimos e supressões frente ao limite do art. 125. O reajuste é apostilado só depois de 12 meses da data do orçamento estimado, pelo índice do contrato; a repactuação exige demonstração analítica por componente; o reequilíbrio passa por instrução e decisão, respeitada a matriz de riscos; e a extinção é motivada, com contraditório quando unilateral e os efeitos do art. 139 decididos pela autoridade.',
+    fundamento: 'Lei 14.133/2021, arts. 25, § 7º, 92, § 3º, 124, II, "d", 135, 136 e 137 a 139',
+    etapa: 7,
+    telas: ['contratos.detalhe'],
+    implementacao:
+      'avaliarReajuste, avaliarRepactuacao, avaliarReequilibrio, avaliarInstauracaoExtincao, avaliarDecisaoExtincao, avaliarLimiteAditivos; api: GET /contratos/:id/alteracoes; POST /contratos/:id/reajustes; POST /contratos/:id/repactuacoes; POST /contratos/:id/extincao; POST /contratos/:id/alteracoes/:alteracaoId/defesa; POST /contratos/:id/alteracoes/:alteracaoId/decidir-extincao',
+  },
+  {
+    id: 'RNF-08',
+    tipo: 'RNF',
+    titulo: 'Base normativa soberana e busca na lei',
+    descricao:
+      'O texto compilado da Lei 14.133/2021 fica no repositório da Ágora, estruturado por artigo, parágrafo, inciso e alínea, com a fonte oficial, a data de obtenção e o hash do arquivo e do texto. A busca roda no próprio servidor, por recuperação BM25 com peso para as divisões da lei e para o caput, sem serviço externo nem embeddings de terceiros. A mesma base ancora a redação dos rascunhos (RAG), confere as citações dos documentos e mostra o artigo na consulta à lei. Os modelos padronizados entram como estrutura de seções obrigatórias, sem copiar texto de terceiros.',
+    fundamento: 'Lei 14.133/2021, art. 19, IV; Lei 9.610/1998, art. 8º, IV; matriz de riscos do cliente (R02)',
+    etapa: null,
+    telas: ['normas.base'],
+    implementacao: 'estruturarTextoLei, indexarBaseNormativa, buscarNaBaseNormativa, localizarDispositivo; api: GET /normas; GET /normas/busca; GET /normas/artigos/:numero; GET /normas/modelos',
+  },
+  {
+    id: 'RIA-14',
+    tipo: 'RIA',
+    titulo: 'Conferência das citações legais e precisão normativa (IMR-02)',
+    descricao:
+      'Em todo rascunho gerado, encontra as referências à lei (artigo, parágrafo, inciso e alínea, também em lista, em faixa e na forma invertida) e confere na base normativa se o dispositivo existe, se não foi vetado ou revogado e se o assunto do trecho corresponde ao dispositivo citado. A citação inexistente, sem efeito ou suspeita é apontada com o trecho e a sugestão do artigo que parece tratar do assunto. O rascunho com citação inexistente ou sem efeito só é aprovado depois de revisão humana registrada, com justificativa. O painel de qualidade normativa mede o IMR-02, percentual de minutas com citações fiéis, com meta de 100%. A conferência é um sinal e requer revisão humana.',
+    fundamento: 'Lei 14.133/2021, art. 19, IV, e art. 53; IMR-02 do termo de referência do cliente',
+    etapa: 4,
+    telas: ['normas.qualidade', 'jornada.detalhe', 'jornada.conferencia'],
+    implementacao:
+      'extrairCitacoesLegais, conferirCitacoesLegais, conferirEstruturaModelo; api: GET /qualidade-normativa; GET /processos/:id/citacoes; POST /processos/:id/documentos/:docId/citacoes/revisao; POST /normas/conferir',
+  },
+  {
+    id: 'RIA-15',
+    tipo: 'RIA',
+    titulo: 'Conferência cruzada dos documentos e auditor contínuo',
+    descricao:
+      'Compara os documentos do processo (DFD, ETP, matriz de riscos, nota técnica de preços, termo de referência, edital e minuta do contrato) e aponta divergência de objeto, quantidades, valor estimado, prazos, dotação, modalidade e critério de julgamento, com o trecho de cada documento. Para a 2ª linha de defesa, o auditor contínuo varre notas fiscais, medições e termos aditivos dos contratos e sinaliza nota duplicada ou atípica, notas acima do valor do contrato, pagamento antes do atesto, reajuste antes de 1 ano, recebimento acima do contratado e valor contratado acima da estimativa. Cada sinal traz o fundamento e as evidências e requer revisão humana: não acusa, não glosa e não sanciona.',
+    fundamento: 'Lei 14.133/2021, art. 6º, XXIII, LVI e LVII, arts. 18, 25 e 92, art. 145 e art. 169',
+    etapa: 4,
+    telas: ['jornada.conferencia', 'controle'],
+    implementacao: 'extrairFatosDocumento, conferirDocumentosCruzados, sinaisAuditorContinuo; api: GET /processos/:id/conferencia-cruzada; GET /controle/auditor-ia',
+  },
+  {
+    id: 'RF-35',
+    tipo: 'RF',
+    titulo: 'Integração com o SEI e assinatura refletida',
+    descricao:
+      'Envia o processo da jornada ao SEI do órgão pelo web service oficial (SeiWS), sempre pela fila de integrações: gera o processo no SEI, inclui os documentos aprovados na Ágora como PDF, monta o bloco de assinatura e, quando configurado, envia o processo à unidade de destino. Cada documento guarda o número SEI e cada processo o número do processo SEI. A assinatura com certificado ICP-Brasil acontece no próprio SEI; a Ágora consulta as assinaturas e marca o documento como assinado, com quem assinou e quando, sem assinar nada por conta própria. Documento com dado pessoal ou orçamento sigiloso entra como restrito.',
+    fundamento: 'Lei 14.133/2021, art. 12, VI, e art. 174; Lei 12.527/2011, art. 31; Portaria Interministerial nº 11/2019 (NUP)',
+    etapa: null,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'digitosVerificadoresNup, formatarNup, validarNup, nivelAcessoSei, dataHoraSeiParaIso, dataHoraSei, situacaoAssinaturaSei; api: GET /processos/:id/sei; POST /processos/:id/sei/enviar; POST /processos/:id/sei/consultar-assinaturas',
+  },
+  {
+    id: 'RF-36',
+    tipo: 'RF',
+    titulo: 'Publicação no Diário Oficial da União',
+    descricao:
+      'Gera, no padrão da Seção 3 do DOU, o aviso de licitação (automático quando o edital é aceito no PNCP), o extrato de contrato e o extrato de termo aditivo, sem CPF completo. Como a Imprensa Nacional não oferece API pública de envio, o servidor credenciado envia a matéria pelo INCom e registra na Ágora o protocolo e a data do envio; a Ágora calcula a edição prevista e confere a publicação na consulta pública do DOU, pelo servidor e pela fila de integrações, ou aceita o registro manual da edição. A publicação do aviso no jornal diário de grande circulação também é registrada.',
+    fundamento: 'Lei 14.133/2021, art. 54, § 1º, e art. 94',
+    etapa: 5,
+    telas: ['publicacoes.dou', 'jornada.detalhe'],
+    implementacao:
+      'montarMateriaDou, dataPrevistaPublicacaoDou, localizarMateriaDou; api: GET /publicacoes-dou; POST /publicacoes-dou; POST /publicacoes-dou/:id/envio; POST /publicacoes-dou/:id/conferir; POST /publicacoes-dou/:id/publicacao; POST /publicacoes-dou/:id/jornal',
+  },
+  {
+    id: 'RN-40',
+    tipo: 'RN',
+    titulo: 'Sigilo de segurança pública: classificação, acesso restrito e divulgação',
+    descricao:
+      'O processo, cada documento gerado, cada anexo e o contrato podem ser classificados como informação classificada da LAI (reservada, secreta ou ultrassecreta, com hipótese do art. 23, razões, termo final por data ou evento dentro do prazo máximo do grau e autoridade com competência do art. 27) ou como sigilo do orçamento estimado (art. 24), que exige a decisão motivada na pesquisa de preços, não vale no julgamento por maior desconto e termina com a fase de lances ou o julgamento. A classificação, a reclassificação e a desclassificação vão para a trilha de auditoria; vencido o prazo, a informação fica pública sozinha. O servidor só libera o conteúdo para quem tem credencial no processo, ativa e de grau suficiente; os órgãos de controle têm acesso irrestrito; todo acesso, permitido ou negado, é registrado. Documento classificado não aparece na transparência nem vai ao PNCP, contrato sigiloso mostra só um registro mínimo e o PDF interno sai com a marcação do grau nos cabeçalhos e rodapés.',
+    fundamento:
+      'Lei 14.133/2021, arts. 13, 18, § 1º, VI, 24, 91, § 1º, e 169, § 2º; Lei 12.527/2011, arts. 23 a 27; Decreto 7.845/2012, arts. 18, 19, 20, 23 e 38, § 4º',
+    etapa: null,
+    telas: ['jornada.sigilo', 'jornada.detalhe', 'transparencia'],
+    implementacao:
+      'validarClassificacaoSigilo, prazoMaximoSigilo, autoridadeCompetenteSigilo, classificacaoVigente, situacaoOrcamentoSigiloso, decidirAcessoSigilo, marcacaoSigilo, codigoIndexacaoSigilo; api: POST /processos/:id/sigilo/classificacoes; POST /processos/:id/sigilo/classificacoes/:classificacaoId/desclassificar; POST /processos/:id/sigilo/documentos/:tipo/pdf; checagens em /publico/editais, /publico/contratos e na fila do PNCP',
+  },
+  {
+    id: 'RF-33',
+    tipo: 'RF',
+    titulo: 'Sigilo do processo: classificação, credenciamento e registro de acessos',
+    descricao:
+      'A tela de sigilo do processo mostra a classificação do processo, dos documentos, dos anexos e do contrato, com o código de indexação, o grau, o termo final e a autoridade classificadora; permite classificar, reclassificar e desclassificar com motivo; credenciar e descredenciar quem precisa conhecer a informação, por credencial de segurança ou termo de compromisso de manutenção de sigilo, com grau máximo e validade; enviar anexos direto ao cofre; baixar o PDF marcado e o anexo do cofre informando o motivo; e consultar o registro de todos os acessos, permitidos e negados.',
+    fundamento: 'Lei 12.527/2011, arts. 25 e 27; Decreto 7.845/2012, arts. 18, 19 e 38, § 4º',
+    etapa: null,
+    telas: ['jornada.sigilo'],
+    implementacao:
+      'api: GET /processos/:id/sigilo; POST /processos/:id/sigilo/credenciais; POST /processos/:id/sigilo/credenciais/:credencialId/revogar; GET /processos/:id/sigilo/acessos; POST /processos/:id/sigilo/anexos; POST /processos/:id/sigilo/anexos/:arquivoId/baixar',
+  },
+  {
+    id: 'RNF-09',
+    tipo: 'RNF',
+    titulo: 'Cofre de anexos sigilosos e carimbo de tempo da trilha de auditoria',
+    descricao:
+      'Anexos sigilosos ficam cifrados em repouso com AES-256-GCM, com a chave do órgão vinda de variável de ambiente e o registro ligado ao conteúdo (dados autenticados); o arquivo em claro é apagado do armazenamento quando nenhum outro registro o usa, e o download exige motivo e fica registrado. A trilha de auditoria é ancorada periodicamente: o servidor envia o hash da cadeia a uma autoridade de carimbo do tempo RFC 3161 configurada pelo órgão (servida por ele ou credenciada na ICP-Brasil) e guarda o token; sem a autoridade, registra a ancoragem local. A tela da trilha confere cada ancoragem: o hash da cadeia, a declaração carimbada e a assinatura do token.',
+    fundamento: 'Decreto 7.845/2012, arts. 31 e 38; Lei 14.133/2021, art. 12, VI; RFC 3161 (Time-Stamp Protocol); MP 2.200-2/2001 (ICP-Brasil)',
+    etapa: null,
+    telas: ['jornada.sigilo', 'auditoria'],
+    implementacao:
+      'declaracaoAncoragem, ancoragemDevida, conferirAncoragem; api: GET /auditoria/ancoragens; POST /auditoria/ancoragens; GET /auditoria/ancoragens/verificacao; cofre (apps/api/src/modulos/sigilo/cofre.ts)',
+  },
 ]);
-
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
 export function regrasPorTela(tela: string): RegraCatalogo[] {
   if (typeof tela !== 'string' || tela.length === 0) throw new ErroDominio('TELA_INVALIDA', 'Informe o id da tela.');
