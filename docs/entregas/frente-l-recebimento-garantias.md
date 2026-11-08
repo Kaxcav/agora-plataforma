@@ -162,8 +162,8 @@ Nenhuma nova. Os avisos usam a configuração da central de notificações (fren
 >
 > **Quem faz o quê:**
 >
-> - gestor de contratos: designa a equipe, define os prazos do contrato, exige e acompanha garantias, registra o desconto de multa e a execução da garantia (como autoridade designada) e a alteração justificada da ordem cronológica;
-> - fiscal de contrato: registra ocorrências, entregas e o recebimento provisório;
+> - gestor de contratos: designa a equipe, define os prazos do contrato, registra as ordens de serviço, exige e acompanha garantias, registra o desconto de multa e a execução da garantia (como autoridade designada) e a alteração justificada da ordem cronológica;
+> - fiscal de contrato: registra ocorrências, entregas, o recebimento provisório e a verificação das reservas de cargos;
 > - gestor ou membro da comissão de recebimento: lavra o recebimento definitivo;
 > - financeiro: registra a apresentação, a renovação e a liberação de garantias e acompanha os prazos de pagamento;
 > - auditor, controle interno e consulta: consultam.
