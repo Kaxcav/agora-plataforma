@@ -17,6 +17,7 @@ import { useConsultarPcaPncp, useEscolherCodigoCatalogo, usePlanejamentoDfd, use
 import { Alerta, AreaTexto, Botao, Etiqueta, GrupoOpcoes, Selecao, useAvisos } from '../../../componentes';
 import { useSessao } from '../../../sessao/ContextoSessao';
 import { formatarInstante, formatarNumero } from '../../../utilitarios/formatacao';
+import { SITUACOES_IRP } from '../../planejamento/comum';
 import { ErroOperacao } from '../comum';
 import { MINIMO_TEXTO } from './tipos';
 
@@ -118,7 +119,8 @@ function SecaoPca({ processo, editavel, formularioAlterado, aoAtualizarDfd }: Pr
           </ul>
         </Alerta>
       ) : null}
-      {conferencia.alertas.map((a) => (
+      {/* Sem PCA publicado, o aviso da conferência repete o parágrafo acima. */}
+      {(conferencia.situacao === 'sem_pca_publicado' ? [] : conferencia.alertas).map((a) => (
         <Alerta key={a.mensagem} tipo={a.nivel === 'atencao' ? 'aviso' : 'info'} compacto>
           <p>{a.mensagem}</p>
         </Alerta>
@@ -366,7 +368,7 @@ function SecaoRegistroCompartilhado({ processo }: { processo: ProcessoDetalhe })
         <ul>
           {painel.irps.map((i) => (
             <li key={i.id}>
-              <Link to={`/planejamento/irp?irp=${encodeURIComponent(i.id)}`}>IRP {i.numero}</Link> — {i.situacao}
+              <Link to={`/planejamento/irp?irp=${encodeURIComponent(i.id)}`}>IRP {i.numero}</Link> — {SITUACOES_IRP[i.situacao].rotulo}
             </li>
           ))}
         </ul>
