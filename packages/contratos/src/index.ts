@@ -125,7 +125,9 @@ export type Permissao =
   | 'impedimentos:registrar'
   | 'impedimentos:parecer'
   | 'impedimentos:decidir'
-  | 'agentes:declarar';
+  | 'agentes:declarar'
+  | 'normas:ler'
+  | 'qualidade_ia:ler';
 
 export interface UsuarioSessao {
   id: Id;
@@ -2564,3 +2566,221 @@ export interface PublicacaoPncp {
 // GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
 // POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)
+
+// ───────────────────────── IA ancorada: base normativa (RNF-08), citações (RIA-14) e conferência cruzada (RIA-15) ─────────────────────────
+
+/** Origem do texto da lei guardado na Ágora: órgão, endereço, data e hash do arquivo e do texto. */
+export interface ProvenienciaBaseNormativa {
+  fonte: string;
+  url: string;
+  obtidoEm: InstanteISO;
+  formato: string;
+  sha256Arquivo: string;
+  sha256Texto: string;
+  observacao: string;
+}
+
+/** GET /normas (normas:ler) */
+export interface ResumoBaseNormativa {
+  norma: { id: string; titulo: string; ementa: string };
+  proveniencia: ProvenienciaBaseNormativa;
+  totalArtigos: number;
+  /** Divisões da lei (títulos e capítulos) com o primeiro e o último artigo. */
+  divisoes: { titulo: string; primeiroArtigo: string; ultimoArtigo: string }[];
+}
+
+export interface TrechoLei {
+  referencia: string;
+  texto: string;
+}
+
+/** GET /normas/busca?q&limite (normas:ler) — BM25 local, sem serviço externo */
+export interface ResultadoBuscaNormas {
+  consulta: string;
+  resultados: { artigo: string; rotulo: string; divisao: string | null; pontuacao: number; exato: boolean; trechos: TrechoLei[] }[];
+}
+
+export interface IncisoLeiApi {
+  numero: string;
+  texto: string;
+  alineas: { letra: string; texto: string }[];
+}
+
+/** GET /normas/artigos/:numero (normas:ler) */
+export interface ArtigoLeiApi {
+  numero: string;
+  rotulo: string;
+  caput: string;
+  incisos: IncisoLeiApi[];
+  paragrafos: { numero: string; rotulo: string; texto: string; incisos: IncisoLeiApi[] }[];
+  titulos: string[];
+  /** Texto que o artigo insere em outra lei (não é dispositivo desta lei). */
+  textoAlterador: string[];
+  anterior: string | null;
+  proximo: string | null;
+  norma: string;
+  proveniencia: ProvenienciaBaseNormativa;
+}
+
+/** GET /normas/modelos (normas:ler) — estrutura obrigatória dos modelos padronizados (art. 19, IV) */
+export interface ModeloPadronizadoApi {
+  tipo: string;
+  documento: string;
+  fundamento: string;
+  secoes: { id: string; titulo: string; fundamento: string }[];
+}
+
+export type SituacaoCitacaoLegal = 'confere' | 'inexistente' | 'sem_efeito' | 'suspeita' | 'outra_norma';
+
+export interface CitacaoLegalConferida {
+  trecho: string;
+  referencias: string[];
+  norma: string;
+  situacao: SituacaoCitacaoLegal;
+  motivo: string;
+  sugestao: string | null;
+  contexto: string;
+  posicao: number;
+}
+
+/** Conferência das citações de um texto com a base normativa — sinal que requer revisão humana. */
+export interface ConferenciaCitacoesApi {
+  norma: string;
+  total: number;
+  conferem: number;
+  inexistentes: number;
+  semEfeito: number;
+  suspeitas: number;
+  outrasNormas: number;
+  /** Inexistentes + sem efeito: a aprovação do documento exige revisão humana registrada. */
+  bloqueantes: number;
+  problemas: number;
+  fiel: boolean;
+  citacoes: CitacaoLegalConferida[];
+  premissas: string[];
+  aviso: string;
+  conferidoEm: InstanteISO;
+}
+// POST /normas/conferir { texto } → ConferenciaCitacoesApi (normas:ler; sem gravação)
+
+export interface EstruturaModeloDocumento {
+  aplicavel: boolean;
+  documento: string | null;
+  fundamento: string | null;
+  presentes: number;
+  total: number;
+  percentual: number;
+  ausentes: { id: string; titulo: string; fundamento: string }[];
+}
+
+export interface RevisaoCitacoes {
+  revisadoPor: UsuarioResumo;
+  revisadoEm: InstanteISO;
+  justificativa: string;
+}
+
+export interface CitacoesDocumento {
+  documentoId: Id;
+  tipo: DocumentoGerado['tipo'];
+  titulo: string;
+  versao: number;
+  situacao: DocumentoGerado['situacao'];
+  geradoPor: DocumentoGerado['geradoPor'];
+  geradoEm: InstanteISO;
+  conferencia: ConferenciaCitacoesApi;
+  estrutura: EstruturaModeloDocumento;
+  revisao: RevisaoCitacoes | null;
+  /** Citação inexistente ou sem efeito sem revisão registrada: o servidor recusa a aprovação (RIA-14). */
+  aprovacaoBloqueada: boolean;
+}
+// GET /processos/:id/citacoes → CitacoesDocumento[] (jornada:ler; versões mais recentes primeiro)
+// POST /processos/:id/documentos/:docId/citacoes/revisao { justificativa } → CitacoesDocumento (jornada:editar, ou aprovar_juridico no checklist; auditado)
+
+export type AspectoConferenciaDocumentos = 'objeto' | 'quantidade' | 'valor_estimado' | 'prazo' | 'dotacao' | 'modalidade' | 'criterio_julgamento';
+
+export interface DivergenciaDocumentosApi {
+  aspecto: AspectoConferenciaDocumentos;
+  chave: string;
+  titulo: string;
+  descricao: string;
+  fundamento: string;
+  ocorrencias: { tipo: DocumentoGerado['tipo']; documento: string; versao: number; valor: string; trecho: string }[];
+}
+
+/** GET /processos/:id/conferencia-cruzada (jornada:ler) — versão mais recente de cada documento */
+export interface ConferenciaCruzadaApi {
+  processoId: Id;
+  geradoEm: InstanteISO;
+  documentos: { tipo: DocumentoGerado['tipo']; titulo: string; versao: number; fatos: number }[];
+  aspectos: { aspecto: AspectoConferenciaDocumentos; rotulo: string; comparacoes: number; divergencias: number }[];
+  divergencias: DivergenciaDocumentosApi[];
+  consistente: boolean;
+  premissas: string[];
+  fontes: string[];
+  aviso: string;
+}
+
+export interface IndicadorImr02 {
+  total: number;
+  fieis: number;
+  /** null quando não houve minuta no período. */
+  percentual: number | null;
+  situacao: 'atingida' | 'abaixo' | 'sem_minutas';
+}
+
+export interface ApontamentoCitacao {
+  processo: ReferenciaControle;
+  documentoId: Id;
+  tipoDocumento: DocumentoGerado['tipo'];
+  titulo: string;
+  versao: number;
+  geradoPor: DocumentoGerado['geradoPor'];
+  geradoEm: InstanteISO;
+  trecho: string;
+  referencias: string[];
+  situacao: SituacaoCitacaoLegal;
+  motivo: string;
+  sugestao: string | null;
+  contexto: string;
+  revisado: boolean;
+}
+
+/** GET /qualidade-normativa?mes&uasg (qualidade_ia:ler) — IMR-02: minutas com citações fiéis (meta 100%) */
+export interface PainelQualidadeNormativa {
+  mes: string; // AAAA-MM
+  uasg: string | null;
+  geradoEm: InstanteISO;
+  meta: number;
+  imr02: IndicadorImr02;
+  /** Últimos 6 meses até o mês escolhido. */
+  serie: (IndicadorImr02 & { mes: string })[];
+  porTipo: { tipo: DocumentoGerado['tipo']; rotulo: string; total: number; fieis: number }[];
+  porOrigem: { origem: DocumentoGerado['geradoPor']; total: number; fieis: number }[];
+  estrutura: { conferidos: number; completos: number };
+  apontamentos: ApontamentoCitacao[];
+  base: { norma: string; proveniencia: ProvenienciaBaseNormativa };
+  premissas: string[];
+  fontes: string[];
+  aviso: string;
+}
+
+export interface SinalAuditorIa {
+  tipo: string;
+  nivel: 'risco' | 'atencao';
+  titulo: string;
+  descricao: string;
+  fundamento: string;
+  evidencias: string[];
+  referencia: ReferenciaControle;
+}
+
+/** GET /controle/auditor-ia?uasg (controle:segunda_linha) — auditor contínuo (RIA-15), sinais para revisão humana */
+export interface PainelAuditorIa {
+  geradoEm: InstanteISO;
+  uasg: string | null;
+  indicadores: { contratosVarridos: number; processosVarridos: number; sinaisRisco: number; sinaisAtencao: number };
+  sinais: SinalAuditorIa[];
+  premissas: string[];
+  fontes: string[];
+  aviso: string;
+}

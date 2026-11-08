@@ -226,3 +226,28 @@ describe('CATALOGO_REGRAS — frente C (CEIS, CNEP e certidões)', () => {
     assert.match(d, /protocolo/);
   });
 });
+
+describe('CATALOGO_REGRAS — frente Q (IA ancorada: RNF-08, RIA-14 e RIA-15)', () => {
+  const casos: [string, number | null, string[], string, RegExp][] = [
+    ['RNF-08', null, ['normas.base'], 'buscarNaBaseNormativa', /Lei 9\.610\/1998, art\. 8º, IV/],
+    ['RIA-14', 4, ['normas.qualidade', 'jornada.detalhe', 'jornada.conferencia'], 'conferirCitacoesLegais', /art\. 19, IV/],
+    ['RIA-15', 4, ['jornada.conferencia', 'controle'], 'sinaisAuditorContinuo', /art\. 169/],
+  ];
+  for (const [id, etapa, telas, implementacao, fundamento] of casos) {
+    it(`${id}: etapa ${String(etapa)}, telas ${telas.join(', ')} e ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, etapa);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+    });
+  }
+
+  it('as regras de IA só sinalizam e exigem revisão humana; a base é local, sem serviço externo', () => {
+    assert.match(regra('RIA-14').descricao, /revisão humana registrada/);
+    assert.match(regra('RIA-14').descricao, /IMR-02/);
+    assert.match(regra('RIA-15').descricao, /requer revisão humana/);
+    assert.match(regra('RIA-15').descricao, /não acusa, não glosa e não sanciona/);
+    assert.match(regra('RNF-08').descricao, /sem serviço externo nem embeddings de terceiros/);
+  });
+});

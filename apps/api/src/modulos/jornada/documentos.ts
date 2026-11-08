@@ -570,8 +570,8 @@ function modeloTr(d: DadosDocumento): ModeloDocumento {
     '## e) Modelo de execução do objeto',
     '',
     bem
-      ? `A entrega ocorrerá na unidade ${linha.uasg_nome}, em dias úteis e horário de expediente, mediante agendamento. O recebimento será provisório, pelo fiscal técnico, para verificação da conformidade, e definitivo, por servidor ou comissão designada, após a verificação da qualidade e da quantidade (art. 140, I).`
-      : 'A execução será iniciada a partir da ordem de serviço, conforme cronograma aprovado pela fiscalização. O recebimento será provisório, pelo fiscal, e definitivo, por servidor ou comissão designada, mediante termo detalhado (art. 140, II).',
+      ? `A entrega ocorrerá na unidade ${linha.uasg_nome}, em dias úteis e horário de expediente, mediante agendamento. O recebimento será provisório, pelo fiscal técnico, para verificação da conformidade, e definitivo, por servidor ou comissão designada, após a verificação da qualidade e da quantidade (art. 140, II).`
+      : 'A execução será iniciada a partir da ordem de serviço, conforme cronograma aprovado pela fiscalização. O recebimento será provisório, pelo fiscal, e definitivo, por servidor ou comissão designada, mediante termo detalhado (art. 140, I).',
     '',
     '## f) Modelo de gestão do contrato',
     '',

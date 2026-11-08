@@ -78,6 +78,11 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/impedimentos/fornecedores/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/FornecedorVinculos')) },
   { caminho: '/impedimentos/extensoes/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ExtensaoDetalhe')) },
   { caminho: '/impedimentos/declaracao', permissao: 'agentes:declarar', pagina: lazy(() => import('../paginas/impedimentos/MinhaDeclaracao')) },
+
+  // IA ancorada: base normativa, qualidade normativa (IMR-02) e conferência dos documentos (F24)
+  { caminho: '/base-normativa', permissao: 'normas:ler', pagina: lazy(() => import('../paginas/ia/BaseNormativa')) },
+  { caminho: '/qualidade-normativa', permissao: 'qualidade_ia:ler', pagina: lazy(() => import('../paginas/ia/QualidadeNormativa')) },
+  { caminho: '/jornada/:id/conferencia', permissao: 'jornada:ler', pagina: lazy(() => import('../paginas/ia/ConferenciaProcesso')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

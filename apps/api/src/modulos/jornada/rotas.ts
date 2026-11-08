@@ -66,6 +66,7 @@ import {
 import type { CestaArmazenada, CotacaoArmazenada, LinhaProcesso, ParametrosEdital, TipoDocumento } from './tipos.ts';
 import type { LinhaTarefa } from '../../fila/tipos.ts';
 import { solicitarPublicacaoEdital } from '../publicacao-pncp/servico.ts';
+import { exigirCitacoesRevisadas, resumoCitacoes } from '../ia-ancorada/servico.ts';
 
 // ───────────────────────── esquemas ─────────────────────────
 
@@ -617,6 +618,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
           modeloIa: preparado.modeloIa,
           falhaIa: preparado.falhaIa,
           hashConteudo: doc.hash,
+          citacoes: resumoCitacoes(preparado.conteudo),
         },
       };
     });
@@ -633,6 +635,8 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
         const mensagem = `O documento "${doc.titulo}" (versão ${doc.versao}) foi gerado com parâmetros anteriores — gere novamente e aprove.`;
         throw regraNegocio(mensagem, [{ campo: 'RN-06', mensagem }]);
       }
+      // RIA-14: citação inexistente ou sem efeito só passa com a revisão humana das citações registrada.
+      await exigirCitacoesRevisadas(tx, doc);
       // RN-21: com a política do órgão ligada, o ETP e o TR só se concluem com os critérios de sustentabilidade.
       if (doc.tipo === 'etp' || doc.tipo === 'tr') {
         const verificacao = sustentabilidadeDoProcesso(linha, c.politicaSustentabilidade ?? true, doc.tipo);

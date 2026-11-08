@@ -31,6 +31,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   FileSignature,
+  Library,
+  FileCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -138,6 +140,14 @@ export const MENU: readonly SecaoMenu[] = [
         permissao: ['controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha'],
       },
       { rotulo: 'Controle externo', caminho: '/controle-externo', icone: Landmark, permissao: 'controle_externo:ler' },
+    ],
+  },
+  {
+    id: 'normas',
+    titulo: 'Lei e qualidade normativa',
+    itens: [
+      { rotulo: 'Base normativa', caminho: '/base-normativa', icone: Library, permissao: 'normas:ler' },
+      { rotulo: 'Qualidade normativa', caminho: '/qualidade-normativa', icone: FileCheck, permissao: 'qualidade_ia:ler' },
     ],
   },
 ];

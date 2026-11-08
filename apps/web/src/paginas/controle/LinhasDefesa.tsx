@@ -45,6 +45,7 @@ import { useParametrosUrl } from '../../utilitarios/parametrosUrl';
 import { CampoUasg } from '../compartilhado/CampoUasg';
 import { colunasSancao } from '../sancoes/colunasSancao';
 import { ListaMedidas } from './comum';
+import { SecaoAuditorIa } from '../ia/SecaoAuditorIa';
 
 const COLUNAS_SANCAO = colunasSancao({ comFornecedor: true });
 
@@ -352,9 +353,13 @@ function ConteudoSegundaLinha({ painel }: { painel: PainelSegundaLinha }) {
 function SegundaLinha({ uasg }: { uasg: string | undefined }) {
   const consulta = usePainelSegundaLinha(uasg);
   return (
-    <ConteudoConsulta consulta={consulta} rotuloCarregando="Carregando o painel da 2ª linha" tituloErro="Não foi possível carregar o painel da 2ª linha">
-      {(painel) => <ConteudoSegundaLinha painel={painel} />}
-    </ConteudoConsulta>
+    <div className="pilha pilha--ampla">
+      <ConteudoConsulta consulta={consulta} rotuloCarregando="Carregando o painel da 2ª linha" tituloErro="Não foi possível carregar o painel da 2ª linha">
+        {(painel) => <ConteudoSegundaLinha painel={painel} />}
+      </ConteudoConsulta>
+      {/* Auditor contínuo (RIA-15, frente Q). */}
+      <SecaoAuditorIa uasg={uasg} />
+    </div>
   );
 }
 
