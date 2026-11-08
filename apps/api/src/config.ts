@@ -19,6 +19,8 @@ export interface Config {
   webDir: string | null;
   confiarProxy: boolean;
   limiteRequisicoesPorMinuto: number;
+  /** Conector do quadro societário (QSA) e do cadastro do CNPJ: espelho dos dados abertos da Receita Federal no órgão. */
+  qsa: { url: string | null; chave: string | null };
 }
 
 export class ErroConfiguracao extends Error {
@@ -75,6 +77,8 @@ const esquemaAmbiente = z.object({
   AGORA_WEB_DIR: textoOpcional,
   AGORA_CONFIAR_PROXY: booleanoOpcional,
   AGORA_LIMITE_REQUISICOES_MINUTO: z.coerce.number().int().min(10).max(100_000).default(300),
+  AGORA_QSA_URL: textoOpcional,
+  AGORA_QSA_CHAVE: textoOpcional,
 });
 
 function urlValida(valor: string): boolean {
@@ -133,6 +137,9 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_ORGAO_CNPJ !== null && !/^\d{14}$/.test(e.AGORA_ORGAO_CNPJ.replace(/\D/g, ''))) {
     problemas.push('AGORA_ORGAO_CNPJ: informe os 14 dígitos do CNPJ do órgão');
   }
+  if (e.AGORA_QSA_URL !== null && !urlValida(e.AGORA_QSA_URL)) {
+    problemas.push('AGORA_QSA_URL: URL inválida (use http:// ou https://)');
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -158,5 +165,6 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     webDir: e.AGORA_WEB_DIR,
     confiarProxy: e.AGORA_CONFIAR_PROXY ?? false,
     limiteRequisicoesPorMinuto: e.AGORA_LIMITE_REQUISICOES_MINUTO,
+    qsa: { url: e.AGORA_QSA_URL === null ? null : e.AGORA_QSA_URL.replace(/\/+$/, ''), chave: e.AGORA_QSA_CHAVE },
   };
 }

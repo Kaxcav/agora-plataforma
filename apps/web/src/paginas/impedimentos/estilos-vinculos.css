@@ -1,0 +1,100 @@
+/* Vínculos e impedimentos (F4 e F14): sinais com evidências, seletor de fornecedores e rito da extensão. */
+
+.sinais-vinculo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-3);
+}
+
+.sinal-vinculo {
+  border: 1px solid var(--cor-divisoria);
+  border-left: 4px solid var(--laranja-50);
+  border-radius: var(--raio-cartao);
+  background: var(--cor-superficie);
+  padding: var(--esp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+}
+
+.sinal-vinculo--risco {
+  border-left-color: var(--vermelho-60);
+}
+
+.sinal-vinculo__topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2);
+}
+
+.sinal-vinculo__titulo {
+  margin: 0;
+  font-size: var(--fonte-m);
+  font-weight: var(--peso-semi);
+  color: var(--cor-texto-forte);
+}
+
+.sinal-vinculo__mensagem {
+  margin: 0;
+}
+
+.sinal-vinculo__evidencias {
+  margin: 0;
+  padding-left: var(--esp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+}
+
+.sinal-vinculo__fonte {
+  font-weight: var(--peso-semi);
+}
+
+.seletor-fornecedores {
+  max-height: 18rem;
+  overflow-y: auto;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-cartao);
+  padding: var(--esp-2) var(--esp-3);
+}
+
+.seletor-fornecedores:focus-visible {
+  outline: 3px solid var(--cor-foco);
+  outline-offset: 2px;
+}
+
+.rito-extensao {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--esp-2);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+.rito-extensao__passo {
+  border: 1px solid var(--cor-divisoria);
+  border-radius: var(--raio-cartao);
+  padding: var(--esp-3);
+  background: var(--cor-superficie);
+}
+
+.rito-extensao__passo--feito {
+  border-color: var(--verde-50);
+  background: var(--verde-10);
+}
+
+.rito-extensao__passo--atual {
+  border-color: var(--azul-70);
+  background: var(--azul-5);
+}
+
+.rito-extensao__nome {
+  margin: 0;
+  font-weight: var(--peso-semi);
+  color: var(--cor-texto-forte);
+}

@@ -56,6 +56,13 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/admin/integracoes', permissao: ['integracoes:executar', 'admin:usuarios'], pagina: lazy(() => import('../paginas/admin/Integracoes')) },
   { caminho: '/auditoria', permissao: 'auditoria:ler', pagina: lazy(() => import('../paginas/auditoria/TrilhaAuditoria')) },
   { caminho: '/auditoria/lgpd', permissao: 'lgpd:relatorio', pagina: lazy(() => import('../paginas/auditoria/AcessosLgpd')) },
+
+  // Vínculos e impedimentos (F4 e F14)
+  { caminho: '/impedimentos', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/Impedimentos')) },
+  { caminho: '/impedimentos/processos/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ProcessoVinculos')) },
+  { caminho: '/impedimentos/fornecedores/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/FornecedorVinculos')) },
+  { caminho: '/impedimentos/extensoes/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ExtensaoDetalhe')) },
+  { caminho: '/impedimentos/declaracao', permissao: 'agentes:declarar', pagina: lazy(() => import('../paginas/impedimentos/MinhaDeclaracao')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

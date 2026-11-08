@@ -18,3 +18,6 @@ export * from './lei14133/prazos.ts';
 export * from './lei14133/luxo.ts';
 export * from './lei14133/score.ts';
 export * from './catalogo-regras.ts';
+export * from './lei14133/vinculos.ts';
+export * from './lei14133/extensao-sancao.ts';
+export * from './lei14133/declaracoes-agentes.ts';

@@ -1,9 +1,7 @@
 import {
   formatarData,
   limiteDispensaVigente,
-  mascararNome,
   prazoDivulgacaoContratoPncp,
-  verificarSegregacao,
   type OpcoesCalendario,
   type PapelProcesso,
 } from '@agora/dominio';
@@ -22,6 +20,7 @@ import type { Executor } from '../../banco/tipos.ts';
 import { usuarioResumo } from '../../compartilhado/instrumentos.ts';
 import { padraoContem } from '../../compartilhado/texto.ts';
 import { avaliarRegularidade, rotuloSancao, sancaoVigente } from '../fornecedores/repositorio.ts';
+import { sinaisVinculosDaDisputa } from '../impedimentos/jornada.ts';
 import { ITENS_PARECER, PAPEIS_PROCESSO, TIPOS_DOCUMENTO } from './constantes.ts';
 import {
   analisarCesta,
@@ -256,33 +255,6 @@ export async function sancoesImpeditivasVigentes(executor: Executor, fornecedorI
     .map((s) => `${rotuloSancao(s.tipo)}${s.fim_vigencia ? ` até ${formatarData(s.fim_vigencia)}` : ' sem termo final'} (art. 156)`);
 }
 
-/**
- * Sócio em comum entre licitantes (RIA-06): cada sócio de um licitante é confrontado, por `verificarSegregacao`,
- * com o quadro societário dos demais. O nome do sócio sai mascarado (LGPD).
- */
-export async function vinculosEntreLicitantes(executor: Executor, disputa: DisputaArmazenada): Promise<string[]> {
-  const ids = disputa.licitantes.map((l) => l.fornecedorId);
-  if (ids.length < 2) return [];
-  const socios = new Map((await carregarSocios(executor, ids)).map((s) => [s.fornecedorId, s]));
-  const vinculos: string[] = [];
-  disputa.licitantes.forEach((a, i) => {
-    const deA = socios.get(a.fornecedorId);
-    if (!deA) return;
-    for (const b of disputa.licitantes.slice(i + 1)) {
-      const deB = socios.get(b.fornecedorId);
-      if (!deB) continue;
-      const verificacao = verificarSegregacao(
-        deA.socios.map((s, indice) => ({ papel: 'requisitante', servidorId: `${a.fornecedorId}:${indice}`, nome: mascararNome(s.nome), cpf: s.cpf })),
-        { sociosFornecedores: [{ cnpj: deB.cnpj, razaoSocial: deB.razaoSocial, cpfsSocios: deB.cpfsSocios }] },
-      );
-      for (const c of verificacao.conflitos.filter((x) => x.tipo === 'vinculo_societario')) {
-        vinculos.push(`${a.nome} e ${b.nome} têm sócio em comum (${c.nome}): sinal de possível conluio para análise, não constitui acusação.`);
-      }
-    }
-  });
-  return vinculos;
-}
-
 /** Valores das demais contratações da mesma UASG, natureza e exercício que cabem no limite de dispensa (RN-14). */
 async function valoresMesmaNatureza(executor: Executor, linha: LinhaProcesso, hoje: string): Promise<number[]> {
   const tipo = tipoDispensa(linha.dfd.tipoObjeto);
@@ -350,11 +322,13 @@ export async function avaliarProcesso(
       break;
     case 6: {
       const vencedor = primeiroClassificado(linha.disputa);
+      const vinculos = await sinaisVinculosDaDisputa(executor, linha.disputa.licitantes.map((l) => l.fornecedorId), carga.equipe, hoje, agora);
       resultado = regrasEtapa6({
         disputa: linha.disputa,
         sancoesVencedor: vencedor ? await sancoesImpeditivasVigentes(executor, vencedor, hoje) : [],
-        vinculosLicitantes: await vinculosEntreLicitantes(executor, linha.disputa),
+        vinculosLicitantes: vinculos.ria06,
       });
+      resultado.sinais.push(...vinculos.ria10);
       break;
     }
     case 7: {

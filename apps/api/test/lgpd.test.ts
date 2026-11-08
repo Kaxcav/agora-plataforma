@@ -45,7 +45,9 @@ describe('LGPD: mascaramento por padrão e revelação registrada', () => {
 
   test('fornecedores: CPF e nome de pessoa física mascarados; CNPJ formatado', async () => {
     const lista = await obterJson<Pagina<FornecedorResumo>>(app, gestor, '/api/v1/fornecedores?tamanhoPagina=100');
-    assert.equal(lista.total, 30);
+    const [cadastro] = await app.agora.banco.consultar<{ total: number }>('SELECT COUNT(*)::integer AS total FROM fornecedores');
+    assert.equal(lista.total, cadastro?.total, 'todos os fornecedores da carga sintética');
+    assert.ok(lista.total >= 30);
     for (const f of lista.itens) {
       if (f.tipoPessoa === 'PF') {
         assert.match(f.documento, CPF_MASCARADO);
