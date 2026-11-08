@@ -10,6 +10,9 @@ import { camposPaginacao, deslocamento, idDaRota, pagina, textoBusca, uuid } fro
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
 import { consultarEditais, DOCUMENTOS_PUBLICOS, pdfDocumentoPublico } from './editais.ts';
 import { comDocumentosPreparatorios, DOCUMENTOS_PREPARATORIOS, pdfPreparatorio } from './preparatorios.ts';
+import { documentoRetido } from '../sigilo/consultas.ts';
+import { aplicarSigiloContratos, aplicarSigiloEditais } from '../sigilo/publico.ts';
+import { SQL_CONTRATO_SEM_SIGILO } from '../sigilo/sql.ts';
 
 interface LinhaPublica {
   id: string;
@@ -33,6 +36,7 @@ const CONDICOES = `
     JOIN fornecedores f ON f.id = c.fornecedor_id
     JOIN vw_contratos_valores v ON v.contrato_id = c.id
    WHERE ($1::text IS NULL OR c.busca_normalizada LIKE $1 ESCAPE '\\')
+     AND ($1::text IS NULL OR ${SQL_CONTRATO_SEM_SIGILO})
      AND ($2::uuid IS NULL OR c.id = $2)`;
 
 /** Transparência ativa (LAI): só dados públicos; pessoa física com nome e documento mascarados. Sem servidores. */
@@ -74,13 +78,13 @@ export async function rotasPublico(app: FastifyInstance): Promise<void> {
   app.get('/publico/contratos', async (request): Promise<Pagina<ContratoPublico>> => {
     const f = z.object({ busca: textoBusca, ...camposPaginacao }).parse(request.query);
     const { itens, total } = await consultar(ctx.banco, f.busca ?? null, null, f.tamanhoPagina, deslocamento(f.pagina, f.tamanhoPagina));
-    return pagina(itens, total, f.pagina, f.tamanhoPagina);
+    return pagina(await aplicarSigiloContratos(ctx.banco, itens, ctx.hoje()), total, f.pagina, f.tamanhoPagina);
   });
 
   app.get('/publico/contratos/:id', async (request): Promise<ContratoPublico> => {
     const id = idDaRota(request.params);
     const { itens } = await consultar(ctx.banco, null, id, 1, 0);
-    const contrato = itens[0];
+    const [contrato] = await aplicarSigiloContratos(ctx.banco, itens, ctx.hoje());
     if (!contrato) throw naoEncontrado('Contrato não encontrado.');
     return contrato;
   });
@@ -97,20 +101,20 @@ export async function rotasPublico(app: FastifyInstance): Promise<void> {
       inicio: deslocamento(f.pagina, f.tamanhoPagina),
       pncpReal: pncpReal(),
     });
-    return pagina(await comDocumentosPreparatorios(ctx.banco, itens), total, f.pagina, f.tamanhoPagina);
+    return pagina(await aplicarSigiloEditais(ctx.banco, await comDocumentosPreparatorios(ctx.banco, itens), ctx.hoje()), total, f.pagina, f.tamanhoPagina);
   });
 
   app.get('/publico/editais/:id', async (request): Promise<EditalPublico> => {
     const id = idDaRota(request.params);
     const { itens } = await consultarEditais(ctx.banco, { busca: null, id, limite: 1, inicio: 0, pncpReal: pncpReal() });
-    const [edital] = await comDocumentosPreparatorios(ctx.banco, itens);
+    const [edital] = await aplicarSigiloEditais(ctx.banco, await comDocumentosPreparatorios(ctx.banco, itens), ctx.hoje());
     if (!edital) throw naoEncontrado('Edital não encontrado ou ainda não publicado.');
     return edital;
   });
 
   app.get('/publico/editais/:id/documentos/:tipo', async (request, reply) => {
     const { id, tipo } = z.object({ id: uuid, tipo: z.enum(DOCUMENTOS_PUBLICOS) }).parse(request.params);
-    const arquivo = await pdfDocumentoPublico(ctx.banco, id, tipo);
+    const arquivo = (await documentoRetido(ctx.banco, id, tipo, ctx.hoje())) === null ? await pdfDocumentoPublico(ctx.banco, id, tipo) : null;
     if (!arquivo) throw naoEncontrado('Documento não encontrado ou edital não publicado.');
     return reply
       .header('content-type', 'application/pdf')
@@ -121,7 +125,7 @@ export async function rotasPublico(app: FastifyInstance): Promise<void> {
   // Documentos da fase preparatória divulgados após a homologação (art. 54, § 3º; RF-18), sem login.
   app.get('/publico/editais/:id/preparatorios/:tipo', async (request, reply) => {
     const { id, tipo } = z.object({ id: uuid, tipo: z.enum(DOCUMENTOS_PREPARATORIOS) }).parse(request.params);
-    const arquivo = await pdfPreparatorio(ctx.banco, id, tipo);
+    const arquivo = (await documentoRetido(ctx.banco, id, tipo, ctx.hoje())) === null ? await pdfPreparatorio(ctx.banco, id, tipo) : null;
     if (!arquivo) throw naoEncontrado('Documento não encontrado ou licitação ainda não homologada.');
     return reply
       .header('content-type', 'application/pdf')

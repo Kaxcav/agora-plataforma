@@ -160,18 +160,27 @@ export interface DocumentoPdf {
   conteudo: string;
   /** Texto do rodapé à esquerda (ex.: "Edital — processo 08000.000000/2026-00"). */
   rodape?: string;
+  /**
+   * Marcação de documento classificado nos cabeçalhos e rodapés de todas as páginas (Decreto 7.845/2012, art. 23):
+   * grau de sigilo no cabeçalho e fundamento e termo final acima do rodapé.
+   */
+  marcacao?: { cabecalho: string; rodape: string };
 }
 
 /** Gera o PDF (PDF 1.4) do documento. */
 export function gerarPdfTexto(documento: DocumentoPdf): Buffer {
   const linhas = diagramar(documento.conteudo);
+  const marcacao = documento.marcacao;
+  const linhasMarcacaoRodape = marcacao ? quebrarLinhas(normalizarTexto(marcacao.rodape), LARGURA_UTIL, 7, false).slice(0, 2) : [];
+  const topo = ALTURA_PAGINA - MARGEM - (marcacao ? 22 : 0);
+  const base = MARGEM + RODAPE + linhasMarcacaoRodape.length * 9;
   const paginas: string[][] = [[]];
-  let y = ALTURA_PAGINA - MARGEM;
+  let y = topo;
   for (const l of linhas) {
     const altura = l.tamanho * 1.38 + l.espacoAntes;
-    if (y - altura < MARGEM + RODAPE) {
+    if (y - altura < base) {
       paginas.push([]);
-      y = ALTURA_PAGINA - MARGEM;
+      y = topo;
     }
     y -= altura;
     const fonte = l.negrito ? 'F2' : 'F1';
@@ -191,6 +200,17 @@ export function gerarPdfTexto(documento: DocumentoPdf): Buffer {
       `BT /F1 8 Tf ${xNumero.toFixed(2)} ${MARGEM} Td ${literal(numero)} Tj ET`,
       '0 0 0 rg',
     ];
+    if (marcacao) {
+      const cabecalho = normalizarTexto(marcacao.cabecalho).slice(0, 110);
+      const xCabecalho = Math.max(MARGEM, (LARGURA_PAGINA - larguraTexto(cabecalho, 9, true)) / 2);
+      rodape.push(
+        '0.55 0 0 rg 0.55 0 0 RG 0.8 w',
+        `BT /F2 9 Tf ${xCabecalho.toFixed(2)} ${(ALTURA_PAGINA - MARGEM + 4).toFixed(2)} Td ${literal(cabecalho)} Tj ET`,
+        `${MARGEM} ${(ALTURA_PAGINA - MARGEM - 2).toFixed(2)} m ${LARGURA_PAGINA - MARGEM} ${(ALTURA_PAGINA - MARGEM - 2).toFixed(2)} l S`,
+        ...linhasMarcacaoRodape.map((t, j) => `BT /F1 7 Tf ${MARGEM} ${(MARGEM + 16 + (linhasMarcacaoRodape.length - 1 - j) * 9).toFixed(2)} Td ${literal(t)} Tj ET`),
+        '0 0 0 rg 0 0 0 RG',
+      );
+    }
     return deflateSync(Buffer.from([...comandos, ...rodape].join('\n'), 'latin1'));
   });
 

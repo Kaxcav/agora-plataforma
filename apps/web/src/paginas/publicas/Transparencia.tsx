@@ -58,12 +58,12 @@ const COLUNAS: ColunaTabela<ContratoPublico>[] = [
       </span>
     ),
   },
-  { id: 'valorGlobal', cabecalho: 'Valor global', alinhamento: 'fim', prioritaria: true, celula: (c) => <span className="numero">{formatarMoeda(c.valorGlobal)}</span> },
+  { id: 'valorGlobal', cabecalho: 'Valor global', alinhamento: 'fim', prioritaria: true, celula: (c) => (c.sigilo ? <span className="texto-secundario">Sigiloso</span> : <span className="numero">{formatarMoeda(c.valorGlobal)}</span>) },
   {
     id: 'execucao',
     cabecalho: 'Pago',
     larguraMinima: '10rem',
-    celula: (c) => (
+    celula: (c) => c.sigilo ? <span className="texto-secundario">Sigiloso</span> : (
       <BarraProgresso
         valor={c.valorGlobal > 0 ? (c.valorPago / c.valorGlobal) * 100 : 0}
         rotulo={`Valor pago do contrato ${c.numero}`}

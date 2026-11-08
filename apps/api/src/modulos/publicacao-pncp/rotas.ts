@@ -15,7 +15,7 @@ export async function rotasPublicacaoPncp(app: FastifyInstance): Promise<void> {
   app.get('/processos/:id/publicacao-pncp', { preHandler: exigir('jornada:ler') }, async (request): Promise<PublicacaoPncp> => {
     const linha = await obterLinhaProcesso(ctx.banco, idDaRota(request.params), escopoUasgs(sessaoDe(request)));
     if (!linha) throw naoEncontrado('Processo não encontrado.');
-    return consultarPublicacaoPncp(ctx.banco, linha);
+    return consultarPublicacaoPncp(ctx.banco, linha, ctx.hoje());
   });
 
   app.post('/processos/:id/contrato/publicar-pncp', { preHandler: exigir('jornada:publicar') }, async (request): Promise<PublicacaoPncp> => {
@@ -71,6 +71,6 @@ export async function rotasPublicacaoPncp(app: FastifyInstance): Promise<void> {
     await app.fila.aguardar(tarefa.id);
     const linha = await obterLinhaProcesso(ctx.banco, id, escopo);
     if (!linha) throw naoEncontrado('Processo não encontrado.');
-    return consultarPublicacaoPncp(ctx.banco, linha);
+    return consultarPublicacaoPncp(ctx.banco, linha, ctx.hoje());
   });
 }

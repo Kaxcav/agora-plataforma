@@ -5,7 +5,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type LazyExoticComponent } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, FileStack, Printer, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FileStack, Lock, Printer, X } from 'lucide-react';
 import type { EtapaJornada, ProcessoDetalhe as DadosProcesso } from '@agora/contratos';
 import { formatarMoeda } from '@agora/dominio';
 import { ErroApi } from '../../api/cliente';
@@ -379,6 +379,11 @@ export default function ProcessoDetalhe() {
               {temPermissao('documentos:ler') ? (
                 <LinkBotao to={`/jornada/${encodeURIComponent(processo.id)}/documentos`} icone={FileStack}>
                   Documentos e habilitação
+                </LinkBotao>
+              ) : null}
+              {temPermissao('sigilo:ler') ? (
+                <LinkBotao to={`/jornada/${encodeURIComponent(processo.id)}/sigilo`} icone={Lock}>
+                  Sigilo
                 </LinkBotao>
               ) : null}
               {podeAvancar && proxima ? (

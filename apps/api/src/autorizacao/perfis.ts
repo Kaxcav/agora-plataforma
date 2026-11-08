@@ -48,6 +48,11 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'impedimentos:parecer',
   'impedimentos:decidir',
   'agentes:declarar',
+  'sigilo:ler',
+  'sigilo:classificar',
+  'sigilo:credenciar',
+  'sigilo:controle',
+  'auditoria:ancorar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -94,6 +99,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'impedimentos:registrar',
       'impedimentos:decidir',
       'agentes:declarar',
+      'sigilo:ler',
+      'sigilo:classificar',
     ],
   },
   {
@@ -147,7 +154,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
     codigo: 'planejamento',
     nome: 'Planejamento',
     descricao: 'Conduz a fase preparatória da contratação (DFD, ETP, riscos e preços).',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar', 'agentes:declarar'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar', 'agentes:declarar', 'sigilo:ler', 'sigilo:classificar'],
   },
   {
     codigo: 'agente_contratacao',
@@ -174,19 +181,21 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'impedimentos:ler',
       'impedimentos:registrar',
       'agentes:declarar',
+      'sigilo:ler',
+      'sigilo:classificar',
     ],
   },
   {
     codigo: 'juridico',
     nome: 'Assessoria jurídica',
     descricao: 'Realiza o controle prévio de legalidade (art. 53) e aprova a fase jurídica.',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler', 'documentos:ler', 'impedimentos:ler', 'impedimentos:parecer', 'agentes:declarar'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler', 'documentos:ler', 'impedimentos:ler', 'impedimentos:parecer', 'agentes:declarar', 'sigilo:ler'],
   },
   {
     codigo: 'auditor',
     nome: 'Auditor',
     descricao: 'Consulta tudo, verifica a trilha de auditoria e acompanha os acessos a dados pessoais.',
-    permissoes: [...PERMISSOES_LEITURA, 'lgpd:revelar', 'lgpd:relatorio', 'controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha'],
+    permissoes: [...PERMISSOES_LEITURA, 'lgpd:revelar', 'lgpd:relatorio', 'controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha', 'sigilo:controle'],
   },
   {
     codigo: 'consulta',
@@ -214,6 +223,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'controle_externo:ler',
       'controle_externo:registrar',
       'riscos:revisar',
+      'sigilo:ler',
+      'sigilo:controle',
     ],
   },
 ];

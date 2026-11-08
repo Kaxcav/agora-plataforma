@@ -51,6 +51,25 @@ export interface Config {
   };
   /** Publicação no PNCP (RF-19): API de manutenção e login do sistema credenciado. */
   pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
+  /** Sigilo (RNF-09): chave do órgão para o cofre de anexos e autoridade de carimbo do tempo da trilha de auditoria. */
+  sigilo: ConfigSigilo;
+}
+
+export interface ConfigSigilo {
+  /** Chave AES-256 do cofre (32 bytes, de AGORA_COFRE_CHAVE em base64 ou hexadecimal); null = cofre só com a chave derivada fora de produção. */
+  cofreChave: Buffer | null;
+  carimboTempo: {
+    /** Autoridade de carimbo do tempo RFC 3161; null = ancoragem local (modo offline). */
+    url: string | null;
+    usuario: string | null;
+    senha: string | null;
+    timeoutMs: number;
+    intervaloHoras: number;
+    /** SHA-256 do certificado da autoridade reconhecido como confiável; null = confere só com o certificado do token. */
+    certificadoSha256: string | null;
+    /** OID da política de carimbo pedida (opcional). */
+    politica: string | null;
+  };
 }
 
 export interface ConfigSmtp {
@@ -161,6 +180,14 @@ const esquemaAmbiente = z.object({
   AGORA_PNCP_PUBLICACAO_URL: textoOpcional,
   AGORA_PNCP_USUARIO: textoOpcional,
   AGORA_PNCP_SENHA: textoOpcional,
+  AGORA_COFRE_CHAVE: textoOpcional,
+  AGORA_CARIMBO_TEMPO_URL: textoOpcional,
+  AGORA_CARIMBO_TEMPO_USUARIO: textoOpcional,
+  AGORA_CARIMBO_TEMPO_SENHA: textoOpcional,
+  AGORA_CARIMBO_TEMPO_TIMEOUT_SEGUNDOS: z.coerce.number().int().min(1).max(120).default(15),
+  AGORA_CARIMBO_TEMPO_INTERVALO_HORAS: z.coerce.number().int().min(1).max(720).default(24),
+  AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256: textoOpcional,
+  AGORA_CARIMBO_TEMPO_POLITICA: textoOpcional,
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -281,6 +308,26 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if ((e.AGORA_PNCP_USUARIO === null) !== (e.AGORA_PNCP_SENHA === null)) {
     problemas.push('AGORA_PNCP_USUARIO e AGORA_PNCP_SENHA: defina os dois juntos (ou nenhum)');
   }
+  const cofreChave = e.AGORA_COFRE_CHAVE === null ? null : lerChaveCofre(e.AGORA_COFRE_CHAVE);
+  if (e.AGORA_COFRE_CHAVE !== null && cofreChave === null) {
+    problemas.push('AGORA_COFRE_CHAVE: informe 32 bytes em base64 (44 caracteres) ou em hexadecimal (64 caracteres)');
+  }
+  if (e.AGORA_CARIMBO_TEMPO_URL !== null && !urlValida(e.AGORA_CARIMBO_TEMPO_URL)) {
+    problemas.push('AGORA_CARIMBO_TEMPO_URL: URL inválida da autoridade de carimbo do tempo (RFC 3161)');
+  }
+  if ((e.AGORA_CARIMBO_TEMPO_USUARIO === null) !== (e.AGORA_CARIMBO_TEMPO_SENHA === null)) {
+    problemas.push('AGORA_CARIMBO_TEMPO_USUARIO e AGORA_CARIMBO_TEMPO_SENHA: defina os dois juntos (ou nenhum)');
+  }
+  if (e.AGORA_CARIMBO_TEMPO_USUARIO !== null && e.AGORA_CARIMBO_TEMPO_URL !== null && !e.AGORA_CARIMBO_TEMPO_URL.startsWith('https://')) {
+    problemas.push('AGORA_CARIMBO_TEMPO_URL: com usuário e senha, use https:// (as credenciais não trafegam sem criptografia)');
+  }
+  const certificadoTsa = e.AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256 === null ? null : e.AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256.replace(/:/g, '').toLowerCase();
+  if (certificadoTsa !== null && !/^[0-9a-f]{64}$/.test(certificadoTsa)) {
+    problemas.push('AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256: informe a impressão SHA-256 do certificado (64 dígitos hexadecimais)');
+  }
+  if (e.AGORA_CARIMBO_TEMPO_POLITICA !== null && !/^\d+(\.\d+)+$/.test(e.AGORA_CARIMBO_TEMPO_POLITICA)) {
+    problemas.push('AGORA_CARIMBO_TEMPO_POLITICA: informe o OID da política (ex.: 2.16.76.1.6.2)');
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -349,5 +396,25 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       usuario: e.AGORA_PNCP_USUARIO,
       senha: e.AGORA_PNCP_SENHA,
     },
+    sigilo: {
+      cofreChave,
+      carimboTempo: {
+        url: e.AGORA_CARIMBO_TEMPO_URL,
+        usuario: e.AGORA_CARIMBO_TEMPO_USUARIO,
+        senha: e.AGORA_CARIMBO_TEMPO_SENHA,
+        timeoutMs: e.AGORA_CARIMBO_TEMPO_TIMEOUT_SEGUNDOS * 1000,
+        intervaloHoras: e.AGORA_CARIMBO_TEMPO_INTERVALO_HORAS,
+        certificadoSha256: certificadoTsa,
+        politica: e.AGORA_CARIMBO_TEMPO_POLITICA,
+      },
+    },
   };
+}
+
+/** Chave AES-256 do cofre: 32 bytes em hexadecimal (64 caracteres) ou base64; null se o formato não fecha. */
+function lerChaveCofre(valor: string): Buffer | null {
+  if (/^[0-9a-fA-F]{64}$/.test(valor)) return Buffer.from(valor, 'hex');
+  if (!/^[A-Za-z0-9+/_-]+={0,2}$/.test(valor)) return null;
+  const chave = Buffer.from(valor.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+  return chave.length === 32 ? chave : null;
 }

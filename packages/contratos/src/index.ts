@@ -125,7 +125,12 @@ export type Permissao =
   | 'impedimentos:registrar'
   | 'impedimentos:parecer'
   | 'impedimentos:decidir'
-  | 'agentes:declarar';
+  | 'agentes:declarar'
+  | 'sigilo:ler'
+  | 'sigilo:classificar'
+  | 'sigilo:credenciar'
+  | 'sigilo:controle'
+  | 'auditoria:ancorar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -1019,6 +1024,8 @@ export interface ContratoPublico {
   valorGlobal: Centavos;
   valorPago: Centavos;
   linkPncp: string | null;
+  /** Contrato sigiloso (art. 91, § 1º): só o registro mínimo é divulgado; fornecedor, objeto e valores ficam ocultos (valores zerados). */
+  sigilo?: SigiloContratoPublico;
 }
 // GET /publico/contratos?busca&pagina → Pagina<ContratoPublico> ; GET /publico/contratos/:id → ContratoPublico
 
@@ -1044,6 +1051,8 @@ export interface EditalPublico {
   homologadoEm: DataISO | null;
   /** Documentos da fase preparatória divulgados após a homologação (art. 54, § 3º; RF-18). Vazio antes dela. */
   documentosPreparatorios: DocumentoPreparatorioPublico[];
+  /** Sigilo de segurança pública (RN-40): registro mínimo, documentos retidos e orçamento sigiloso (art. 24). */
+  sigilo?: SigiloEditalPublico;
 }
 // GET /publico/editais?busca&pagina → Pagina<EditalPublico> ; GET /publico/editais/:id → EditalPublico
 // GET /publico/editais/:id/documentos/:tipo → application/pdf (inteiro teor, sem login)
@@ -2560,7 +2569,249 @@ export interface PublicacaoPncp {
   envios: EnvioPncp[];
   /** Divulgação do contrato (art. 94), quando já solicitada. */
   contrato: EnvioPncp | null;
+  /** Documentos que não vão ao PNCP por estarem classificados (RN-40; art. 13). */
+  retidosPorSigilo?: DocumentoRetidoPorSigilo[];
 }
 // GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
 // POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)
+
+// ───────────────────────── Sigilo de segurança pública (F25: RN-40, RF-33 e RNF-09) ─────────────────────────
+
+export type GrauSigilo = 'reservada' | 'secreta' | 'ultrassecreta';
+/** `lai`: informação classificada (Lei 12.527/2011); `orcamento`: sigilo do orçamento estimado (Lei 14.133/2021, art. 24). */
+export type TipoSigilo = 'lai' | 'orcamento';
+/** Incisos do art. 23 da LAI. */
+export type HipoteseSigiloLai = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI' | 'VII' | 'VIII';
+/** Autoridade classificadora (LAI, art. 27, I a III, e § 1º). */
+export type NivelAutoridadeClassificadora = 'ministro_estado' | 'titular_entidade' | 'direcao_das_101_5' | 'delegacao';
+/** O que é classificado: o processo inteiro, um documento gerado (por tipo), um anexo do processo ou o contrato. */
+export type AlvoSigilo = 'processo' | 'documento' | 'anexo' | 'contrato';
+
+export interface AutoridadeClassificadoraSigilo {
+  nome: string;
+  cargo: string;
+  nivel: NivelAutoridadeClassificadora;
+  atoDelegacao: string | null;
+}
+
+export interface ClassificacaoSigilo {
+  id: Id;
+  alvo: AlvoSigilo;
+  documentoTipo: DocumentoGerado['tipo'] | null;
+  arquivoId: Id | null;
+  contratoId: Id | null;
+  tipo: TipoSigilo;
+  grau: GrauSigilo | null;
+  hipotese: HipoteseSigiloLai | null;
+  razoes: string;
+  dataProducao: DataISO;
+  prazoFim: DataISO | null;
+  eventoFim: string | null;
+  /** No termo por evento, a data em que a informação fica pública mesmo sem o evento (prazo máximo do grau). */
+  prazoLimite: DataISO | null;
+  autoridade: AutoridadeClassificadoraSigilo | null;
+  fundamento: string;
+  /** Código de indexação simplificado (Decreto 7.845/2012, art. 2º, III). */
+  codigoIndexacao: string;
+  /** 'expirada': o prazo passou e a informação ficou pública sozinha (LAI, art. 24, § 4º). */
+  situacao: 'vigente' | 'desclassificada' | 'expirada';
+  versao: number;
+  classificadaEm: InstanteISO;
+  classificadaPor: UsuarioResumo;
+  desclassificadaEm: InstanteISO | null;
+  motivoDesclassificacao: string | null;
+}
+
+export interface EntradaClassificacaoSigilo {
+  alvo: AlvoSigilo;
+  documentoTipo?: DocumentoGerado['tipo'];
+  arquivoId?: Id;
+  tipo: TipoSigilo;
+  grau: GrauSigilo | null;
+  hipotese: HipoteseSigiloLai | null;
+  razoes: string;
+  dataProducao: DataISO;
+  prazoFim: DataISO | null;
+  eventoFim: string | null;
+  autoridade: AutoridadeClassificadoraSigilo | null;
+  /** Obrigatório na reclassificação (já há classificação vigente para o mesmo alvo). */
+  motivoReclassificacao?: string;
+}
+
+export interface CredencialAcessoSigilo {
+  id: Id;
+  usuario: UsuarioResumo;
+  grauMaximo: GrauSigilo;
+  /** Credencial de segurança (Decreto 7.845/2012, art. 18) ou, excepcionalmente, Termo de Compromisso de Manutenção de Sigilo (parágrafo único). */
+  fundamento: 'credencial_seguranca' | 'tcms';
+  necessidade: string;
+  validaAte: DataISO | null;
+  ativa: boolean;
+  concedidaEm: InstanteISO;
+  concedidaPor: UsuarioResumo;
+  revogadaEm: InstanteISO | null;
+  motivoRevogacao: string | null;
+}
+
+export interface EntradaCredencialSigilo {
+  usuarioId: Id;
+  grauMaximo: GrauSigilo;
+  fundamento: 'credencial_seguranca' | 'tcms';
+  necessidade: string;
+  validaAte: DataISO | null;
+}
+
+export interface ItemSigiloProcesso {
+  alvo: 'documento' | 'anexo';
+  documentoTipo: DocumentoGerado['tipo'] | null;
+  arquivoId: Id | null;
+  titulo: string;
+  descricao: string;
+  /** Anexo cifrado no cofre (AES-256-GCM). */
+  noCofre: boolean;
+  classificacao: ClassificacaoSigilo | null;
+}
+
+export interface UsuarioCredenciavel {
+  id: Id;
+  nome: string;
+  perfis: CodigoPerfil[];
+}
+
+export interface SigiloProcesso {
+  processoId: Id;
+  numeroSei: string;
+  titulo: string;
+  processo: ClassificacaoSigilo | null;
+  contrato: { id: Id; numero: string; classificacao: ClassificacaoSigilo | null } | null;
+  itens: ItemSigiloProcesso[];
+  orcamento: {
+    sigiloso: boolean;
+    motivo: string | null;
+    situacao: 'publico' | 'sigiloso' | 'divulgado';
+    divulgadoEm: InstanteISO | null;
+    mensagem: string;
+    fundamento: string;
+  };
+  credenciais: CredencialAcessoSigilo[];
+  /** Usuários com acesso à UASG do processo que podem receber credencial (diálogo de credenciamento). */
+  credenciaveis: UsuarioCredenciavel[];
+  meuAcesso: {
+    orgaoControle: boolean;
+    credencial: CredencialAcessoSigilo | null;
+    podeClassificar: boolean;
+    podeCredenciar: boolean;
+  };
+  cofre: { disponivel: boolean; algoritmo: 'AES-256-GCM'; chaveId: string | null; motivoIndisponivel: string | null };
+  /** Classificações anteriores (desclassificadas ou substituídas), da mais recente para a mais antiga. */
+  historico: ClassificacaoSigilo[];
+}
+
+export type BaseAcessoSigilo =
+  | 'sem_sigilo'
+  | 'controle'
+  | 'credencial'
+  | 'orcamento_divulgado'
+  | 'negado_sem_credencial'
+  | 'negado_credencial_vencida'
+  | 'negado_grau_insuficiente';
+
+export interface AcessoSigiloRegistrado {
+  id: Id;
+  ocorridoEm: InstanteISO;
+  usuario: UsuarioResumo;
+  alvo: AlvoSigilo;
+  titulo: string;
+  operacao: 'consulta' | 'pdf' | 'download';
+  permitido: boolean;
+  base: BaseAcessoSigilo;
+  motivo: string | null;
+}
+
+export interface DocumentoRetidoPorSigilo {
+  documento: 'edital' | 'tr' | 'minuta_contrato';
+  titulo: string;
+  motivo: string;
+}
+
+export interface SigiloEditalPublico {
+  /** Processo classificado pela LAI: só número, data e aviso (Decreto 7.845/2012, art. 20). */
+  registroMinimo: boolean;
+  mensagem: string | null;
+  /** Documentos do edital retidos por classificação (não aparecem e não vão ao PNCP). */
+  documentosRetidos: number;
+  orcamento: {
+    situacao: 'publico' | 'sigiloso' | 'divulgado';
+    /** Valor total estimado: com orçamento sigiloso, só depois da fase de lances ou do julgamento. */
+    valorEstimado: Centavos | null;
+    divulgadoEm: InstanteISO | null;
+    mensagem: string;
+    fundamento: string;
+  };
+}
+
+export interface SigiloContratoPublico {
+  mensagem: string;
+  fundamento: string;
+}
+
+// GET  /processos/:id/sigilo → SigiloProcesso (sigilo:ler)
+// POST /processos/:id/sigilo/classificacoes body EntradaClassificacaoSigilo → SigiloProcesso (sigilo:classificar)
+// POST /processos/:id/sigilo/classificacoes/:classificacaoId/desclassificar body { motivo } → SigiloProcesso (sigilo:classificar)
+// POST /processos/:id/sigilo/credenciais body EntradaCredencialSigilo → SigiloProcesso (sigilo:credenciar)
+// POST /processos/:id/sigilo/credenciais/:credencialId/revogar body { motivo } → SigiloProcesso (sigilo:credenciar)
+// GET  /processos/:id/sigilo/acessos?pagina&tamanhoPagina → Pagina<AcessoSigiloRegistrado> (sigilo:ler)
+// POST /processos/:id/sigilo/documentos/:tipo/pdf body { motivo } → application/pdf com a marcação (sigilo:ler + decisão de acesso)
+// POST /processos/:id/sigilo/anexos?titulo&... (corpo binário) → SigiloProcesso 201 (sigilo:classificar)
+// POST /processos/:id/sigilo/anexos/:arquivoId/baixar body { motivo } → arquivo decifrado (sigilo:ler + decisão de acesso)
+
+// ───────────────────────── Carimbo de tempo da trilha de auditoria (RNF-09) ─────────────────────────
+
+export interface AncoragemTrilha {
+  id: Id;
+  /** Último evento coberto: o hash da cadeia nesse evento garante todos os anteriores. */
+  sequencia: number;
+  hash: string;
+  /** SHA-256 da declaração ancorada (o que a autoridade carimbou). */
+  impressao: string;
+  /** 'rfc3161': token de uma autoridade de carimbo do tempo; 'local': registro do próprio servidor (modo offline). */
+  modo: 'rfc3161' | 'local';
+  origem: 'periodica' | 'manual';
+  ancoradaEm: InstanteISO;
+  /** Endereço da autoridade de carimbo (sem credenciais). */
+  autoridade: string | null;
+  carimboEm: InstanteISO | null;
+  numeroSerie: string | null;
+  politica: string | null;
+  hashToken: string | null;
+  solicitadaPor: UsuarioResumo | null;
+}
+
+export interface SituacaoAncoragens {
+  modo: 'rfc3161' | 'local';
+  autoridade: string | null;
+  intervaloHoras: number;
+  proxima: { devida: boolean; motivo: string };
+  itens: AncoragemTrilha[];
+}
+
+export interface ConferenciaAncoragemTrilha {
+  ancoragemId: Id;
+  sequencia: number;
+  modo: 'rfc3161' | 'local';
+  situacao: 'integra' | 'divergente';
+  problemas: string[];
+  avisos: string[];
+}
+
+export interface VerificacaoAncoragens {
+  verificadoEm: InstanteISO;
+  cadeiaIntegra: boolean;
+  integras: number;
+  divergentes: number;
+  ancoragens: ConferenciaAncoragemTrilha[];
+}
+// GET  /auditoria/ancoragens → SituacaoAncoragens (auditoria:ler)
+// POST /auditoria/ancoragens → AncoragemTrilha (auditoria:ancorar)
+// GET  /auditoria/ancoragens/verificacao → VerificacaoAncoragens (auditoria:ler)

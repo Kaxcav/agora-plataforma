@@ -78,6 +78,9 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/impedimentos/fornecedores/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/FornecedorVinculos')) },
   { caminho: '/impedimentos/extensoes/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ExtensaoDetalhe')) },
   { caminho: '/impedimentos/declaracao', permissao: 'agentes:declarar', pagina: lazy(() => import('../paginas/impedimentos/MinhaDeclaracao')) },
+
+  // Sigilo de segurança pública (F25: RN-40, RF-33 e RNF-09)
+  { caminho: '/jornada/:id/sigilo', permissao: 'sigilo:ler', pagina: lazy(() => import('../paginas/sigilo/SigiloProcesso')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

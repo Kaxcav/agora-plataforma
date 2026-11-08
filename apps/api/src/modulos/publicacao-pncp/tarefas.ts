@@ -37,6 +37,13 @@ import {
   registrarEnvio,
   type LinhaEnvio,
 } from './servico.ts';
+import { contratosSigilosos, documentoRetido } from '../sigilo/consultas.ts';
+
+/** Sigilo (RN-40): documento ou contrato classificado não sai para o PNCP; a tarefa vai para a fila de erro com o motivo. */
+async function exigirSemSigilo(ctx: ContextoApp, processoId: string, documento: 'edital' | 'tr' | 'minuta_contrato'): Promise<void> {
+  const motivo = await documentoRetido(ctx.banco, processoId, documento, hojeISO(ctx.relogio()));
+  if (motivo !== null) throw new FalhaTarefa(`Retido por sigilo, não enviado ao PNCP. ${motivo}`, false);
+}
 
 const cargaProcesso = z.object({ processoId: z.uuid() });
 const cargaArquivo = z.object({ processoId: z.uuid(), documento: z.enum(['tr', 'minuta_contrato']) });
@@ -155,6 +162,7 @@ export async function executarPublicacaoCompra(ctx: ContextoApp, tarefa: LinhaTa
       calendario,
     );
     const referencia = `${Number(linha.numero_sei.slice(6, 12))}/${hoje.slice(0, 4)}`;
+    await exigirSemSigilo(ctx, linha.id, 'edital');
     const edital = await arquivoDoDocumento(ctx.banco, linha, 'edital', referencia);
     if (ctx.config.integracoes === 'online') {
       const { cliente, cnpj } = clienteOnline(ctx);
@@ -203,8 +211,13 @@ export async function executarPublicacaoCompra(ctx: ContextoApp, tarefa: LinhaTa
         agora,
       );
       const anexos: string[] = [];
+      const retidosPorSigilo: string[] = [];
       for (const documento of ANEXOS_PNCP) {
         if (!(await documentoAprovado(tx, linha.id, documento))) continue;
+        if ((await documentoRetido(tx, linha.id, documento, hojeISO(agora))) !== null) {
+          retidosPorSigilo.push(documento);
+          continue;
+        }
         const derivada = await enfileirar({
           tipo: 'pncp.arquivo',
           chave: chaveIdempotencia(['pncp', 'arquivo', linha.id, documento]),
@@ -249,6 +262,7 @@ export async function executarPublicacaoCompra(ctx: ContextoApp, tarefa: LinhaTa
             diasUteis: prazo.diasUteis,
             fundamento: prazo.fundamento,
             anexosEnfileirados: anexos,
+            ...(retidosPorSigilo.length > 0 ? { anexosRetidosPorSigilo: retidosPorSigilo } : {}),
           },
           ipHash: null,
         },
@@ -270,6 +284,7 @@ export async function executarPublicacaoArquivo(ctx: ContextoApp, tarefa: LinhaT
   if (!envio) throw new FalhaTarefa('Registro do envio ao PNCP não encontrado para a tarefa.', false);
 
   if (envio.numero_controle === null) {
+    await exigirSemSigilo(ctx, linha.id, documento);
     const arquivo = await arquivoDoDocumento(ctx.banco, linha, documento, `${sequencial}/${ano}`);
     if (compra.modo === 'online') {
       const { cliente } = clienteOnline(ctx);
@@ -381,6 +396,9 @@ export async function executarPublicacaoContrato(ctx: ContextoApp, tarefa: Linha
   if (!envio) throw new FalhaTarefa('Registro do envio ao PNCP não encontrado para a tarefa.', false);
 
   if (envio.numero_controle === null) {
+    if ((await contratosSigilosos(ctx.banco, [contrato.id], hojeISO(ctx.relogio()))).has(contrato.id)) {
+      throw new FalhaTarefa('Retido por sigilo, não enviado ao PNCP: contrato sigiloso (Lei 14.133/2021, art. 91, § 1º).', false);
+    }
     const { cnpj, ano, sequencial } = partesCompra(numeroCompra);
     const codigos = codigosContratacaoPncp({
       modalidade: linha.modalidade_prevista ?? 'Pregão eletrônico',
