@@ -226,3 +226,26 @@ describe('CATALOGO_REGRAS — frente C (CEIS, CNEP e certidões)', () => {
     assert.match(d, /protocolo/);
   });
 });
+
+describe('CATALOGO_REGRAS — frente V (operação e metas do ETP)', () => {
+  it('RNF-10 cobre autoescalonamento, homologação fora do expediente, teste de carga e IMR-01, sem decidir glosa', () => {
+    const r = regra('RNF-10');
+    assert.equal(r.etapa, null);
+    assert.deepEqual(r.telas, ['operacao']);
+    for (const simbolo of ['calcularDisponibilidade', 'detectarJanelasPncp', 'dimensionarCarga', 'estatisticasLatencia']) assert.ok(r.implementacao.includes(simbolo), simbolo);
+    assert.match(r.descricao, /homologação fora do expediente/);
+    assert.match(r.descricao, /teste de carga reproduzível/);
+    assert.match(r.descricao, /decisão do fiscal do contrato/);
+    assert.match(r.fundamento, /art\. 6º, XXIII, "g"/);
+  });
+
+  it('RF-39 mede os três resultados pretendidos do art. 18, § 1º, IX, sem atribuir economia à IA', () => {
+    const r = regra('RF-39');
+    assert.deepEqual(r.telas, ['metas']);
+    assert.match(r.fundamento, /art\. 18, § 1º, IX/);
+    for (const simbolo of ['medirTempoInstrucao', 'avaliarMitigacaoTravas', 'medirEconomia', 'efeitoExpurgosCesta', 'validarMetasEtp']) assert.ok(r.implementacao.includes(simbolo), simbolo);
+    assert.match(r.descricao, /não atribui a economia à IA/);
+    assert.match(r.descricao, /média com e sem as cotações descartadas/);
+    assert.deepEqual(regrasPorTela('metas').map((x) => x.id), ['RF-39']);
+  });
+});

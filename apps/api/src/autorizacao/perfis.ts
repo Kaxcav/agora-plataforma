@@ -53,6 +53,10 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'pca:aprovar',
   'irp:gerenciar',
   'irp:aderir',
+  'operacao:ler',
+  'operacao:administrar',
+  'metas:ler',
+  'metas:configurar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -102,6 +106,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'pca:ler',
       'pca:aprovar',
       'irp:aderir',
+      'metas:ler',
     ],
   },
   {
@@ -155,7 +160,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
     codigo: 'planejamento',
     nome: 'Planejamento',
     descricao: 'Conduz a fase preparatória da contratação (DFD, ETP, riscos e preços).',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar', 'agentes:declarar', 'pca:ler', 'pca:editar', 'irp:gerenciar', 'irp:aderir'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar', 'agentes:declarar', 'metas:ler', 'pca:ler', 'pca:editar', 'irp:gerenciar', 'irp:aderir'],
   },
   {
     codigo: 'agente_contratacao',
@@ -225,6 +230,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'controle_externo:registrar',
       'riscos:revisar',
       'pca:ler',
+      'metas:ler',
     ],
   },
 ];

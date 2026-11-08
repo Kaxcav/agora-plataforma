@@ -899,6 +899,30 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: ['jornada.dfd'],
     implementacao: 'sugerirItensCatalogo, termosCatalogo; api: GET /catalogo/itens; GET /catalogo/sugestoes; PUT /processos/:id/dfd/itens/:indice/catalogo',
   },
+  {
+    id: 'RNF-10',
+    tipo: 'RNF',
+    titulo: 'Operação sustentável e medição de disponibilidade (IMR-01)',
+    descricao:
+      'A plataforma ajusta sozinha o número de réplicas da API, do trabalhador e do OCR conforme a carga e desliga o ambiente de homologação fora do expediente, em horário configurável, para reduzir o consumo de energia (TI verde). Um teste de carga reproduzível, feito com ferramenta própria e com os volumes de referência configurados pelo órgão, mede listagens, jornada, publicação pela fila e envio de documentos. Uma sonda no servidor registra, a cada minuto, se a API, o banco, a fila e a última sincronização com o PNCP estão disponíveis; o relatório mensal calcula a disponibilidade (minutos considerados menos minutos indisponíveis, sobre os minutos considerados) e lista as janelas de manutenção do PNCP absorvidas pela fila. A meta é configurada pelo órgão, e a glosa, se houver, é decisão do fiscal do contrato.',
+    fundamento: 'Lei 14.133/2021, art. 6º, XXIII, "g", e art. 11, IV; caderno do cliente: ETP (TI verde), IMR-01 e RNF-04',
+    etapa: null,
+    telas: ['operacao'],
+    implementacao:
+      'calcularDisponibilidade, detectarJanelasPncp, dimensionarCarga, estatisticasLatencia; api: GET /operacao/situacao; POST /operacao/sondar; GET /operacao/disponibilidade; GET /operacao/disponibilidade.csv; POST /operacao/janelas; deploy/k8s/autoescalonamento.yaml; deploy/k8s/homologacao-expediente.yaml; npm run carga -w @agora/api',
+  },
+  {
+    id: 'RF-39',
+    tipo: 'RF',
+    titulo: 'Painel das metas do ETP (resultados pretendidos)',
+    descricao:
+      'Mede, na UASG e no período escolhidos, os três resultados pretendidos do ETP contra as metas configuradas pelo órgão: o tempo de instrução da fase preparatória por etapa, calculado pelos avanços registrados na trilha de auditoria, com a linha de base e o atual; os erros formais barrados pelas travas (ETP incompleto, artigo de luxo, consulta ao CEIS e ao CNEP antes da assinatura e as demais travas de avanço), com cada bloqueio registrado como evento na trilha; e a economia, diferença entre o valor estimado e o contratado ou homologado, com o efeito dos expurgos da cesta à parte (média com e sem as cotações descartadas). O painel diz o que mede e o que não mede, não atribui a economia à IA e exporta os dados em CSV.',
+    fundamento: 'Lei 14.133/2021, art. 18, § 1º, IX (demonstrativo dos resultados pretendidos), e art. 11',
+    etapa: null,
+    telas: ['metas'],
+    implementacao:
+      'medirTempoInstrucao, avaliarMitigacaoTravas, medirEconomia, efeitoExpurgosCesta, validarMetasEtp, situacaoMeta; api: GET /metas-etp; GET /metas-etp/exportar.csv; GET /metas-etp/configuracao; PUT /metas-etp/configuracao; trilha: trava.bloqueio',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

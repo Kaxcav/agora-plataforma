@@ -78,6 +78,10 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'pca:aprovar': 'Aprovar o plano de contratações anual (autoridade competente) e publicá-lo no PNCP',
   'irp:gerenciar': 'Abrir e consolidar intenções de registro de preços',
   'irp:aderir': 'Registrar a adesão da unidade a intenções de registro de preços',
+  'operacao:ler': 'Consultar a disponibilidade e a operação da plataforma',
+  'operacao:administrar': 'Pedir sondagem e registrar janelas de manutenção do PNCP',
+  'metas:ler': 'Consultar o painel das metas do ETP',
+  'metas:configurar': 'Configurar as metas do ETP',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

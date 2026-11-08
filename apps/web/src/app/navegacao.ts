@@ -33,6 +33,8 @@ import {
   FileSignature,
   CalendarRange,
   Handshake,
+  Gauge,
+  Target,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -148,6 +150,14 @@ export const MENU: readonly SecaoMenu[] = [
     itens: [
       { rotulo: 'Plano de contratações', caminho: '/planejamento/pca', icone: CalendarRange, permissao: 'pca:ler' },
       { rotulo: 'Intenções de registro de preços', caminho: '/planejamento/irp', icone: Handshake, permissao: 'pca:ler' },
+    ],
+  },
+  {
+    id: 'resultados',
+    titulo: 'Resultados e operação',
+    itens: [
+      { rotulo: 'Metas do ETP', caminho: '/metas-etp', icone: Target, permissao: 'metas:ler' },
+      { rotulo: 'Operação', caminho: '/operacao', icone: Gauge, permissao: 'operacao:ler' },
     ],
   },
 ];
