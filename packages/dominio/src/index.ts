@@ -19,3 +19,4 @@ export * from './lei14133/luxo.ts';
 export * from './lei14133/score.ts';
 export * from './catalogo-regras.ts';
 export * from './lei14133/pesquisa-precos.ts';
+export * from './notificacoes.ts';

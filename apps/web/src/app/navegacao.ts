@@ -25,6 +25,7 @@ import {
   Users,
   Wallet,
   Workflow,
+  BellRing,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -61,6 +62,7 @@ export const MENU: readonly SecaoMenu[] = [
       { rotulo: 'Atas', caminho: '/atas', icone: ScrollText, permissao: 'atas:ler' },
       { rotulo: 'Contratos', caminho: '/contratos', icone: FileText, permissao: 'contratos:ler' },
       { rotulo: 'Itens', caminho: '/itens', icone: Package, permissao: 'itens:ler' },
+      { rotulo: 'Notificações', caminho: '/notificacoes', icone: BellRing, permissao: 'notificacoes:ler' },
     ],
   },
   {

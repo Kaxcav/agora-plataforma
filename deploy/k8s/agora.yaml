@@ -31,6 +31,11 @@ data:
   AGORA_LOG_NIVEL: "info"
   AGORA_CONFIAR_PROXY: "true"
   AGORA_ORGAO_CNPJ: "00000000000000"
+  # Central de notificações (RF-26). Com e-mail "smtp", defina AGORA_SMTP_HOST, AGORA_SMTP_REMETENTE e, no Secret, AGORA_SMTP_USUARIO e AGORA_SMTP_SENHA.
+  AGORA_NOTIFICACOES_AGENDADOR: "api"
+  AGORA_NOTIFICACOES_EMAIL: "simulado"
+  AGORA_NOTIFICACOES_SEI: "simulado"
+  AGORA_NOTIFICACOES_GOVBR: "simulado"
 ---
 apiVersion: apps/v1
 kind: Deployment

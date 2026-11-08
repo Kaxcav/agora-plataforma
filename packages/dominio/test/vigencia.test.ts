@@ -16,7 +16,7 @@ describe('classificarVigencia', () => {
     assert.deepEqual(classificarVigencia(HOJE, HOJE), { diasRestantes: 0, semaforo: 'critico', rotulo: 'Vence hoje' });
   });
 
-  it('respeita as faixas 30/60/90 nas bordas', () => {
+  it('respeita as faixas 30/60/90/120 nas bordas', () => {
     const casos: [number, string][] = [
       [1, 'critico'],
       [30, 'critico'],
@@ -24,7 +24,9 @@ describe('classificarVigencia', () => {
       [60, 'atencao'],
       [61, 'alerta'],
       [90, 'alerta'],
-      [91, 'regular'],
+      [91, 'planejamento'],
+      [120, 'planejamento'],
+      [121, 'regular'],
       [400, 'regular'],
     ];
     for (const [dias, semaforo] of casos) assert.equal(classificarVigencia(fimEm(dias), HOJE).semaforo, semaforo, String(dias));

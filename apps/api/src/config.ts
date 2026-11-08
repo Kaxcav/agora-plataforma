@@ -28,6 +28,27 @@ export interface Config {
     bcbSgsUrl: string;
     timeoutMs: number;
   };
+  /** Central de notificações (RF-26): canais, agendador da varredura diária e SMTP do órgão. */
+  notificacoes: ConfigNotificacoes;
+}
+
+export interface ConfigSmtp {
+  host: string;
+  porta: number;
+  seguranca: 'tls' | 'starttls' | 'nenhuma';
+  usuario: string | null;
+  senha: string | null;
+  remetente: string;
+  timeoutMs: number;
+}
+
+export interface ConfigNotificacoes {
+  /** 'api' = varredura e fila no próprio processo da API; 'externo' = processo à parte (`npm run notificacoes -w @agora/api`). */
+  agendador: 'api' | 'externo';
+  email: 'simulado' | 'smtp';
+  sei: 'simulado' | 'desligado';
+  govbr: 'simulado' | 'desligado';
+  smtp: ConfigSmtp | null;
 }
 
 export class ErroConfiguracao extends Error {
@@ -90,7 +111,25 @@ const esquemaAmbiente = z.object({
   AGORA_IBGE_SIDRA_URL: z.string().min(1).default('https://apisidra.ibge.gov.br'),
   AGORA_BCB_SGS_URL: z.string().min(1).default('https://api.bcb.gov.br/dados/serie'),
   AGORA_PRECOS_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(15_000),
+  AGORA_NOTIFICACOES_AGENDADOR: z.enum(['api', 'externo']).default('api'),
+  AGORA_NOTIFICACOES_EMAIL: z.enum(['simulado', 'smtp']).default('simulado'),
+  AGORA_NOTIFICACOES_SEI: z.enum(['simulado', 'desligado']).default('simulado'),
+  AGORA_NOTIFICACOES_GOVBR: z.enum(['simulado', 'desligado']).default('simulado'),
+  AGORA_SMTP_HOST: textoOpcional,
+  AGORA_SMTP_PORTA: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1).max(65535).optional()),
+  AGORA_SMTP_SEGURANCA: z.enum(['starttls', 'tls', 'nenhuma']).default('starttls'),
+  AGORA_SMTP_USUARIO: textoOpcional,
+  AGORA_SMTP_SENHA: textoOpcional,
+  AGORA_SMTP_REMETENTE: textoOpcional,
+  AGORA_SMTP_TIMEOUT_MS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1000).max(120_000).default(15_000)),
 });
+
+const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
+/** Variável vazia (o docker-compose repassa "" quando a variável não está no .env) vale como não definida. */
+function vazioComoAusente(v: unknown): unknown {
+  return typeof v === 'string' && v.trim() === '' ? undefined : v;
+}
+const EMAIL_SIMPLES = /^[^\s@<>"',;:]+@[^\s@<>"',;:]+\.[^\s@<>"',;:]+$/;
 
 function urlValida(valor: string): boolean {
   if (!URL.canParse(valor)) return false;
@@ -156,6 +195,31 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   ] as const) {
     if (!urlValida(valor)) problemas.push(`${nome}: URL inválida`);
   }
+
+  let smtp: ConfigSmtp | null = null;
+  if (e.AGORA_NOTIFICACOES_EMAIL === 'smtp') {
+    if (e.AGORA_SMTP_HOST === null) problemas.push('AGORA_SMTP_HOST: obrigatório quando AGORA_NOTIFICACOES_EMAIL=smtp');
+    if (e.AGORA_SMTP_REMETENTE === null || !EMAIL_SIMPLES.test(e.AGORA_SMTP_REMETENTE)) {
+      problemas.push('AGORA_SMTP_REMETENTE: informe o e-mail institucional remetente (ex.: nao-responda@orgao.gov.br)');
+    }
+    if ((e.AGORA_SMTP_USUARIO === null) !== (e.AGORA_SMTP_SENHA === null)) {
+      problemas.push('AGORA_SMTP_USUARIO e AGORA_SMTP_SENHA: defina os dois juntos (ou nenhum, para relay sem autenticação)');
+    }
+    if (e.AGORA_SMTP_USUARIO !== null && e.AGORA_SMTP_SEGURANCA === 'nenhuma') {
+      problemas.push('AGORA_SMTP_SEGURANCA: credenciais SMTP exigem tls ou starttls (a senha não trafega sem criptografia)');
+    }
+    if (e.AGORA_SMTP_HOST !== null && e.AGORA_SMTP_REMETENTE !== null) {
+      smtp = {
+        host: e.AGORA_SMTP_HOST,
+        porta: e.AGORA_SMTP_PORTA ?? PORTA_SMTP_PADRAO[e.AGORA_SMTP_SEGURANCA],
+        seguranca: e.AGORA_SMTP_SEGURANCA,
+        usuario: e.AGORA_SMTP_USUARIO,
+        senha: e.AGORA_SMTP_SENHA,
+        remetente: e.AGORA_SMTP_REMETENTE,
+        timeoutMs: e.AGORA_SMTP_TIMEOUT_MS,
+      };
+    }
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -188,6 +252,13 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       ibgeSidraUrl: e.AGORA_IBGE_SIDRA_URL.replace(/\/+$/, ''),
       bcbSgsUrl: e.AGORA_BCB_SGS_URL.replace(/\/+$/, ''),
       timeoutMs: e.AGORA_PRECOS_TIMEOUT_MS,
+    },
+    notificacoes: {
+      agendador: e.AGORA_NOTIFICACOES_AGENDADOR,
+      email: e.AGORA_NOTIFICACOES_EMAIL,
+      sei: e.AGORA_NOTIFICACOES_SEI,
+      govbr: e.AGORA_NOTIFICACOES_GOVBR,
+      smtp,
     },
   };
 }

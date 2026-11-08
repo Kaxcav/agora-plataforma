@@ -15,6 +15,7 @@ import { registrarSeguranca } from './http/seguranca.ts';
 import { registrarTratadorErros } from './http/tratador-erros.ts';
 import { agendarLimpeza } from './manutencao/limpeza.ts';
 import { MODULOS_API } from './modulos/registro.ts';
+import { agendarNotificacoes } from './modulos/notificacoes/agendador.ts';
 import { rotasSaude } from './modulos/saude/rotas.ts';
 import { bancoVazio, executarSeed } from './seed/index.ts';
 import { lerVersao } from './versao.ts';
@@ -127,6 +128,22 @@ export async function construirApp(config: Config, opcoes: OpcoesApp = {}): Prom
       limpeza.parar();
     });
     await limpeza.executarAgora();
+
+    // Central de notificações (RF-26/RN-31): varredura diária e fila no processo da API, salvo agendador externo.
+    if (config.notificacoes.agendador === 'api') {
+      const notificacoes = agendarNotificacoes({
+        contexto: ctx,
+        aoConcluir: (r) => {
+          if (r.varredura || r.enviosProcessados > 0) app.log.info({ notificacoes: r }, 'notificações: varredura e fila processadas');
+        },
+        aoFalhar: (erro) => app.log.error({ err: erro }, 'falha na varredura ou na fila de notificações'),
+      });
+      app.addHook('onClose', async () => {
+        notificacoes.parar();
+      });
+      // Com SMTP real a fila da inicialização segue em segundo plano; com drivers simulados (sem I/O externo), é aguardada.
+      await notificacoes.iniciar(config.notificacoes.email !== 'smtp');
+    }
 
     // Corpo JSON vazio (ex.: POST de ação sem parâmetros) é aceito como ausente.
     const parserJson = app.getDefaultJsonParser('error', 'error');

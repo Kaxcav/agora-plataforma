@@ -204,7 +204,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     tipo: 'RN',
     titulo: 'Vigência e semáforo de vencimentos',
     descricao:
-      'Contratos e atas de registro de preços são classificados pelo número de dias até o fim da vigência: vencido (prazo encerrado), crítico (até 30 dias), atenção (31 a 60 dias), alerta (61 a 90 dias) e regular (mais de 90 dias). O semáforo orienta a antecedência das providências de prorrogação ou de nova contratação.',
+      'Contratos e atas de registro de preços são classificados pelo número de dias até o fim da vigência: vencido (prazo encerrado), crítico (até 30 dias), atenção (31 a 60 dias), alerta (61 a 90 dias), planejamento (91 a 120 dias, RN-31) e regular (mais de 120 dias). O semáforo orienta a antecedência das providências de prorrogação ou de nova contratação.',
     fundamento: 'Lei 14.133/2021, art. 84 (vigência da ata) e arts. 105 a 107 (duração dos contratos)',
     etapa: null,
     telas: ['painel', 'contratos', 'atas', 'contratos.detalhe', 'atas.detalhe'],
@@ -590,6 +590,29 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     etapa: 3,
     telas: ['jornada.detalhe'],
     implementacao: 'projetarValorEstimado; api: POST /processos/:id/pesquisa-precos/projecao',
+  },
+  {
+    id: 'RN-31',
+    tipo: 'RN',
+    titulo: 'Semáforo de vencimentos de 30, 60, 90 e 120 dias com avisos automáticos',
+    descricao:
+      'Contratos e atas de registro de preços entram em faixas de aviso conforme os dias que faltam para o fim da vigência: 120 dias (avaliar a prorrogação ou iniciar o planejamento de nova contratação), 90, 60 e 30 dias. A varredura diária do servidor gera um único aviso por instrumento, faixa e data de fim de vigência, dirigido ao gestor e ao fiscal; a prorrogação muda a data de fim e reinicia o ciclo. O aviso da faixa de 30 dias é obrigatório e não pode ser desativado nas preferências. O painel mostra a linha do tempo dos vencimentos dos próximos 120 dias.',
+    fundamento: 'Lei 14.133/2021, art. 84 (vigência da ata), arts. 105 a 107 (duração e prorrogação dos contratos) e art. 117 (fiscalização)',
+    etapa: null,
+    telas: ['painel', 'contratos', 'atas', 'contratos.detalhe', 'atas.detalhe', 'notificacoes'],
+    implementacao: 'classificarVigencia, faixaVencimento, avaliarAvisoVencimento, avisoObrigatorio; api: POST /notificacoes/varredura; GET /vencimentos',
+  },
+  {
+    id: 'RF-26',
+    tipo: 'RF',
+    titulo: 'Central de notificações automatizadas',
+    descricao:
+      'Reúne os avisos a gestores, fiscais e contratadas sobre vencimentos, reajustes, garantias, pendências e ocorrências. Os avisos automáticos saem da varredura diária do servidor e o disparo manual é feito em um clique a partir do contrato ou da ata, por e-mail institucional (servidor SMTP do órgão), por registro no processo SEI ou pelo gov.br. Cada envio passa por uma fila durável no banco, com novas tentativas, situação visível e reenvio, e fica na trilha de auditoria com a base legal do tratamento. O e-mail do destinatário aparece mascarado. Cada usuário escolhe os avisos que quer receber, exceto os avisos legais obrigatórios.',
+    fundamento: 'Lei 14.133/2021, arts. 91, 92, 106, 117 e 141; Lei 13.709/2018 (LGPD), arts. 7º, 23 e 37',
+    etapa: 7,
+    telas: ['notificacoes'],
+    implementacao:
+      'montarMensagemNotificacao, decidirEntregaNotificacao, baseLegalEnvio, proximaTentativa, avaliarAvisoReajuste, avaliarAvisoGarantia; api: GET /notificacoes; GET /notificacoes/:id; POST /notificacoes; POST /notificacoes/envios/:id/reenviar; GET /notificacoes/preferencias; PUT /notificacoes/preferencias; GET /notificacoes/canais',
   },
 ]);
 

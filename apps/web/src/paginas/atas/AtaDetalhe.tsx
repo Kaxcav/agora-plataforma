@@ -32,6 +32,7 @@ import { formatarNumero, formatarPercentual } from '../../utilitarios/formatacao
 import { COLUNAS_CONTRATO } from '../compartilhado/colunasContrato';
 import { Historico } from '../compartilhado/Historico';
 import { PlanoGestao } from '../compartilhado/PlanoGestao';
+import { BotaoNotificar } from '../notificacoes/DialogoNotificar';
 
 const COLUNAS_ITENS: ColunaTabela<ItemAta>[] = [
   { id: 'numero', cabecalho: 'Item', identificadora: true, fixa: true, ordenavel: true, valorOrdenacao: (i) => i.numero, celula: (i) => <span className="numero">{i.numero}</span> },
@@ -314,9 +315,14 @@ export default function AtaDetalhe() {
       }
       acoes={
         ata ? (
-          <LinkExterno href={ata.linkPncp} comoBotao="secundario">
-            Abrir no PNCP
-          </LinkExterno>
+          <>
+            <BotaoNotificar
+              instrumento={{ tipo: 'ata', id: ata.id, identificador: `Ata ${ata.numero}`, gestor: ata.gestor, contratada: ata.fornecedores.join(', ') || 'fornecedoras registradas' }}
+            />
+            <LinkExterno href={ata.linkPncp} comoBotao="secundario">
+              Abrir no PNCP
+            </LinkExterno>
+          </>
         ) : null
       }
     >
