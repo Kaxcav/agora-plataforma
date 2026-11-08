@@ -169,23 +169,23 @@ function FormularioDotacao({ processo, dotacao }: { processo: ProcessoDetalhe; d
 
   const enviar = (evento: FormEvent) => {
     evento.preventDefault();
-    salvar.mutate(
-      { linhas: linhas.map(paraEntrada) },
-      {
-        onSuccess: (atualizada) => {
-          definirLinhas(atualizada.linhas.length > 0 ? atualizada.linhas.map(paraRascunho) : [linhaVazia(atualizada.exercicioReferencia)]);
-          avisar({
-            tipo: atualizada.valida ? 'sucesso' : 'aviso',
-            titulo: 'Dotação salva',
-            mensagem: atualizada.valida
-              ? atualizada.declarada
-                ? 'A dotação continua declarada pela autoridade.'
-                : 'Gere a declaração de adequação orçamentária para a aprovação da autoridade competente.'
-              : 'A dotação tem pendências a resolver antes da declaração (RN-39).',
-          });
-        },
-      },
-    );
+    // mutateAsync, e não callbacks do mutate: salvar recarrega o processo, muda `registradaEm` e remonta este
+    // formulário (key); o React Query descarta os callbacks do mutate de um componente desmontado, e o aviso sumiria.
+    salvar
+      .mutateAsync({ linhas: linhas.map(paraEntrada) })
+      .then((atualizada) => {
+        definirLinhas(atualizada.linhas.length > 0 ? atualizada.linhas.map(paraRascunho) : [linhaVazia(atualizada.exercicioReferencia)]);
+        avisar({
+          tipo: atualizada.valida ? 'sucesso' : 'aviso',
+          titulo: 'Dotação salva',
+          mensagem: atualizada.valida
+            ? atualizada.declarada
+              ? 'A dotação continua declarada pela autoridade.'
+              : 'Gere a declaração de adequação orçamentária para a aprovação da autoridade competente.'
+            : 'A dotação tem pendências a resolver antes da declaração (RN-39).',
+        });
+      })
+      .catch(() => undefined); // a falha aparece pelo estado da mutação (ErroOperacao com salvar.error)
   };
 
   return (

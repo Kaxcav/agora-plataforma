@@ -41,7 +41,8 @@ export default defineConfig({
     command: 'node apps/api/dist/servidor.js',
     cwd: raiz,
     url: `http://127.0.0.1:${PORTA}/saude/pronto`,
-    timeout: 120_000,
+    // A carga sintética de demonstração tem dezenas de etapas: ~30 s com a máquina livre, bem mais sob carga.
+    timeout: 300_000,
     reuseExistingServer: false,
     env: {
       AGORA_AMBIENTE: 'demonstracao',
