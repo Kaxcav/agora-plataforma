@@ -23,13 +23,31 @@ import {
 import type { TipoDocumentoComplementar } from '@agora/contratos';
 import { normalizarBusca } from '../../compartilhado/texto.ts';
 import { CONDICOES_REFERENCIA, PAPEIS_PROCESSO, ROTULOS_PAPEL, ROTULOS_TIPO_OBJETO, TITULOS_DOCUMENTO, TITULOS_ETAPA } from '../jornada/constantes.ts';
-import type { DadosDocumento, ModeloDocumento } from '../jornada/documentos.ts';
 import { avaliarSegregacao, indiciosArtigoLuxo } from '../jornada/regras.ts';
 import { editalCompleto } from '../jornada/selecao.ts';
 import type { CargaProcesso, TipoDocumento } from '../jornada/tipos.ts';
 import { checklistDaCarga } from './checklist.ts';
 import { dotacaoDaCarga, hashDotacao, marcadorDotacao, situacaoDeclaracao } from './dotacao.ts';
 import { TITULOS_DOCUMENTO_COMPLEMENTARES } from './constantes.ts';
+
+/**
+ * O que os modelos usam de `DadosDocumento` (jornada/documentos.ts, que importa este arquivo): declarado aqui para
+ * não criar ciclo de importação; os tipos são compatíveis por estrutura.
+ */
+interface DadosDocumento {
+  carga: CargaProcesso;
+  valorEstimado: number | null;
+  /** Data de geração (DataISO). */
+  dataGeracao: string;
+  politicaSustentabilidade?: boolean;
+}
+
+interface ModeloDocumento {
+  titulo: string;
+  corpo: string;
+  premissas: string[];
+  fontes: string[];
+}
 
 // ───────────────────────── utilitários ─────────────────────────
 

@@ -21,20 +21,7 @@ import type { Executor, Transacao } from '../../banco/tipos.ts';
 import { sha256Hex } from '../../compartilhado/cripto.ts';
 import { usuarioResumo } from '../../compartilhado/instrumentos.ts';
 import { paraDeclaracaoDominio, type LinhaDeclaracao } from '../impedimentos/declaracoes.ts';
-import type { CargaProcesso, DocumentoCarregado, LinhaProcesso } from '../jornada/tipos.ts';
-
-export interface DotacaoArmazenada {
-  linhas: LinhaDotacao[];
-  registradaEm: string | null;
-  registradaPor: { id: string; nome: string } | null;
-}
-
-/** Dados da frente P que acompanham a carga do processo (jornada/repositorio.ts). */
-export interface DadosPreparatorios {
-  dotacao: DotacaoArmazenada;
-  /** Declaração vigente de impedimento (RN-28) de cada agente designado, por usuário (sem cargo nem matrícula). */
-  declaracoes: Record<string, DeclaracaoAgente>;
-}
+import type { CargaProcesso, DadosPreparatorios, DocumentoCarregado, DotacaoArmazenada, LinhaProcesso } from '../jornada/tipos.ts';
 
 export const DOTACAO_VAZIA: DotacaoArmazenada = { linhas: [], registradaEm: null, registradaPor: null };
 
