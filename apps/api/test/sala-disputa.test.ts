@@ -155,7 +155,9 @@ describe('sala de disputa — simulação da PoC-03 (4 empresas, duas com sócio
     const textoSocio = socio?.evidencias[0] ?? '';
     assert.match(textoSocio, /Ária Telecomunicações Ltda\./);
     assert.match(textoSocio, /Atlas Informática Robusta Ltda\./);
-    assert.match(textoSocio, /têm sócio em comum \(\p{L}+( \p{L}\.)+\)/u, 'nome do sócio mascarado (LGPD)');
+    // Sinal da análise de vínculos (frente F): nome reduzido às iniciais e CPF só com os dígitos centrais (LGPD).
+    assert.match(textoSocio, /têm sócio em comum \(\p{L}+( \p{L}\.)+ \(CPF \*{3}\.\d{3}\.\d{3}-\*{2}\)\)/u, 'nome e CPF do sócio mascarados (LGPD)');
+    assert.doesNotMatch(textoSocio, /\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11}/, 'CPF completo não aparece');
     assert.ok(s.sinais.some((x) => x.tipo === 'intervalos_regulares'));
     assert.ok(s.julgamento);
     assert.equal(s.julgamento.classificacao.length, 4);

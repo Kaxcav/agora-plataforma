@@ -4,7 +4,8 @@ import { ErroDominio, PESOS_IDC_PADRAO, calcularIdc, type IndicadoresDesempenho 
 
 const comCodigo = (codigo: string) => (e: unknown) => e instanceof ErroDominio && e.codigo === codigo;
 const HOJE = '2026-11-08';
-const AVISO = 'Indicador objetivo de apoio. Não constitui sanção nem impede participação em licitações.';
+const AVISO =
+  'Indicador objetivo de apoio (Lei 14.133/2021, art. 88, §§ 3º e 4º). Não constitui sanção nem impede participação em licitações; impedimento decorre exclusivamente de sanção aplicada em processo.';
 const base: IndicadoresDesempenho = {
   entregasNoPrazo: 9,
   entregasTotal: 10,
@@ -19,7 +20,7 @@ describe('calcularIdc (art. 88, §§ 3º e 4º)', () => {
   it('pondera os componentes com os pesos padrão 0,4 / 0,4 / 0,2', () => {
     const r = calcularIdc(base, HOJE);
     assert.equal(r.nota, 84);
-    assert.equal(r.faixa, 'bom');
+    assert.equal(r.faixa, 'ouro');
     assert.deepEqual(
       r.componentes.map((c) => [c.valor, c.peso, c.contribuicao]),
       [
@@ -37,7 +38,7 @@ describe('calcularIdc (art. 88, §§ 3º e 4º)', () => {
   it('desconta sanções dos últimos 36 meses', () => {
     const r = calcularIdc({ ...base, sancoes: [{ tipo: 'multa', dataAplicacao: '2025-01-10' }] }, HOJE);
     assert.equal(r.nota, 74);
-    assert.equal(r.faixa, 'regular');
+    assert.equal(r.faixa, 'prata');
     assert.deepEqual(r.penalidades, [{ tipo: 'multa', dataAplicacao: '2025-01-10', desconto: -10 }]);
   });
 
@@ -68,16 +69,16 @@ describe('calcularIdc (art. 88, §§ 3º e 4º)', () => {
     assert.equal(zero.nota, 0);
   });
 
-  it('faixas: excelente, bom, regular, insuficiente e crítico', () => {
+  it('faixas: diamante, ouro, prata, em observação e crítico', () => {
     const tudo = (n: number, total: number): IndicadoresDesempenho => ({
       entregasNoPrazo: n, entregasTotal: total, recebimentosAprovados: n, recebimentosTotal: total,
       ocorrenciasFiscalizacao: total, ocorrenciasResolvidasNoPrazo: n, sancoes: [],
     });
-    assert.equal(calcularIdc(tudo(9, 10), HOJE).faixa, 'excelente');
-    assert.equal(calcularIdc(tudo(3, 4), HOJE).faixa, 'bom');
-    assert.equal(calcularIdc(tudo(6, 10), HOJE).faixa, 'regular');
-    assert.equal(calcularIdc(tudo(4, 10), HOJE).faixa, 'insuficiente');
-    assert.equal(calcularIdc(tudo(39, 100), HOJE).faixa, 'critico');
+    assert.equal(calcularIdc(tudo(9, 10), HOJE).faixa, 'diamante');
+    assert.equal(calcularIdc(tudo(8, 10), HOJE).faixa, 'ouro');
+    assert.equal(calcularIdc(tudo(6, 10), HOJE).faixa, 'prata');
+    assert.equal(calcularIdc(tudo(5, 10), HOJE).faixa, 'em_observacao');
+    assert.equal(calcularIdc(tudo(42, 100), HOJE).faixa, 'critico');
   });
 
   it('componente sem dados vale 100 e é indicado na metodologia', () => {
@@ -87,13 +88,13 @@ describe('calcularIdc (art. 88, §§ 3º e 4º)', () => {
     assert.match(r.metodologia, /sem dados \(considerados 100\): Tratamento de ocorrências/i);
   });
 
-  it('sem histórico: nota 0, faixa regular, sem penalizar a ausência de dados', () => {
+  it('sem histórico: nota 0, faixa sem histórico, sem penalizar a ausência de dados', () => {
     const r = calcularIdc(
       { entregasNoPrazo: 0, entregasTotal: 0, recebimentosAprovados: 0, recebimentosTotal: 0, ocorrenciasFiscalizacao: 0, ocorrenciasResolvidasNoPrazo: 0, sancoes: [] },
       HOJE,
     );
     assert.equal(r.nota, 0);
-    assert.equal(r.faixa, 'regular');
+    assert.equal(r.faixa, 'sem_historico');
     assert.equal(r.semHistorico, true);
     assert.match(r.metodologia, /Sem histórico/);
   });
