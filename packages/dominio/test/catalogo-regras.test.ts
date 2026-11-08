@@ -76,6 +76,10 @@ describe('CATALOGO_REGRAS — conteúdo mínimo da especificação', () => {
     ['RNF-02', null, [], '', /arts\. 6º, 37 e 46/],
     ['RNF-03', null, [], '', /arts\. 169 a 171/],
     ['RNF-04', null, [], '', /WCAG 2\.1/],
+    ['RF-23', null, ['controle'], 'avaliarLimiteAditivos', /art\. 169/],
+    ['RF-24', null, ['controle.externo'], 'situacaoMedidaControle', /art\. 171/],
+    ['RN-29', 7, ['contratos.detalhe', 'controle'], 'situacaoRevisaoRiscos', /arts\. 22 e 169/],
+    ['RN-30', null, ['controle.externo', 'jornada.detalhe'], 'bloqueioControleExterno', /art\. 171, §§ 1º e 2º/],
   ];
 
   for (const [id, etapa, telas, implementacao, fundamento] of casos) {

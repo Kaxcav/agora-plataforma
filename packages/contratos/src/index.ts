@@ -76,7 +76,8 @@ export type CodigoPerfil =
   | 'agente_contratacao'
   | 'juridico'
   | 'auditor'
-  | 'consulta';
+  | 'consulta'
+  | 'controle_interno';
 
 export type Permissao =
   | 'painel:ler'
@@ -103,7 +104,13 @@ export type Permissao =
   | 'admin:usuarios'
   | 'auditoria:ler'
   | 'lgpd:revelar'
-  | 'lgpd:relatorio';
+  | 'lgpd:relatorio'
+  | 'controle:primeira_linha'
+  | 'controle:segunda_linha'
+  | 'controle:terceira_linha'
+  | 'controle_externo:ler'
+  | 'controle_externo:registrar'
+  | 'riscos:revisar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -1017,3 +1024,251 @@ export interface EditalPublico {
 
 // ───────────────────────── Saúde ─────────────────────────
 // GET /saude/vivo → { situacao: 'ok' }   GET /saude/pronto → { situacao: 'ok' | 'indisponivel', banco: boolean, versao: string }
+
+// ───────────────────────── Controle: linhas de defesa (art. 169) e controle externo (art. 171) ─────────────────────────
+
+export type OrgaoControle = 'TCU' | 'CGU';
+export type TipoMedidaControle = 'cautelar' | 'determinacao' | 'diligencia' | 'recomendacao';
+export type SituacaoMedidaControle = 'aguardando_resposta' | 'resposta_vencida' | 'respondida' | 'revogada';
+export type SemaforoPrazoControle = 'vencido' | 'critico' | 'atencao' | 'regular' | 'concluido';
+
+/** Registro atingido por uma medida, achado ou exceção. `identificador`: "Processo 08000.014501/2026-11" ou "Contrato 12/2025". */
+export interface ReferenciaControle {
+  tipo: 'processo' | 'contrato' | 'ata' | 'pagamento' | 'sancao';
+  id: Id;
+  identificador: string;
+  /** Rota da interface que abre o registro (processo, contrato ou lista correspondente). */
+  caminho: string;
+}
+
+/** Medida do tribunal de contas (TCU) ou do órgão central de controle interno (CGU) sobre um processo ou contrato. */
+export interface MedidaControle {
+  id: Id;
+  orgao: OrgaoControle;
+  tipo: TipoMedidaControle;
+  numero: string; // número da decisão, acórdão ou ofício
+  decididaEm: DataISO;
+  cienciaEm: DataISO; // intimação do órgão: início do prazo de resposta
+  objeto: string;
+  efeitoSuspensivo: boolean;
+  alvo: ReferenciaControle;
+  uasg: string;
+  prazoResposta: DataISO;
+  diasUteisPrazo: number;
+  fundamentoPrazo: string;
+  prorrogacao: { ate: DataISO; justificativa: string } | null;
+  situacao: SituacaoMedidaControle;
+  semaforo: SemaforoPrazoControle;
+  diasUteisRestantes: number | null; // negativo = vencido; null = respondida ou revogada
+  explicacao: string;
+  resposta: { em: DataISO; texto: string; por: UsuarioResumo | null } | null;
+  revogacao: { em: DataISO; texto: string; por: UsuarioResumo | null } | null;
+  /** Só para suspensão cautelar respondida: prazo do tribunal para decidir o mérito (art. 171, § 1º), informativo. */
+  prazoDecisaoMerito: { limite: DataISO; fundamento: string } | null;
+  /** RN-30: cautelar suspensiva não revogada impede avançar o processo e assinar o contrato. */
+  bloqueia: boolean;
+  registradaPor: UsuarioResumo | null;
+  registradaEm: InstanteISO;
+}
+/** GET /medidas-controle?situacao(abertas|aguardando_resposta|resposta_vencida|respondida|revogada)&orgao&alvo(processo|contrato)&alvoId&pagina&tamanhoPagina → Pagina<MedidaControle> (controle_externo:ler) */
+export interface FiltroMedidasControle extends ParametrosLista {
+  situacao?: SituacaoMedidaControle | 'abertas';
+  orgao?: OrgaoControle;
+  alvo?: 'processo' | 'contrato';
+  alvoId?: Id;
+}
+/** POST /medidas-controle → MedidaControle (controle_externo:registrar). Informe o processo OU o contrato. */
+export interface EntradaMedidaControle {
+  orgao: OrgaoControle;
+  tipo: TipoMedidaControle;
+  numero: string;
+  decididaEm: DataISO;
+  cienciaEm: DataISO;
+  objeto: string; // 20..2000 caracteres
+  efeitoSuspensivo: boolean; // só para tipo 'cautelar'
+  processoId: Id | null;
+  contratoId: Id | null;
+  /** Prazo fixado na comunicação, em dias úteis (1..120), para medidas sem efeito suspensivo; a suspensão cautelar tem os 10 dias úteis do art. 171, § 2º. */
+  prazoDiasUteis: number | null;
+}
+/** POST /medidas-controle/:id/prorrogacao → MedidaControle */
+export interface EntradaProrrogacaoMedida {
+  prorrogadoAte: DataISO;
+  justificativa: string; // 10..1000
+}
+/** POST /medidas-controle/:id/resposta → MedidaControle (medidas adotadas e informações prestadas, art. 171, § 2º, I a III) */
+export interface EntradaRespostaMedida {
+  respondidaEm: DataISO;
+  texto: string; // 20..5000
+}
+/** POST /medidas-controle/:id/revogacao → MedidaControle (revogação ou decisão de mérito do órgão de controle) */
+export interface EntradaRevogacaoMedida {
+  revogadaEm: DataISO;
+  texto: string; // 10..2000
+}
+
+// ───────── RN-29: revisão trimestral da matriz de riscos do contrato ─────────
+
+export type RiscoMatriz = ProcessoDetalhe['riscos'][number];
+
+export interface SituacaoRevisaoRiscos {
+  situacao: 'em_dia' | 'a_vencer' | 'vencida' | 'encerrado';
+  proximaRevisao: DataISO | null;
+  diasRestantes: number | null;
+  explicacao: string;
+  fundamento: string;
+}
+
+export interface RevisaoMatrizRiscos {
+  id: Id;
+  revisadaEm: DataISO;
+  linha: 'primeira' | 'segunda'; // 1ª linha (gestão e fiscalização) ou 2ª linha (controle interno)
+  observacao: string;
+  riscos: RiscoMatriz[];
+  revisadaPor: UsuarioResumo | null;
+  registradaEm: InstanteISO;
+}
+
+/** GET /contratos/:id/riscos (contratos:ler) */
+export interface MatrizRiscosContrato {
+  /** De onde vem a matriz vigente: última revisão, matriz do processo da jornada que gerou o contrato ou nenhuma. */
+  origem: 'revisao' | 'processo' | 'sem_matriz';
+  processo: { id: Id; numeroSei: string } | null;
+  riscos: RiscoMatriz[];
+  revisao: SituacaoRevisaoRiscos;
+  revisoes: RevisaoMatrizRiscos[]; // mais recente primeiro
+}
+/** POST /contratos/:id/riscos/revisoes → MatrizRiscosContrato (riscos:revisar). A data da revisão é a de hoje no servidor. */
+export interface EntradaRevisaoRiscos {
+  riscos: (Omit<RiscoMatriz, 'id'> & { id?: Id })[];
+  observacao: string; // 20..2000
+}
+
+// ───────── RF-23: painéis das linhas de defesa ─────────
+
+export interface ContratoRevisaoRiscos {
+  contrato: ReferenciaControle;
+  uasg: string;
+  objeto: string;
+  revisao: SituacaoRevisaoRiscos;
+}
+
+export interface ProcessoBloqueadoControle {
+  processo: ReferenciaControle;
+  titulo: string;
+  etapaAtual: EtapaJornada;
+  uasg: string;
+  bloqueios: Bloqueio[];
+  diasSemAtualizacao: number;
+}
+
+export interface TarefaAtrasadaControle {
+  id: Id;
+  titulo: string;
+  prazo: DataISO;
+  instrumento: ReferenciaControle;
+  responsavel: UsuarioResumo | null;
+}
+
+export interface AtestoAtrasadoControle {
+  id: Id;
+  contrato: ReferenciaControle;
+  notaFiscal: string;
+  valor: Centavos;
+  vencimento: DataISO;
+}
+
+/** Matriz de achados preventivos: sinal para conferência humana, nunca conclusão de irregularidade. */
+export interface AchadoPreventivo {
+  tipo: 'aditivo_limite' | 'sem_fiscal' | 'sem_gestor' | 'divulgacao_pncp' | 'ceis_cnep' | 'processo_parado' | 'ordem_cronologica' | 'revisao_riscos';
+  nivel: 'risco' | 'atencao';
+  titulo: string;
+  descricao: string;
+  fundamento: string;
+  referencia: ReferenciaControle;
+}
+
+export interface ExcecaoJustificada {
+  tipo: 'nao_padronizacao' | 'artigo_luxo' | 'etp_ausencia' | 'expurgo_cotacao';
+  titulo: string;
+  justificativa: string;
+  fundamento: string;
+  referencia: ReferenciaControle;
+}
+
+export interface ParecerPendenteControle {
+  processo: ReferenciaControle;
+  titulo: string;
+  uasg: string;
+  desde: InstanteISO; // última atualização do processo na etapa 5
+}
+
+export interface IndicadoresPrimeiraLinha {
+  pendenciasAbertas: number;
+  pendenciasVencidas: number;
+  tarefasAtrasadas: number;
+  atestosAtrasados: number;
+  processosBloqueados: number;
+  revisoesRiscosPendentes: number; // vencidas + a vencer
+  cautelaresSuspensivas: number;
+}
+
+/** GET /controle/primeira-linha?uasg (controle:primeira_linha) — escopo de UASG do usuário */
+export interface PainelPrimeiraLinha {
+  geradoEm: InstanteISO;
+  uasg: string | null;
+  indicadores: IndicadoresPrimeiraLinha;
+  pendenciasVencidas: Pendencia[]; // até 10, mais antigas primeiro
+  tarefasAtrasadas: TarefaAtrasadaControle[]; // até 10
+  atestosAtrasados: AtestoAtrasadoControle[]; // até 10
+  processosBloqueados: ProcessoBloqueadoControle[];
+  revisoesRiscos: ContratoRevisaoRiscos[]; // vencidas e a vencer
+  medidas: MedidaControle[]; // abertas ou suspensivas ativas
+  fontes: string[];
+}
+
+export interface IndicadoresSegundaLinha {
+  pareceresPendentes: number;
+  achadosRisco: number;
+  achadosAtencao: number;
+  excecoesJustificadas: number;
+  sancoesEmAndamento: number;
+  medidasAbertas: number;
+}
+
+/** GET /controle/segunda-linha?uasg (controle:segunda_linha) */
+export interface PainelSegundaLinha {
+  geradoEm: InstanteISO;
+  uasg: string | null;
+  indicadores: IndicadoresSegundaLinha;
+  pareceresPendentes: ParecerPendenteControle[];
+  achados: AchadoPreventivo[];
+  excecoes: ExcecaoJustificada[];
+  sancoes: Sancao[]; // em instrução, defesa ou decisão, e aplicadas com registro no CEIS/CNEP pendente
+  medidas: MedidaControle[];
+  fontes: string[];
+}
+
+/** GET /controle/terceira-linha?uasg&de&ate (controle:terceira_linha) — leitura ampla (art. 169, § 2º) */
+export interface PainelTerceiraLinha {
+  geradoEm: InstanteISO;
+  uasg: string | null;
+  periodo: { de: DataISO; ate: DataISO };
+  indicadores: {
+    medidasAbertas: number;
+    respostasVencidas: number;
+    cautelaresSuspensivas: number;
+    eventosNoPeriodo: number;
+    acessosDadosPessoais: number;
+    achadosRisco: number;
+  };
+  medidas: MedidaControle[];
+  integridade: VerificacaoAuditoria;
+  eventosPorRecurso: { recurso: string; total: number }[];
+  ultimosEventos: EventoAuditoria[]; // até 10, no período
+  primeiraLinha: IndicadoresPrimeiraLinha;
+  segundaLinha: IndicadoresSegundaLinha;
+  achados: AchadoPreventivo[];
+  fontes: string[];
+}
+// GET /controle/relatorio.pdf?uasg&de&ate → application/pdf (controle:terceira_linha): relatório executivo de auditoria com fontes, data e período

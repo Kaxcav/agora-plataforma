@@ -22,6 +22,7 @@ import type { Executor } from '../../banco/tipos.ts';
 import { usuarioResumo } from '../../compartilhado/instrumentos.ts';
 import { padraoContem } from '../../compartilhado/texto.ts';
 import { avaliarRegularidade, rotuloSancao, sancaoVigente } from '../fornecedores/repositorio.ts';
+import { bloqueiosControleExterno } from '../../compartilhado/controle-externo.ts';
 import { ITENS_PARECER, PAPEIS_PROCESSO, TIPOS_DOCUMENTO } from './constantes.ts';
 import {
   analisarCesta,
@@ -375,7 +376,9 @@ export async function avaliarProcesso(
       break;
     }
   }
-  return { bloqueios: resultado.bloqueios, sinais: [...resultado.sinais, ...sinaisDocumentos(carga.documentos)], analise, valorEstimado };
+  // RN-30: cautelar suspensiva do controle externo bloqueia o avanço em qualquer etapa.
+  const controleExterno = await bloqueiosControleExterno(executor, linha.id, linha.etapa_atual, hoje);
+  return { bloqueios: [...resultado.bloqueios, ...controleExterno], sinais: [...resultado.sinais, ...sinaisDocumentos(carga.documentos)], analise, valorEstimado };
 }
 
 export function montarResumo(linha: LinhaProcesso, bloqueios: readonly Bloqueio[], valorEstimado: number | null): ProcessoResumo {

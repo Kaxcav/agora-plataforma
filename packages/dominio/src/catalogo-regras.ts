@@ -568,6 +568,51 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: [],
     implementacao: 'api: GET /publico/editais; GET /publico/editais/:id; GET /publico/editais/:id/documentos/:tipo; mascararCpf',
   },
+  {
+    id: 'RF-23',
+    tipo: 'RF',
+    titulo: 'Painel das três linhas de defesa',
+    descricao:
+      'Painéis separados para cada linha de defesa, com perfil e escopo de UASG decididos no servidor. A 1ª linha (servidores, fiscais e agentes de contratação) vê pendências vencidas, tarefas e atestos atrasados, processos bloqueados e revisões da matriz de riscos. A 2ª linha (assessoria jurídica e controle interno) vê pareceres pendentes, a matriz de achados preventivos (aditivos perto do limite, contrato sem fiscal, divulgação no PNCP vencida, pagamento preterido na ordem cronológica) e as exceções justificadas nos processos. A 3ª linha (CGU e TCU) tem leitura ampla: medidas de controle com prazo, integridade da trilha de auditoria, acessos a dados pessoais e o relatório executivo de auditoria em PDF, com fontes, data e período.',
+    fundamento: 'Lei 14.133/2021, art. 169, I a III e § 2º',
+    etapa: null,
+    telas: ['controle'],
+    implementacao: 'avaliarLimiteAditivos, pagamentosPreteridos; api: GET /controle/primeira-linha; GET /controle/segunda-linha; GET /controle/terceira-linha; GET /controle/relatorio.pdf',
+  },
+  {
+    id: 'RF-24',
+    tipo: 'RF',
+    titulo: 'Controle externo: medidas de controle e cautelares',
+    descricao:
+      'Registro das medidas do tribunal de contas e do órgão central de controle interno no processo ou no contrato: órgão, número da decisão, datas da decisão e da ciência, objeto e efeito suspensivo. A Ágora calcula o prazo de resposta do órgão em dias úteis, mostra o semáforo do prazo, aceita a prorrogação concedida e registra a resposta e a revogação. Para a suspensão cautelar, informa também o prazo do tribunal para decidir o mérito. Toda escrita fica na trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, art. 171, §§ 1º, 2º e 4º',
+    etapa: null,
+    telas: ['controle.externo'],
+    implementacao:
+      'prazoRespostaMedida, prazoDecisaoMerito, situacaoMedidaControle; api: GET /medidas-controle; POST /medidas-controle; POST /medidas-controle/:id/prorrogacao; POST /medidas-controle/:id/resposta; POST /medidas-controle/:id/revogacao',
+  },
+  {
+    id: 'RN-29',
+    tipo: 'RN',
+    titulo: 'Revisão trimestral da matriz de riscos do contrato',
+    descricao:
+      'A matriz de riscos de cada contrato é revisada a cada três meses pela equipe de gestão e fiscalização (1ª linha de defesa) e pela unidade de controle interno (2ª linha). A próxima revisão vence três meses após a última, ou após o início da vigência quando ainda não houve revisão; o alerta aparece 15 dias antes e a revisão vencida fica destacada no contrato e nos painéis das linhas de defesa. O registro da revisão traz a matriz atualizada e a observação de quem revisou, e entra na trilha de auditoria. Contrato com vigência encerrada não exige revisão.',
+    fundamento: 'Lei 14.133/2021, arts. 22 e 169; matriz de riscos do contrato',
+    etapa: 7,
+    telas: ['contratos.detalhe', 'controle'],
+    implementacao: 'situacaoRevisaoRiscos; api: GET /contratos/:id/riscos; POST /contratos/:id/riscos/revisoes',
+  },
+  {
+    id: 'RN-30',
+    tipo: 'RN',
+    titulo: 'Cautelar suspensiva do controle externo impede avançar e contratar',
+    descricao:
+      'Enquanto houver medida cautelar com efeito suspensivo não revogada, o processo não avança de etapa e não gera o contrato; o aviso cita o órgão de controle, o número da decisão e a data da ciência. Ao ser intimado da suspensão, o órgão tem 10 dias úteis, admitida a prorrogação, para informar as medidas adotadas e prestar as informações; a resposta e a revogação são registradas e auditadas. Medidas sem efeito suspensivo não bloqueiam, mas têm prazo de resposta acompanhado.',
+    fundamento: 'Lei 14.133/2021, art. 171, §§ 1º e 2º',
+    etapa: null,
+    telas: ['controle.externo', 'jornada.detalhe'],
+    implementacao: 'bloqueioControleExterno, prazoRespostaCautelar; api: POST /processos/:id/avancar; POST /processos/:id/contratar',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

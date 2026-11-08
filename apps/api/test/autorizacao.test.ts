@@ -13,6 +13,7 @@ import type {
   RespostaErro,
 } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
+import { PERFIS, TODAS_PERMISSOES } from '../src/autorizacao/perfis.ts';
 import { chamar, criarAppTeste, entrar, obterJson, type Credenciais } from './apoio.ts';
 
 describe('autorização: RBAC por perfil e escopo por UASG', () => {
@@ -112,9 +113,10 @@ describe('autorização: RBAC por perfil e escopo por UASG', () => {
   test('matriz de perfis exibida em GET /perfis (administrador)', async () => {
     const admin = await entrar(app, 'admin@agora.demo');
     const perfis = await obterJson<PerfilAcesso[]>(app, admin, '/api/v1/perfis');
-    assert.equal(perfis.length, 9);
+    assert.equal(perfis.length, PERFIS.length);
+    assert.ok(perfis.length >= 10, 'inclui o perfil de controle interno');
     const porCodigo = new Map(perfis.map((p) => [p.codigo, p]));
-    assert.equal(porCodigo.get('administrador')?.permissoes.length, 25);
+    assert.equal(porCodigo.get('administrador')?.permissoes.length, TODAS_PERMISSOES.length);
     assert.ok(porCodigo.get('auditor')?.permissoes.includes('lgpd:revelar'));
     assert.ok(!porCodigo.get('auditor')?.permissoes.includes('pendencias:resolver'));
     assert.ok(porCodigo.get('fiscal')?.permissoes.includes('pagamentos:atestar'));

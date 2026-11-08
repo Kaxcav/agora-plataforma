@@ -19,6 +19,7 @@ import { geradoComParametrosAnteriores, hashParametrosDocumento } from '../src/m
 import type { ParametrosEdital } from '../src/modulos/jornada/tipos.ts';
 import { gerarCpf } from '../src/seed/documentos.ts';
 import { Prng } from '../src/seed/prng.ts';
+import { USUARIOS_DEMONSTRACAO_ADICIONAIS } from '../src/seed/usuarios-demonstracao.ts';
 import { chamar, criarAppTeste, entrar, INICIO_TESTES, obterJson, relogioManual, type Credenciais } from './apoio.ts';
 
 const SEM_LIMITE = { AGORA_LIMITE_REQUISICOES_MINUTO: '100000' };
@@ -116,7 +117,7 @@ describe('jornada da contratação: processos sintéticos, regras de avanço e c
 
   test('GET /processos/designaveis lista servidores ativos do escopo, ordenados e sem dados pessoais', async () => {
     const lista = await obterJson<UsuarioDesignavel[]>(app, agente, '/api/v1/processos/designaveis');
-    assert.equal(lista.length, 17);
+    assert.equal(lista.length, 17 + USUARIOS_DEMONSTRACAO_ADICIONAIS.length);
     assert.deepEqual(
       lista.map((u) => u.nome),
       [...lista.map((u) => u.nome)].sort((a, b) => a.localeCompare(b, 'pt-BR')),

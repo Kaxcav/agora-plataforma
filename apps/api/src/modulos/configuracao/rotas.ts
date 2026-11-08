@@ -1,6 +1,6 @@
 import type { ConfiguracaoPublica } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
-import { USUARIOS_DEMONSTRACAO } from '../../seed/usuarios-demonstracao.ts';
+import { USUARIOS_DEMONSTRACAO, USUARIOS_DEMONSTRACAO_ADICIONAIS } from '../../seed/usuarios-demonstracao.ts';
 
 /** GET /configuracao-publica — sem autenticação; nada de segredo aqui. */
 export async function rotasConfiguracao(app: FastifyInstance): Promise<void> {
@@ -15,7 +15,7 @@ export async function rotasConfiguracao(app: FastifyInstance): Promise<void> {
       iaHabilitada: config.ia.provedor !== 'nenhum',
       encarregadoLgpd: { nome: config.encarregado.nome, email: config.encarregado.email },
       ...(config.ambiente === 'demonstracao'
-        ? { usuariosDemonstracao: USUARIOS_DEMONSTRACAO.map((u) => ({ email: u.email, perfil: u.perfil, descricao: u.descricao })) }
+        ? { usuariosDemonstracao: [...USUARIOS_DEMONSTRACAO, ...USUARIOS_DEMONSTRACAO_ADICIONAIS].map((u) => ({ email: u.email, perfil: u.perfil, descricao: u.descricao })) }
         : {}),
     };
   });

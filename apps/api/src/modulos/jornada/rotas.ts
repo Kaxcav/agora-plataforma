@@ -12,6 +12,7 @@ import { conflito, naoEncontrado, regraNegocio, validacao } from '../../http/err
 import { camposPaginacao, centavos, codigoUasg, dataIso, idDaRota, pagina, textoBusca, uuid } from '../../http/validacao.ts';
 import { criarProvedorIa } from '../../ia/provedor.ts';
 import { avaliarRegularidade } from '../fornecedores/repositorio.ts';
+import { exigirSemCautelarSuspensiva } from '../../compartilhado/controle-externo.ts';
 import {
   DFD_INICIAL,
   DISPUTA_INICIAL,
@@ -735,6 +736,8 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       if (linha.contrato_id !== null) throw regraNegocio(`O processo já gerou o contrato ${linha.contrato_numero ?? ''}.`.trim());
       const vencedor = primeiroClassificado(linha.disputa);
       if (!vencedor) throw regraNegocio('Não há licitante vencedor registrado na disputa.');
+      // RN-30 (art. 171, §§ 1º e 2º): cautelar suspensiva ativa impede gerar e assinar o contrato.
+      await exigirSemCautelarSuspensiva(tx, { processoId: linha.id }, c.hoje);
       // RN-09 (art. 91, § 4º): sem impedimento/inidoneidade vigentes e com regularidade fiscal e trabalhista.
       const regularidade = await avaliarRegularidade(tx, vencedor, c.hoje, c.agora);
       if (!regularidade.regular) {
