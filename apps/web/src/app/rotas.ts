@@ -93,6 +93,8 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/base-normativa', permissao: 'normas:ler', pagina: lazy(() => import('../paginas/ia/BaseNormativa')) },
   { caminho: '/qualidade-normativa', permissao: 'qualidade_ia:ler', pagina: lazy(() => import('../paginas/ia/QualidadeNormativa')) },
   { caminho: '/jornada/:id/conferencia', permissao: 'jornada:ler', pagina: lazy(() => import('../paginas/ia/ConferenciaProcesso')) },
+  // Desempenho de fornecedores: registro cadastral, ranking e simulador (RN-37, RF-30)
+  { caminho: '/desempenho', permissao: 'fornecedores:ler', pagina: lazy(() => import('../paginas/desempenho/Desempenho')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

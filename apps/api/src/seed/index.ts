@@ -24,6 +24,7 @@ import { gerarImr } from './imr.ts';
 import { gerarPreparatorios } from './preparatorios.ts';
 import { gerarSociedade } from './sociedade.ts';
 import { gerarAlteracoes } from './alteracoes.ts';
+import { gerarDesempenhoLicoes } from './desempenho.ts';
 
 /** Semente fixa do gerador (Lei 14.133): a mesma data de referência produz sempre os mesmos dados. */
 export const SEMENTE_DEMONSTRACAO = 14_133;
@@ -53,6 +54,8 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'preparatorios', executar: gerarPreparatorios },
   { nome: 'sociedade', executar: gerarSociedade },
   { nome: 'alteracoes', executar: gerarAlteracoes },
+  // Registro de desempenho e ocorrências da execução (RN-37, RIA-12). PRNG próprio: não altera as etapas anteriores.
+  { nome: 'desempenho-licoes', executar: gerarDesempenhoLicoes },
 ];
 
 function dadosVazios(): DadosSeed {

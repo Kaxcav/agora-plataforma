@@ -25,6 +25,7 @@ import { editalCompleto } from './selecao.ts';
 import { criteriosDoProcesso, SECAO_SUSTENTABILIDADE, sustentabilidadeDoProcesso } from './sustentabilidade.ts';
 import type { AnaliseCesta, CargaProcesso, CotacaoArmazenada, DocumentoCarregado, TipoDocumento } from './tipos.ts';
 import { clausulaCreditoOrcamentario, evidenciaDotacao, MODELOS_COMPLEMENTARES, secaoDotacaoTr } from '../preparatorios/modelos.ts';
+import { anexarAoModelo, type AnexosDocumento } from '../licoes/anexos-documento.ts';
 
 /**
  * Modelos de texto determinísticos dos documentos da jornada (docs/JORNADA.md §3). Cada modelo devolve o corpo em
@@ -40,6 +41,8 @@ export interface DadosDocumento {
   calendario: OpcoesCalendario;
   /** Política de sustentabilidade do órgão ligada (RN-21); padrão: ligada. */
   politicaSustentabilidade?: boolean;
+  /** Lições aprendidas aceitas (RIA-12) e fórmula do desempenho na pontuação técnica (RN-37). */
+  anexos?: AnexosDocumento;
 }
 
 export interface ModeloDocumento {
@@ -1071,7 +1074,7 @@ const MODELOS: Record<TipoDocumento, (d: DadosDocumento) => ModeloDocumento> = {
 
 /** Modelo de texto determinístico do documento. */
 export function gerarModelo(tipo: TipoDocumento, dados: DadosDocumento): ModeloDocumento {
-  return MODELOS[tipo](dados);
+  return anexarAoModelo(MODELOS[tipo](dados), tipo, dados.anexos);
 }
 
 /** Documento completo: cabeçalho, marca de rascunho, corpo, premissas e fontes. */

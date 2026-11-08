@@ -92,6 +92,9 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'alteracoes:decidir': 'Assinar aditivos e apostilas e decidir reequilíbrio e extinção (autoridade competente)',
   'normas:ler': 'Consultar a base normativa (Lei 14.133/2021)',
   'qualidade_ia:ler': 'Acompanhar a qualidade normativa dos rascunhos (IMR-02)',
+  'desempenho:avaliar': 'Emitir a avaliação de desempenho do contratado (gestor ou fiscal designado)',
+  'desempenho:certificar': 'Emitir o certificado e a declaração de desempenho do fornecedor',
+  'licoes:registrar': 'Registrar ocorrências da execução (base de lições aprendidas)',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

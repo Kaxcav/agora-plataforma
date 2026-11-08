@@ -39,7 +39,8 @@ const AVISO_IDC =
 
 export type FaixaIdc = 'diamante' | 'ouro' | 'prata' | 'em_observacao' | 'critico' | 'sem_historico';
 
-function faixaDaNota(nota: number): FaixaIdc {
+/** Faixa (selo) de uma nota de 0 a 100: diamante ≥ 90; ouro ≥ 75; prata ≥ 60; em observação ≥ 50; crítico < 50. */
+export function faixaDaNota(nota: number): FaixaIdc {
   if (nota >= 90) return 'diamante';
   if (nota >= 75) return 'ouro';
   if (nota >= 60) return 'prata';

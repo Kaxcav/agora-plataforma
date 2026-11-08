@@ -14,6 +14,7 @@ import { calcular, EntradaMoeda, ErroOperacao, mesmoConteudo, Requisitos, textoO
 import { DocumentosEtapa } from '../Documentos';
 import { ehTipoObjeto, TIPOS_OBJETO } from '../rotulos';
 import { MINIMO_TEXTO, textoSuficiente, type PropsEtapa } from './tipos';
+import { LicoesAprendidas } from '../../licoes/LicoesAprendidas';
 
 const SINAL_FRACIONAMENTO: Record<'sem_risco' | 'atencao' | 'risco', { rotulo: string; tom: TomEtiqueta; leitura: string }> = {
   sem_risco: {
@@ -501,6 +502,8 @@ export default function Etapa1Demanda({ processo, editavel }: PropsEtapa) {
           {anuncio}
         </p>
       </form>
+
+      <LicoesAprendidas processo={processo} atual editavel={editavel} documento="dfd" />
 
       <DocumentosEtapa
         processo={processo}
