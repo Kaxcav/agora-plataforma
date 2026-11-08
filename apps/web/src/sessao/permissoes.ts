@@ -73,6 +73,10 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'impedimentos:parecer': 'Emitir a análise jurídica da extensão de sanção',
   'impedimentos:decidir': 'Decidir a extensão de sanção (autoridade competente)',
   'agentes:declarar': 'Assinar a própria declaração de inexistência de impedimento',
+  'operacao:ler': 'Consultar a disponibilidade e a operação da plataforma',
+  'operacao:administrar': 'Pedir sondagem e registrar janelas de manutenção do PNCP',
+  'metas:ler': 'Consultar o painel das metas do ETP',
+  'metas:configurar': 'Configurar as metas do ETP',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

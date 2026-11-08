@@ -31,6 +31,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   FileSignature,
+  Gauge,
+  Target,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -138,6 +140,14 @@ export const MENU: readonly SecaoMenu[] = [
         permissao: ['controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha'],
       },
       { rotulo: 'Controle externo', caminho: '/controle-externo', icone: Landmark, permissao: 'controle_externo:ler' },
+    ],
+  },
+  {
+    id: 'resultados',
+    titulo: 'Resultados e operação',
+    itens: [
+      { rotulo: 'Metas do ETP', caminho: '/metas-etp', icone: Target, permissao: 'metas:ler' },
+      { rotulo: 'Operação', caminho: '/operacao', icone: Gauge, permissao: 'operacao:ler' },
     ],
   },
 ];

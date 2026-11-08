@@ -1,0 +1,18 @@
+{
+  "descricao": "Volumes de referência SINTÉTICOS para o teste de carga da Ágora. Substitua pelos volumes do ETP do órgão (ou use as variáveis AGORA_CARGA_PROCESSOS_ANO, AGORA_CARGA_DOCUMENTOS_ANO e AGORA_CARGA_USUARIOS_SIMULTANEOS).",
+  "volumes": {
+    "processosAno": 5000,
+    "documentosAno": 15000,
+    "usuariosSimultaneos": 150,
+    "consultasPorUsuarioMinuto": 2,
+    "escritasPorProcesso": 40,
+    "diasUteisAno": 248,
+    "horasExpediente": 8,
+    "fatorPico": 10
+  },
+  "execucao": {
+    "concorrencia": 8,
+    "operacoes": { "listagens": 400, "jornada": 150, "publicacao": 12, "documentos": 60 },
+    "limiteP95Ms": { "listagens": 1000, "jornada": 1500, "publicacao": 5000, "documentos": 2500 }
+  }
+}

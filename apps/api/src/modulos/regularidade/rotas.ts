@@ -26,6 +26,7 @@ import {
 } from './repositorio.ts';
 import { abrirPendenciaRegularidade, exigirRegularidade, verificarRegularidade } from './servico.ts';
 import { listarRegistrosCeisCnep } from './ceis-cnep.ts';
+import { comTrava } from '../../compartilhado/travas.ts';
 
 const MOMENTOS = ['assinatura', 'prorrogacao', 'atesto', 'pagamento'] as const;
 const esquemaMomento = z.object({ momento: z.enum(MOMENTOS).default('assinatura') });
@@ -238,7 +239,9 @@ export async function rotasRegularidade(app: FastifyInstance): Promise<void> {
       momento: 'prorrogacao',
       instrumento: { tipo: 'contrato', id: contrato.id },
     });
-    exigirRegularidade(verificacao, 'O contratado não atende à verificação prévia à prorrogação (RN-09, art. 91, § 4º).');
+    await comTrava({ trava: 'prorrogacao', recurso: 'contrato', recursoId: contrato.id, uasg: contrato.uasg, identificador: contrato.numero }, () =>
+      exigirRegularidade(verificacao, 'O contratado não atende à verificação prévia à prorrogação (RN-09, art. 91, § 4º).'),
+    );
 
     const hoje = ctx.hoje();
     const aditivo = await ctx.banco.transacao(async (tx) => {

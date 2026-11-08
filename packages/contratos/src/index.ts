@@ -125,7 +125,11 @@ export type Permissao =
   | 'impedimentos:registrar'
   | 'impedimentos:parecer'
   | 'impedimentos:decidir'
-  | 'agentes:declarar';
+  | 'agentes:declarar'
+  | 'operacao:ler'
+  | 'operacao:administrar'
+  | 'metas:ler'
+  | 'metas:configurar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -2564,3 +2568,181 @@ export interface PublicacaoPncp {
 // GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
 // POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)
+
+// ───────────────────────── Operação: disponibilidade e janelas do PNCP (RNF-10, IMR-01) ─────────────────────────
+
+export type ComponenteOperacao = 'api' | 'banco' | 'fila' | 'sincronizacao';
+/** 'atingida'/'nao_atingida' com meta e medição; 'sem_meta' sem meta configurada; 'sem_dados' sem medição. */
+export type SituacaoMetaIndicador = 'atingida' | 'nao_atingida' | 'sem_meta' | 'sem_dados';
+
+export interface SituacaoComponenteOperacao {
+  componente: ComponenteOperacao;
+  nome: string;
+  disponivel: boolean;
+  /** Explicação curta do resultado (latência do banco, tarefas atrasadas, hora da última sincronização...). */
+  detalhe: string;
+}
+
+export interface SituacaoOperacao {
+  /** Última sondagem registrada (de qualquer réplica); null se a sonda nunca rodou. */
+  verificadaEm: InstanteISO | null;
+  /** A última sondagem ainda vale (não passou da validade). */
+  atual: boolean;
+  componentes: SituacaoComponenteOperacao[];
+  /** Tarefas do PNCP aguardando nova tentativa por indisponibilidade do portal. */
+  pncpEmManutencao: boolean;
+  sonda: { ligada: boolean; intervaloSegundos: number; validadeSegundos: number };
+  ambiente: 'demonstracao' | 'homologacao' | 'producao';
+  versao: string;
+  integracoes: 'offline' | 'online';
+  fila: { transporte: 'rabbitmq' | 'postgres'; trabalhador: 'embutido' | 'separado' };
+  /** Meta de disponibilidade configurada pelo órgão (AGORA_OPERACAO_META_DISPONIBILIDADE), ou null. */
+  metaDisponibilidade: number | null;
+}
+
+export interface OcorrenciaIndisponibilidade {
+  inicio: InstanteISO;
+  fim: InstanteISO;
+  minutos: number;
+  causas: (ComponenteOperacao | 'sem_medicao')[];
+}
+
+export interface JanelaManutencaoPncp {
+  /** Janela registrada pelo órgão (id) ou detectada pela fila (null). */
+  id: Id | null;
+  origem: 'registrada' | 'detectada';
+  inicio: InstanteISO;
+  fim: InstanteISO;
+  minutos: number;
+  descricao: string | null;
+  /** Tarefas do PNCP criadas antes do fim da janela e concluídas depois dela: absorvidas pela fila. */
+  tarefasAbsorvidas: number;
+  /** Tarefas do PNCP daquela janela que estão na fila de erro (precisam de reprocessamento). */
+  tarefasNaFilaDeErro: number;
+}
+
+export interface RelatorioDisponibilidade {
+  /** Mês de referência 'AAAA-MM'. */
+  mes: string;
+  periodo: { inicio: InstanteISO; fim: InstanteISO };
+  inicioMedicao: InstanteISO | null;
+  minutosConsiderados: number;
+  minutosDisponiveis: number;
+  minutosIndisponiveis: number;
+  minutosSemMedicao: number;
+  percentual: number | null;
+  metaPercentual: number | null;
+  situacao: SituacaoMetaIndicador;
+  componentes: { componente: ComponenteOperacao; nome: string; minutosIndisponiveis: number; percentual: number | null }[];
+  ocorrencias: OcorrenciaIndisponibilidade[];
+  janelasPncp: JanelaManutencaoPncp[];
+  premissas: string[];
+  fontes: string[];
+  geradoEm: InstanteISO;
+}
+
+export interface EntradaJanelaManutencao {
+  inicio: InstanteISO;
+  fim: InstanteISO;
+  descricao: string;
+}
+// GET /operacao/situacao → SituacaoOperacao (operacao:ler)
+// POST /operacao/sondar → SituacaoOperacao (operacao:administrar; auditado)
+// GET /operacao/disponibilidade?mes=AAAA-MM → RelatorioDisponibilidade (operacao:ler)
+// GET /operacao/disponibilidade.csv?mes=AAAA-MM → CSV (operacao:ler; a exportação fica na trilha)
+// POST /operacao/janelas → JanelaManutencaoPncp (operacao:administrar; auditado)
+
+// ───────────────────────── Painel das metas do ETP (RF-39) ─────────────────────────
+
+export interface ConfiguracaoMetasEtp {
+  tempoInstrucao: {
+    /** Redução pretendida do tempo de instrução sobre a linha de base (%). */
+    reducaoPercentual: number | null;
+    /** Linha de base de cada etapa da instrução (1 a 4), em dias corridos. */
+    linhaBaseDias: Record<'1' | '2' | '3' | '4', number | null>;
+  };
+  errosFormais: { mitigacaoPercentual: number | null };
+  economia: { economiaPercentual: number | null };
+  /** Quem configurou por último (null = nunca configuradas). */
+  atualizadaEm: InstanteISO | null;
+  atualizadaPor: UsuarioResumo | null;
+}
+export type EntradaMetasEtp = Pick<ConfiguracaoMetasEtp, 'tempoInstrucao' | 'errosFormais' | 'economia'>;
+
+export interface MedicaoTempoInstrucao {
+  processosMedidos: number;
+  mediaDias: number | null;
+  medianaDias: number | null;
+  linhaBaseDias: number | null;
+  alvoDias: number | null;
+  reducaoObtidaPercentual: number | null;
+  situacao: SituacaoMetaIndicador;
+}
+
+export interface ExplicacaoIndicador {
+  /** O que o número mede, em linguagem simples. */
+  mede: string;
+  /** O que ele não mede (e não deve ser lido como se medisse). */
+  naoMede: string;
+}
+
+export interface EconomiaProcessoPainel {
+  processo: ReferenciaControle;
+  titulo: string;
+  uasg: string;
+  origem: 'contrato' | 'homologacao';
+  /** Data do contrato ou da homologação. */
+  data: DataISO;
+  valorEstimado: Centavos;
+  valorContratado: Centavos;
+  economia: Centavos;
+  economiaPercentual: number | null;
+  expurgos: {
+    cotacoes: number;
+    descartadas: number;
+    mediaComDescartadas: Centavos | null;
+    mediaSemDescartadas: Centavos | null;
+    efeitoNoEstimado: Centavos;
+  };
+}
+
+export interface PainelMetasEtp {
+  filtro: { uasg: string | null; de: DataISO; ate: DataISO };
+  tempoInstrucao: {
+    metaReducaoPercentual: number | null;
+    etapas: (MedicaoTempoInstrucao & { etapa: number; titulo: string })[];
+    fase: MedicaoTempoInstrucao;
+    explicacao: ExplicacaoIndicador;
+  };
+  errosFormais: {
+    bloqueios: number;
+    processosAfetados: number;
+    ocorrenciasNaoBarradas: number;
+    mitigacaoPercentual: number | null;
+    metaPercentual: number | null;
+    situacao: SituacaoMetaIndicador;
+    porRegra: { regra: string; titulo: string; bloqueios: number }[];
+    porTrava: { trava: string; rotulo: string; bloqueios: number }[];
+    explicacao: ExplicacaoIndicador;
+  };
+  economia: {
+    processos: EconomiaProcessoPainel[];
+    totalEstimado: Centavos;
+    totalContratado: Centavos;
+    economia: Centavos;
+    economiaPercentual: number | null;
+    metaPercentual: number | null;
+    situacao: SituacaoMetaIndicador;
+    expurgos: { processosComExpurgo: number; cotacoesDescartadas: number; efeitoNoEstimado: Centavos };
+    explicacao: ExplicacaoIndicador;
+  };
+  metasConfiguradas: boolean;
+  premissas: string[];
+  fontes: string[];
+  geradoEm: InstanteISO;
+}
+// GET /metas-etp?uasg&de&ate → PainelMetasEtp (metas:ler; escopo de UASG)
+// GET /metas-etp/exportar.csv?uasg&de&ate → CSV (metas:ler; a exportação fica na trilha)
+// GET /metas-etp/configuracao → ConfiguracaoMetasEtp (metas:ler)
+// PUT /metas-etp/configuracao ← EntradaMetasEtp → ConfiguracaoMetasEtp (metas:configurar; auditado)
+// Cada bloqueio aplicado por uma trava (RN-04, RN-01, RN-09, RN-30, RN-06, RN-21, RF-15 e as travas de avanço) vira o evento `trava.bloqueio` na trilha.

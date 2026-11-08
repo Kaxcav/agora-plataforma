@@ -78,6 +78,10 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/impedimentos/fornecedores/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/FornecedorVinculos')) },
   { caminho: '/impedimentos/extensoes/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ExtensaoDetalhe')) },
   { caminho: '/impedimentos/declaracao', permissao: 'agentes:declarar', pagina: lazy(() => import('../paginas/impedimentos/MinhaDeclaracao')) },
+
+  // Operação (RNF-10, IMR-01) e painel das metas do ETP (RF-39)
+  { caminho: '/operacao', permissao: 'operacao:ler', pagina: lazy(() => import('../paginas/operacao/Operacao')) },
+  { caminho: '/metas-etp', permissao: 'metas:ler', pagina: lazy(() => import('../paginas/metas/PainelMetas')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));
