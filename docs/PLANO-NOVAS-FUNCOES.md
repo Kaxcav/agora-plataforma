@@ -47,37 +47,37 @@ O tamanho é uma estimativa: **P** = até 2 dias, **M** = 3 a 5 dias, **G** = 1 
 | F15 ✅ | Importação da cesta de preços por planilha (RF-16) | art. 23 | 1 (PoC-02) | P | Não |
 | F16 ✅ | Multa moratória por atraso, junto com a compensatória (RN-19) | arts. 156 e 162 | 1 (PoC-04) | P | Não |
 | F17 ✅ | Download público do edital e anexos, sem login (RF-17) | art. 25, § 3º | 1 (PoC-05) | P | Não |
-| F11 | Publicação real no PNCP (sandbox, depois produção) e no DOU | arts. 54 e 94 | 1 (PNCP) e 5 (DOU) | M | Credenciais do PNCP, providenciadas pelo MJSP |
-| F18 | Integração CEIS/CNEP e certidões: consulta real, envio da sanção em 15 dias úteis, recheque antes do atesto e do pagamento | arts. 91, § 4º, 92, XVI, e 161 | 1 (PoC-04) | M | Acesso às APIs da CGU e das certidões, pelo MJSP |
-| F13 | Upload seguro de documentos e leitura assistida de atestados (OCR) | art. 67 | 1 (PoC-03) | G | Contêiner de OCR, previsto pelo cliente |
-| F4 | Vínculos entre licitantes e extensão de sanção | arts. 14 e 160 | 1 (vínculos) e 3 (sanção) | M | QSA da Receita em produção |
-| F1 | Prova de conceito e amostra do primeiro colocado | art. 17, § 3º | 2 | P | Não |
-| F2 | Controle externo: cautelares, prazo de resposta e suspensão | art. 171, §§ 1º e 2º | 2 | M | Não |
-| F3 | Avaliação de desempenho do contratado e uso na técnica e preço | arts. 36, 37, III, e 88, §§ 3º e 4º | 2 e 3 | M | Envio ao cadastro de atesto: regulamento |
-| F5 | Sugestão de registro de preços compartilhado e prazo da IRP | art. 86 | 2 | P | Não |
-| F8 | Painel das 3 linhas de defesa | art. 169 | 2 | P | Não |
-| F14 | Declarações de impedimento dos agentes designados | art. 7º, III, e art. 9º | 2 | P | Não |
-| F6 | Lições aprendidas da execução, mostradas em novos DFDs | arts. 11, 18 e 117 | 3 | M | Não |
-| F7 | Instrumento de medição de resultado (IMR) e conferência da nota fiscal | art. 6º, XXIII, "g"; arts. 117 e 140 | 3 | G | Não |
-| F9 | Rotas de contratação e Sicx (comércio eletrônico) | art. 79, IV (Lei 15.266/2025) | 4 | G | Regulamento e API do Sicx |
-| F10 | Conferência do DFD com o PCA publicado | art. 12, VII | 5 | M | API de PCA do PNCP |
-| F12 | Integração real com o SEI e assinatura ICP-Brasil | art. 12, VI | 5 | G | Acesso ao SEI, providenciado pelo MJSP |
-| F19 | Catálogo CATMAT/CATSER: consulta ao catálogo oficial e sugestão do item | art. 19 | 2 | M | Dados abertos do catálogo |
-| F20 | Documentos da fase preparatória que faltam (portaria de designação, declaração orçamentária, despacho de autorização, nota técnica à CONJUR, anexos operacionais) e dotação estruturada | arts. 8º, 18, 53 e 150 | 2 | M | Não |
-| F21 | Políticas do órgão: sustentabilidade e logística reversa obrigatórias em ETP e TR, ligadas por padrão, e outras exigências configuráveis | art. 5º e art. 11, IV | 2 | P | Não |
-| F22 | Execução contratual como ato: aditivos e prorrogação com travas, recebimentos, garantias, prazos de pagamento, reajuste, repactuação, extinção, fiscal requisitante, desconto de multa, alertas | arts. 92, 96, 104–107, 117, 124–125, 137–141 | 2 | G | Não |
-| F23 | Consulta automática de preços (Painel de Preços e contratações similares; Sinapi/Sicro) e projeções | art. 23 | 3 | M | Dados abertos de compras |
-| F24 | IA ancorada: modelos da AGU, RAG sobre a lei e os manuais, conferência de citações e conferência cruzada entre documentos | art. 19, IV, e art. 25, § 1º | 3 | G | LLM auto-hospedado do órgão |
-| F25 | Sigilo de segurança pública: classificação de sigilo, tarja do art. 13, contratos sigilosos, cofre de anexos, carimbo de tempo da trilha | art. 13 e art. 91, § 1º | 2 | M | Não |
-| F26 | Atos da seleção: recurso em fase única (3 dias úteis para razões e contrarrazões), adjudicação, homologação e divulgação após a homologação | arts. 54, § 3º, 71 e 165 | 2 | M | Não |
-| F27 | Notificações externas a fiscais e contratadas | art. 117 | 3 | M | Servidor de e-mail do órgão |
-| F28 | Gestão compartilhada com a sociedade e catálogo de dados abertos | art. 174, § 3º, VI | 3 | M | Não |
-| F29 | Operação: autoescalonamento, desligamento fora do expediente, teste de carga, medição de disponibilidade | — | antes da produção | M | Nuvem do órgão |
-| F30 | Sala de disputa: modos aberto e fechado, isolados ou combinados, desempate e técnica e preço; simulação (treino e PoC-03) e acompanhamento da sessão oficial do Compras.gov.br, com sinal de padrão de lances | arts. 36, 56 e 60 | 1 (PoC-03) | G | Dados da sessão oficial, para o acompanhamento |
-| F31 | Serviços e mensageria: integrações num serviço próprio, RabbitMQ auto-hospedado com novas tentativas, fila de erro e idempotência, manifest Kubernetes por serviço | art. 174, § 2º (barramento do PNCP) | 1 (com F11) | M | Não |
-| F32 | Painel das metas do ETP: tempo de instrução por etapa, erros formais barrados e economia (estimado × contratado, efeito dos expurgos da cesta), contra metas configuradas pelo órgão | art. 18, § 1º, IX | 2 | M | Não |
-| F33 | Paleta da bandeira com papéis acessíveis: azul-escuro no cabeçalho, amarelo só sobre ele, vermelho nos alertas, verde em marcadores e, em texto, no tom AA do gov.br | — (RNF-01) | 2 | P | Não |
-| F34 | Selos de desempenho Diamante, Ouro, Prata, Em observação e Crítico; "Impedido" só por sanção vigente | arts. 88, 156 e 158 | 2 | P | Não |
+| F11 ✅ | Publicação real no PNCP (sandbox, depois produção) e no DOU (RF-19, RF-36) | arts. 54 e 94 | 1 (PNCP) e 5 (DOU) | M | Credenciais do PNCP, providenciadas pelo MJSP |
+| F18 ✅ | Integração CEIS/CNEP e certidões: consulta real, envio da sanção em 15 dias úteis, recheque antes do atesto e do pagamento (RF-20, RN-23, RN-24) | arts. 91, § 4º, 92, XVI, e 161 | 1 (PoC-04) | M | Acesso às APIs da CGU e das certidões, pelo MJSP |
+| F13 ✅ | Upload seguro de documentos e leitura assistida de atestados OCR (RF-21, RIA-08, RN-25) | art. 67 | 1 (PoC-03) | G | Contêiner de OCR, previsto pelo cliente |
+| F4 ✅ | Vínculos entre licitantes e extensão de sanção (RN-27, RIA-10) | arts. 14 e 160 | 1 (vínculos) e 3 (sanção) | M | QSA da Receita em produção |
+| F1 ✅ | Prova de conceito e amostra do primeiro colocado (RN-20) | art. 17, § 3º | 2 | P | Não |
+| F2 ✅ | Controle externo: cautelares, prazo de resposta e suspensão (RN-30, RF-24) | art. 171, §§ 1º e 2º | 2 | M | Não |
+| F3 ✅ | Avaliação de desempenho do contratado e uso na técnica e preço (RN-37, RF-30) | arts. 36, 37, III, e 88, §§ 3º e 4º | 2 e 3 | M | Envio ao cadastro de atesto: regulamento |
+| F5 | Sugestão de registro de preços compartilhado e prazo da IRP (em andamento) | art. 86 | 2 | P | Não |
+| F8 ✅ | Painel das 3 linhas de defesa (RF-23, RN-29) | art. 169 | 2 | P | Não |
+| F14 ✅ | Declarações de impedimento dos agentes designados (RN-28) | art. 7º, III, e art. 9º | 2 | P | Não |
+| F6 ✅ | Lições aprendidas da execução, mostradas em novos DFDs (RIA-12) | arts. 11, 18 e 117 | 3 | M | Não |
+| F7 ✅ | Instrumento de medição de resultado (IMR) e conferência da nota fiscal (RN-36, RF-29) | art. 6º, XXIII, "g"; arts. 117 e 140 | 3 | G | Não |
+| F9 | Rotas de contratação e Sicx (comércio eletrônico) (em andamento) | art. 79, IV (Lei 15.266/2025) | 4 | G | Regulamento e API do Sicx |
+| F10 | Conferência do DFD com o PCA publicado (em andamento) | art. 12, VII | 5 | M | API de PCA do PNCP |
+| F12 ✅ | Integração real com o SEI e assinatura ICP-Brasil (RF-35) | art. 12, VI | 5 | G | Acesso ao SEI, providenciado pelo MJSP |
+| F19 | Catálogo CATMAT/CATSER: consulta ao catálogo oficial e sugestão do item (em andamento) | art. 19 | 2 | M | Dados abertos do catálogo |
+| F20 ✅ | Documentos da fase preparatória e dotação orçamentária estruturada (RN-39, RF-32) | arts. 8º, 18, 53 e 150 | 2 | M | Não |
+| F21 ✅ | Políticas do órgão: sustentabilidade e logística reversa obrigatórias em ETP e TR (RN-21) | art. 5º e art. 11, IV | 2 | P | Não |
+| F22 🟡 | Execução contratual como ato: parte 1 pronta (aditivos, prorrogação, reajuste, repactuação, reequilíbrio e extinção — RN-32, RN-33, RF-27); parte 2 em andamento (fiscalização, recebimentos, garantias, pagamentos) | arts. 92, 96, 104–107, 117, 124–125, 137–141 | 2 | G | Não |
+| F23 ✅ | Consulta automática de preços e projeções de câmbio e inflação (RF-25, RIA-11) | art. 23 | 3 | M | Dados abertos de compras |
+| F24 ✅ | IA ancorada: modelos da AGU, RAG soberano, conferência de citações e conferência cruzada (RIA-14, RIA-15, RNF-08) | art. 19, IV, e art. 25, § 1º | 3 | G | LLM auto-hospedado do órgão |
+| F25 ✅ | Sigilo de segurança pública: classificação, contratos sigilosos, cofre e carimbo de tempo (RN-40, RF-33, RNF-09) | art. 13 e art. 91, § 1º | 2 | M | Não |
+| F26 ✅ | Atos da seleção: fase recursal única de 3 dias úteis, adjudicação, homologação e divulgação preparatória (RN-22, RF-18) | arts. 54, § 3º, 71 e 165 | 2 | M | Não |
+| F27 ✅ | Central de notificações externas e semáforo de 120 dias (RN-31, RF-26) | art. 117 | 3 | M | Servidor de e-mail do órgão |
+| F28 ✅ | Gestão compartilhada com a sociedade e catálogo de dados abertos (RF-37, RF-38) | art. 174, § 3º, VI | 3 | M | Não |
+| F29 ✅ | Operação: autoescalonamento, desligamento fora do expediente, teste de carga e medição de disponibilidade (RNF-10) | — | antes da produção | M | Nuvem do órgão |
+| F30 ✅ | Sala de disputa: modos aberto e fechado, desempate, simulação e acompanhamento com sinal de lances (RN-26, RF-22, RIA-09) | arts. 36, 56 e 60 | 1 (PoC-03) | G | Dados da sessão oficial, para o acompanhamento |
+| F31 ✅ | Serviços e mensageria: fila RabbitMQ auto-hospedada com novas tentativas e erro, Kubernetes por serviço (RNF-07) | art. 174, § 2º (barramento do PNCP) | 1 (com F11) | M | Não |
+| F32 ✅ | Painel das metas do ETP: tempo de instrução, erros formais barrados e economia (RF-39) | art. 18, § 1º, IX | 2 | M | Não |
+| F33 ✅ | Paleta da bandeira com papéis acessíveis: azul-escuro, amarelo sobre escuro, vermelho alertas e verde marcadores | — (RNF-01) | 2 | P | Não |
+| F34 ✅ | Selos de desempenho Diamante, Ouro, Prata, Em observação, Crítico e Sem histórico; "Impedido" só por sanção | arts. 88, 156 e 158 | 2 | P | Não |
 
 As funções F18 a F29 vieram da auditoria da conversa do cliente, e as F30 a F34 dos pontos confirmados nela em 8/11. A origem de cada uma está em `docs/RASTREABILIDADE-REQUISITOS.md`.
 
@@ -96,22 +96,63 @@ Os códigos são atribuídos **na ordem de implementação**, para o Caderno de 
 | Código | Regra | Função |
 |---|---|---|
 | RN-19 ✓ | Multa moratória = percentual diário do contrato × dias de atraso sobre a parcela, até o limite do contrato | F16 |
+| RN-20 | Prova de conceito ou amostra do licitante provisoriamente vencedor em sessão pública gravada | F1 |
+| RN-21 | Critérios de sustentabilidade ambiental e logística reversa obrigatórios no ETP e no TR | F21 |
+| RN-22 | Fase recursal única (3 dias úteis para razões e contrarrazões) e prazos dos atos da seleção | F26 |
+| RN-23 | Recheque da regularidade fiscal e trabalhista e CEIS/CNEP antes do atesto e do pagamento | F18 |
+| RN-24 | Registro da sanção aplicada no CEIS/CNEP em até 15 dias úteis com controle de prazos | F18 |
+| RN-25 | Parcelas de maior relevância (≥ 4%), quantitativos mínimos (≤ 50%) e balanço de até 2 exercícios | F13 |
+| RN-26 | Rito da sessão de disputa: modos aberto e fechado, intervalos mínimos, prorrogação e julgamento | F30 |
+| RN-27 | Extensão dos efeitos da sanção a administradores e sucessores com contraditório e análise jurídica | F4 |
+| RN-28 | Declaração de inexistência de impedimento, vínculo efetivo e capacitação dos agentes designados | F14 |
+| RN-29 | Revisão trimestral obrigatória da matriz de riscos do contrato pelas linhas de defesa | F8 |
+| RN-30 | Cautelar suspensiva do controle externo impede avançar etapa e contratar; prazo de resposta de 10 dias úteis | F2 |
+| RN-31 | Semáforo de vigência de 30, 60, 90 e 120 dias com avisos automáticos e linha do tempo | F27 |
+| RN-32 | Termo aditivo como ato registrado, com controle dos limites do art. 125 (25% e 50%) e parecer prévio | F22 (parte 1) |
+| RN-33 | Prorrogação com verificação dos limites legais de vigência (arts. 105 a 114) e regularidade | F22 (parte 1) |
+| RN-34 | Recebimento provisório e definitivo com prazos legais e comissão de recebimento (em andamento) | F22 (parte 2) |
+| RN-35 | Garantia da execução contratual: modalidades, prazos de renovação, execução e liberação (em andamento) | F22 (parte 2) |
+| RN-36 | Conferência da nota fiscal com valor devido e ajuste do IMR antes do atesto; divergência exige justificativa | F7 |
+| RN-37 | Avaliação de desempenho do contratado por indicadores objetivos e registro cadastral de atestos | F3 |
+| RN-38 | Intenção de registro de preços aberta por pelo menos 8 dias úteis (em andamento) | F5 |
+| RN-39 | Dotação orçamentária declarada e aprovada pela autoridade competente antes do edital | F20 |
+| RN-40 | Sigilo de segurança pública: classificação formal (LAI), credenciamento, cofre e orçamento sigiloso | F25 |
 | RF-16 ✓ | Importação da cesta de preços por planilha, com prévia validada no servidor | F15 |
-| a atribuir | Edital que exige prova de conceito ou amostra só avança da etapa 6 com o resultado registrado | F1 |
-| a atribuir | Cautelar suspensiva ativa impede avançar e contratar; prazo de resposta de 10 dias úteis | F2 |
-| a atribuir | Intenção de registro de preços aberta por pelo menos 8 dias úteis | F5 |
-| a atribuir | Compras pelo Sicx não somam ao limite de dispensa por valor (a confirmar com o regulamento) | F9 |
-| a atribuir | Valor devido da nota fiscal = preço contratado × quantidade, com ajuste do IMR; divergência exige justificativa | F7 |
-| a atribuir | Agente designado só atua depois da declaração de inexistência de impedimento | F14 |
-| a atribuir (RIA) | Lições aprendidas de contratos anteriores com itens semelhantes | F6 |
-| a atribuir (RIA) | Sinal de vínculo impeditivo e de possível extensão de sanção | F4 |
-| a atribuir (RIA) | Leitura assistida de atestados de capacidade técnica | F13 |
-| a atribuir (RF) | Controle externo (medidas de controle e prazos) | F2 |
-| a atribuir (RF) | Painel das 3 linhas de defesa | F8 |
-| a atribuir (RF) | Avaliação de desempenho do contratado | F3 |
-| a atribuir (RF) | Rotas de contratação | F9 |
-| a atribuir (RF) | Documentos do processo (armazenamento seguro) | F13 |
-| a atribuir (RF) | Publicação no PNCP e download público do edital | F11 e F17 |
+| RF-17 ✓ | Editais publicados com inteiro teor em PDF sem cadastro nem login | F17 |
+| RF-18 | Adjudicação, homologação e divulgação dos documentos preparatórios após a homologação | F26 |
+| RF-19 | Publicação no PNCP de edital, anexos e contratos pela fila de integrações com idempotência | F11 |
+| RF-20 | Consulta ao CEIS e ao CNEP via API do Portal da Transparência e checklist de regularidade | F18 |
+| RF-21 | Armazenamento seguro de documentos do processo e habilitação fora do banco com hash SHA-256 | F13 |
+| RF-22 | Sala de disputa: simulação de lances (treino e PoC) e acompanhamento da sessão oficial Compras.gov.br | F30 |
+| RF-23 | Painel segregado das três linhas de defesa (1ª gestão, 2ª controle interno/jurídico, 3ª CGU/TCU) | F8 |
+| RF-24 | Controle externo: registro de medidas de controle, cautelares, prazos de resposta e recursos | F2 |
+| RF-25 | Consulta automática e combinada de preços em fontes oficiais e bases públicas | F23 |
+| RF-26 | Central de notificações automatizadas com canais institucionais, fila durável e preferências | F27 |
+| RF-27 | Alterações do contrato: termos aditivos, apostilas de reajuste e repactuação, reequilíbrio e extinção | F22 (parte 1) |
+| RF-28 | Fiscalização, recebimentos, garantias e pagamentos da execução contratual (em andamento) | F22 (parte 2) |
+| RF-29 | Instrumento de medição de resultado (IMR), indicadores com faixas de glosa e medições periódicas | F7 |
+| RF-30 | Avaliação de desempenho do contratado, emissão de documento em PDF e certificado com autenticidade | F3 |
+| RF-31 | Rotas de contratação, dispensa eletrônica e integração Sicx (em andamento) | F9 |
+| RF-32 | Documentos complementares da fase preparatória e checklist de completude do processo | F20 |
+| RF-33 | Sigilo do processo: classificação, credenciamento, cofre de anexos cifrado e registro de acessos | F25 |
+| RF-34 | Catálogo unificado CATMAT/CATSER e intenção de registro de preços (em andamento) | F5, F10 e F19 |
+| RF-35 | Integração com o SEI (SeiWS), envio de documentos da árvore e consulta de assinaturas ICP-Brasil | F12 |
+| RF-36 | Publicação de matérias no Diário Oficial da União (Seção 3) e registro de jornal | F11 (DOU) |
+| RF-37 | Gestão compartilhada com a sociedade: manifestações moderadas, respostas e relatório final | F28 |
+| RF-38 | Catálogo de dados abertos em CSV e JSON com dicionário de dados e sem dados pessoais | F28 |
+| RF-39 | Painel das metas do ETP: tempo de instrução, erros formais mitigados e economia real | F32 |
+| RIA-08 | Leitura assistida de atestados de capacidade técnica por OCR em contêiner isolado | F13 |
+| RIA-09 | Sinal de padrão de lances suspeito na sessão de disputa com evidências para o pregoeiro | F30 |
+| RIA-10 | Sinal de vínculos societários (QSA do CNPJ), vínculos declarados e possível sucessão empresarial | F4 |
+| RIA-11 | Projeção de variação cambial e inflacionária do valor estimado com índices oficiais | F23 |
+| RIA-12 | Lições aprendidas da execução sugeridas como cláusulas informativas no DFD, ETP e TR | F6 |
+| RIA-13 | Sugestão de item do catálogo CATMAT/CATSER e alerta de IRP aberta (em andamento) | F5 e F19 |
+| RIA-14 | Conferência de citações legais e precisão normativa sobre a base compilada (IMR-02) | F24 |
+| RIA-15 | Conferência cruzada entre documentos preparatórios e auditor contínuo para 2ª linha | F24 |
+| RNF-07 | Fila de integrações assíncrona com RabbitMQ, novas tentativas com backoff e fila de erro | F31 |
+| RNF-08 | Base normativa soberana da Lei 14.133/2021 no repositório e busca por BM25 sem API externa | F24 |
+| RNF-09 | Cofre de anexos sigilosos cifrado com AES-256-GCM e carimbo de tempo RFC 3161 na trilha | F25 |
+| RNF-10 | Operação sustentável (TI verde), desligamento fora do expediente e medição de disponibilidade (IMR-01) | F29 |
 
 ## 4. As funções em detalhe
 
