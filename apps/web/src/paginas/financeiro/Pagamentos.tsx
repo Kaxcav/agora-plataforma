@@ -134,7 +134,7 @@ export default function Pagamentos() {
                           variante="secundario"
                           tamanho="compacto"
                           icone={Scale}
-                          aria-label={`Conferir a nota fiscal ${pg.notaFiscal} do contrato ${pg.contrato.numero}`}
+                          aria-label={`Conferir nota fiscal ${pg.notaFiscal} do contrato ${pg.contrato.numero}`}
                         >
                           Conferir nota
                         </LinkBotao>
