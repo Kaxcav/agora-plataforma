@@ -322,7 +322,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     fundamento: 'Diretriz de soberania digital da Ágora',
     etapa: null,
     telas: [],
-    implementacao: 'arquitetura: implantação auto-hospedada (deploy/)',
+    implementacao: 'arquitetura: implantação auto-hospedada (deploy/Dockerfile, deploy/docker-compose.yml, deploy/k8s/agora.yaml)',
   },
   {
     id: 'RNF-02',
@@ -355,7 +355,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     fundamento: 'gov.br DS; eMAG; WCAG 2.1 nível AA',
     etapa: null,
     telas: [],
-    implementacao: 'web: componentes próprios acessíveis e testes automatizados com axe',
+    implementacao: 'web: componentes próprios acessíveis e testes automatizados com axe (e2e/testes/apoio.ts)',
   },
   {
     id: 'RNF-05',
@@ -377,7 +377,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     fundamento: 'Lei 14.133/2021, arts. 155 a 163 (sanção pela autoridade competente); Lei 13.709/2018, art. 20',
     etapa: null,
     telas: [],
-    implementacao: 'todas as funções de sinal do domínio retornam sinal e explicação, nunca decisão',
+    implementacao: 'todas as funções de sinal do domínio retornam sinal e explicação, nunca decisão; provedor de IA em apps/api/src/ia/provedor.ts',
   },
 
   // ───────────────────────── Requisitos funcionais (um por tela de operação) ─────────────────────────
@@ -467,7 +467,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     fundamento: 'Lei 14.133/2021, art. 183',
     etapa: null,
     telas: ['ajustes'],
-    implementacao: 'api: /modelos-gestao; /unidades-internas; /grupos-uasg; /feriados',
+    implementacao: 'api: GET /modelos-gestao; GET /unidades-internas; GET /grupos-uasg; GET /feriados',
   },
   {
     id: 'RF-09',
@@ -1231,7 +1231,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     etapa: 1,
     telas: ['jornada.detalhe', 'jornada.rota', 'jornada.dispensa', 'jornada.adesao', 'sicx'],
     implementacao:
-      'adaptacaoDaRota, validarEscolhaRota, validarInexigibilidade, avaliarAdesaoAta, prazoContratacaoAdesao; api: GET /processos/:id/rota; PUT /processos/:id/rota; PUT /processos/:id/inexigibilidade; POST /processos/:id/adesao; POST /processos/:id/adesao/anuencia; POST /processos/:id/contratacao-direta/autorizacao',
+      'adaptacaoDaRota, validarEscolhaRota, validarInexigibilidade, avaliarAdesaoAta, prazoContratacaoAdesao; api: GET /processos/:id/rota; PUT /processos/:id/rota; PUT /processos/:id/inexigibilidade; POST /processos/:id/adesao; POST /atas/adesoes/:id/anuencia; POST /processos/:id/contratacao-direta/autorizacao',
   },
 ]);
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
