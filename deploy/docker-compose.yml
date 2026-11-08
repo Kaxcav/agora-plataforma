@@ -1,0 +1,59 @@
+# Ágora + PostgreSQL 16 na infraestrutura do órgão.
+#   cp .env.exemplo .env   (defina AGORA_SEGREDO_SESSAO e POSTGRES_PASSWORD)
+#   docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
+name: agora
+
+services:
+  banco:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agora
+      POSTGRES_USER: agora
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    volumes:
+      - dados_banco:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agora -d agora"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [interna]
+
+  agora:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: agora:1.0.0
+    restart: unless-stopped
+    depends_on:
+      banco:
+        condition: service_healthy
+    environment:
+      AGORA_AMBIENTE: ${AGORA_AMBIENTE:-demonstracao}
+      AGORA_BANCO_URL: postgres://agora:${POSTGRES_PASSWORD}@banco:5432/agora
+      AGORA_SEGREDO_SESSAO: ${AGORA_SEGREDO_SESSAO:?defina AGORA_SEGREDO_SESSAO no .env}
+      AGORA_COOKIE_SEGURO: ${AGORA_COOKIE_SEGURO:-false}
+      AGORA_SEED_DEMONSTRACAO: ${AGORA_SEED_DEMONSTRACAO:-true}
+      AGORA_INTEGRACOES: ${AGORA_INTEGRACOES:-offline}
+      AGORA_IA_PROVEDOR: ${AGORA_IA_PROVEDOR:-nenhum}
+      AGORA_ORGAO_NOME: ${AGORA_ORGAO_NOME:-Ministério da Justiça e Segurança Pública}
+      AGORA_ORGAO_SIGLA: ${AGORA_ORGAO_SIGLA:-MJSP}
+      AGORA_ORGAO_UNIDADE: ${AGORA_ORGAO_UNIDADE:-Secretaria Nacional de Segurança Pública}
+      AGORA_ENCARREGADO_NOME: ${AGORA_ENCARREGADO_NOME:-Encarregado pelo Tratamento de Dados Pessoais}
+      AGORA_ENCARREGADO_EMAIL: ${AGORA_ENCARREGADO_EMAIL:-encarregado@orgao.exemplo.gov.br}
+    ports:
+      - "${AGORA_PORTA_PUBLICA:-3000}:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks: [interna]
+
+volumes:
+  dados_banco:
+
+networks:
+  interna:

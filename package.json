@@ -1,0 +1,34 @@
+{
+  "name": "agora-plataforma",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ágora — Plataforma Integrada de Contratações Públicas (Lei 14.133/2021). Auto-hospedável, sem dependência de nuvem estrangeira.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "workspaces": [
+    "packages/dominio",
+    "packages/contratos",
+    "apps/api",
+    "apps/web",
+    "e2e"
+  ],
+  "scripts": {
+    "build": "npm run build -w @agora/dominio -w @agora/contratos && npm run build -w @agora/web && npm run build -w @agora/api",
+    "dev": "npm run dev -w @agora/api",
+    "start": "npm run start -w @agora/api",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run typecheck",
+    "e2e": "npm run e2e -w @agora/e2e"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "@types/node": "^24.10.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

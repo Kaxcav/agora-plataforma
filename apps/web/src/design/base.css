@@ -1,0 +1,259 @@
+/* Base: normalização, tipografia, foco, utilitários. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: var(--esp-4);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--familia);
+  font-size: var(--fonte-base);
+  font-weight: var(--peso-normal);
+  line-height: var(--entrelinha);
+  color: var(--cor-texto);
+  background: var(--cor-fundo);
+  font-variant-numeric: lining-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  color: var(--cor-texto-forte);
+  line-height: var(--entrelinha-titulo);
+  font-weight: var(--peso-semi);
+}
+
+h1 {
+  font-size: var(--fonte-2xg);
+  font-weight: var(--peso-negrito);
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: var(--fonte-xg);
+}
+
+h3 {
+  font-size: var(--fonte-g);
+}
+
+h4 {
+  font-size: var(--fonte-m);
+}
+
+h5,
+h6 {
+  font-size: var(--fonte-base);
+}
+
+p {
+  margin: 0;
+  max-width: 75ch;
+}
+
+p + p {
+  margin-top: var(--esp-3);
+}
+
+a {
+  color: var(--cor-interacao);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  color: var(--cor-interacao-hover);
+  text-decoration-thickness: 2px;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding-left: var(--esp-6);
+}
+
+dl,
+dd {
+  margin: 0;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+svg.lucide {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+code,
+kbd,
+samp,
+.mono {
+  font-family: var(--familia-mono);
+  font-size: 0.92em;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--cor-divisoria);
+  margin: var(--esp-6) 0;
+}
+
+::selection {
+  background: var(--azul-10);
+  color: var(--cinza-90);
+}
+
+/* Foco visível do gov.br DS — nunca removido. */
+:focus-visible {
+  outline: 3px solid var(--cor-foco);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+[tabindex='-1']:focus {
+  outline: none;
+}
+
+/* Utilitários */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.texto-secundario {
+  color: var(--cor-texto-secundario);
+}
+
+.texto-pequeno {
+  font-size: var(--fonte-pequena);
+}
+
+.texto-forte {
+  font-weight: var(--peso-semi);
+  color: var(--cor-texto-forte);
+}
+
+.numero {
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.sem-quebra {
+  white-space: nowrap;
+}
+
+.pilha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-4);
+}
+
+.pilha--compacta {
+  gap: var(--esp-2);
+}
+
+.pilha--ampla {
+  gap: var(--esp-6);
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2);
+}
+
+.linha--entre {
+  justify-content: space-between;
+}
+
+.linha--fim {
+  justify-content: flex-end;
+}
+
+.grade {
+  display: grid;
+  gap: var(--esp-4);
+}
+
+.grade--2 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+}
+
+.grade--3 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.grade--kpi {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr));
+  gap: var(--esp-4);
+}
+
+.lista-simples {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

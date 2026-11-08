@@ -1,0 +1,127 @@
+/*
+ * Tokens visuais da Ágora — Padrão Digital de Governo (gov.br DS 3.7).
+ * Cores, tipografia (Minor Third 1,2 sobre base de 14 px), espaçamento em passos de 4 px.
+ */
+:root {
+  /* Cores institucionais */
+  --azul-90: #071d41;
+  --azul-80: #0c326f;
+  --azul-70: #1351b4;
+  --azul-60: #155bcb;
+  --azul-20: #adcdff;
+  --azul-10: #d4e5ff;
+  --azul-5: #edf5ff;
+
+  --verde-50: #168821;
+  --verde-60: #0f6b19;
+  --verde-10: #e3f5e1;
+
+  --amarelo-20: #ffcd07;
+  --amarelo-5: #fff5c2;
+  --ambar-60: #7a5200;
+
+  --laranja-50: #c25e00;
+  --laranja-10: #ffe8d6;
+
+  --vermelho-50: #e52207;
+  --vermelho-60: #b51b05;
+  --vermelho-10: #fde0db;
+
+  --cinza-90: #1b1b1b;
+  --cinza-80: #333333;
+  --cinza-60: #636363;
+  --cinza-40: #888888;
+  --cinza-20: #cccccc;
+  --cinza-10: #e6e6e6;
+  --cinza-5: #f0f0f0;
+  --cinza-2: #f8f8f8;
+  --branco: #ffffff;
+
+  /* Papéis semânticos */
+  --cor-texto: var(--cinza-80);
+  --cor-texto-forte: var(--cinza-90);
+  --cor-texto-secundario: var(--cinza-60);
+  --cor-fundo: var(--cinza-2);
+  --cor-superficie: var(--branco);
+  --cor-borda: var(--cinza-20);
+  --cor-divisoria: var(--cinza-10);
+  --cor-interacao: var(--azul-70);
+  --cor-interacao-hover: var(--azul-80);
+  --cor-foco: #c2850c;
+  --cor-selecao: var(--azul-10);
+
+  /* Tipografia */
+  --familia: Rawline, Raleway, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --familia-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Consolas, monospace;
+  --fonte-pequena: 0.75rem;   /* 12 px */
+  --fonte-base: 0.875rem;     /* 14 px */
+  --fonte-m: 1.05rem;         /* 16,8 px */
+  --fonte-g: 1.26rem;         /* 20,16 px */
+  --fonte-xg: 1.512rem;       /* 24,19 px */
+  --fonte-2xg: 1.814rem;      /* 29,03 px */
+  --fonte-3xg: 2.177rem;      /* 34,84 px */
+  --entrelinha: 1.45;
+  --entrelinha-titulo: 1.15;
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-semi: 600;
+  --peso-negrito: 700;
+  --peso-extra: 800;
+
+  /* Espaçamento (passos de 4 px) */
+  --esp-1: 0.25rem;
+  --esp-2: 0.5rem;
+  --esp-3: 0.75rem;
+  --esp-4: 1rem;
+  --esp-5: 1.25rem;
+  --esp-6: 1.5rem;
+  --esp-7: 1.75rem;
+  --esp-8: 2rem;
+  --esp-9: 2.25rem;
+  --esp-10: 2.5rem;
+  --esp-11: 2.75rem;
+  --esp-12: 3rem;
+
+  /* Forma */
+  --raio: 4px;
+  --raio-cartao: 8px;
+  --raio-pilula: 999px;
+  --sombra-1: 0 1px 6px rgba(0, 0, 0, 0.16);
+  --sombra-2: 0 3px 6px rgba(0, 0, 0, 0.16);
+  --sombra-3: 0 6px 18px rgba(7, 29, 65, 0.18);
+
+  /* Áreas de toque */
+  --alvo-minimo: 24px;
+  --altura-controle: 2.5rem; /* 40 px */
+  --altura-controle-compacto: 2rem;
+
+  /* Densidade de tabela */
+  --linha-alta: 32px;
+  --linha-padrao: 40px;
+  --linha-baixa: 48px;
+
+  /* Estrutura */
+  --largura-menu: 16rem;
+  --largura-menu-recolhido: 4rem;
+  --altura-cabecalho: 4rem;
+  --largura-conteudo: 90rem;
+
+  /* Movimento */
+  --duracao-rapida: 120ms;
+  --duracao-media: 200ms;
+  --curva: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (pointer: coarse) {
+  :root {
+    --alvo-minimo: 40px;
+    --altura-controle-compacto: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duracao-rapida: 0ms;
+    --duracao-media: 0ms;
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "testesDominio": 291,
+  "testesApi": 89,
+  "testesE2e": 53,
+  "testesTotal": 433,
+  "telasAxe": 36,
+  "jsAgoraPrimeiraTelaKb": 407,
+  "jsPortalPrimeiraTelaKb": 760,
+  "jsPortalTotalMb": "2,8"
+}

@@ -1,0 +1,73 @@
+/* Estilos das páginas do grupo b (vínculos, fornecedores, sanções, auditoria). */
+
+/* IDC */
+.idc-resumo {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2);
+}
+
+.idc-destaque {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-3) var(--esp-6);
+  padding: var(--esp-4) var(--esp-5);
+  border-radius: var(--raio-cartao);
+  background: var(--cinza-2);
+  border: 1px solid var(--cor-divisoria);
+}
+
+.idc-destaque__nota {
+  font-size: var(--fonte-3xg);
+  font-weight: var(--peso-extra);
+  line-height: 1;
+  color: var(--cor-texto-forte);
+  letter-spacing: -0.02em;
+}
+
+.idc-destaque__escala {
+  font-size: var(--fonte-m);
+  font-weight: var(--peso-semi);
+  color: var(--cor-texto-secundario);
+  letter-spacing: 0;
+}
+
+/* Sanções */
+.sancao__inciso {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 28ch;
+}
+
+/* Auditoria */
+.hash-evento {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--esp-1);
+  white-space: nowrap;
+}
+
+.hash-evento__copiar {
+  display: inline-grid;
+  place-items: center;
+  width: var(--alvo-minimo);
+  height: var(--alvo-minimo);
+  border: 1px solid var(--cor-divisoria);
+  border-radius: var(--raio);
+  background: var(--cinza-2);
+  color: var(--cor-texto);
+}
+
+.hash-evento__copiar:hover {
+  border-color: var(--azul-70);
+  color: var(--azul-80);
+}
+
+/* Na trilha há vários campos de texto: só a busca principal ocupa duas colunas. */
+.trilha-auditoria .barra-filtros__campos .campo--busca + .campo--busca {
+  grid-column: auto;
+}

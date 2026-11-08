@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.data/
+*.log
+.env
+.env.*
+!.env.exemplo
+playwright-report/
+test-results/
+.vite/

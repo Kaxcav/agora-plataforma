@@ -1,0 +1,130 @@
+/* Estilos das páginas do grupo c (Ajustes e Administração). */
+
+/* Chips de perfis na lista de usuários */
+.lista-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-1);
+}
+
+.lista-chips li {
+  padding: 1px var(--esp-2);
+  border-radius: var(--raio-pilula);
+  background: var(--azul-5);
+  border: 1px solid var(--azul-20);
+  color: var(--azul-80);
+  font-size: var(--fonte-pequena);
+  font-weight: var(--peso-semi);
+  white-space: nowrap;
+}
+
+/* Editor de tarefas do modelo de gestão */
+.modelo-tarefa {
+  background: var(--cinza-2);
+  gap: var(--esp-3);
+}
+
+.modelo-tarefa__acoes {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Perfis do formulário de usuário */
+.grade-perfis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  gap: var(--esp-2) var(--esp-4);
+}
+
+/* Cartões de perfil */
+.cartoes-perfis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--esp-3);
+}
+
+.cartao-perfil {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+  padding: var(--esp-4);
+  border: 1px solid var(--cor-divisoria);
+  border-top: 3px solid var(--azul-70);
+  border-radius: var(--raio-cartao);
+  background: var(--cor-superficie);
+}
+
+.cartao-perfil__nome {
+  font-size: var(--fonte-m);
+}
+
+.cartao-perfil__descricao {
+  color: var(--cor-texto);
+  flex: 1;
+}
+
+.cartao-perfil__total {
+  font-size: var(--fonte-pequena);
+  color: var(--cor-texto-secundario);
+}
+
+/* Matriz de permissões */
+.matriz th,
+.matriz td {
+  padding: var(--esp-2) var(--esp-3);
+}
+
+.matriz__celula {
+  text-align: center;
+}
+
+.matriz__celula svg {
+  display: inline-block;
+}
+
+.matriz__permissao {
+  min-width: 15rem;
+}
+
+.matriz__permissao code {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fonte-pequena);
+  font-weight: var(--peso-normal);
+  color: var(--cor-texto-secundario);
+}
+
+/* Botões de execução por fonte (Integrações) */
+.botoes-fontes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-3);
+}
+
+@media print {
+  .matriz thead th {
+    position: static;
+  }
+}
+
+/* Senha temporária (exibida uma única vez) */
+.senha-temporaria {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-3);
+  padding: var(--esp-3) var(--esp-4);
+  border: 1px dashed var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cinza-2);
+}
+
+.senha-temporaria code {
+  font-size: var(--fonte-g);
+  letter-spacing: 0.05em;
+  word-break: break-all;
+  color: var(--cor-texto-forte);
+}

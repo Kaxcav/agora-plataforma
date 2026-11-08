@@ -1,0 +1,143 @@
+# Ágora em Kubernetes (cluster da nuvem do órgão). PostgreSQL gerenciado pelo órgão.
+#
+# 1) Segredos: crie fora do repositório (nunca versione valores reais), de preferência a partir do cofre do órgão:
+#      kubectl create namespace agora
+#      kubectl -n agora create secret generic agora-segredos \
+#        --from-literal=AGORA_BANCO_URL="<url do PostgreSQL com sslmode=require>" \
+#        --from-literal=AGORA_SEGREDO_SESSAO="$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")"
+# 2) Ajuste o host do Ingress, a imagem e AGORA_ORGAO_CNPJ abaixo.
+# 3) kubectl apply -f deploy/k8s/agora.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agora
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agora-config
+  namespace: agora
+data:
+  AGORA_AMBIENTE: "producao"
+  AGORA_COOKIE_SEGURO: "true"
+  AGORA_SEED_DEMONSTRACAO: "false"
+  AGORA_INTEGRACOES: "online"
+  AGORA_IA_PROVEDOR: "nenhum"
+  AGORA_ORGAO_NOME: "Ministério da Justiça e Segurança Pública"
+  AGORA_ORGAO_SIGLA: "MJSP"
+  AGORA_ORGAO_UNIDADE: "Secretaria Nacional de Segurança Pública"
+  AGORA_LOG_NIVEL: "info"
+  AGORA_CONFIAR_PROXY: "true"
+  AGORA_ORGAO_CNPJ: "00000000000000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agora
+  namespace: agora
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: agora }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels: { app: agora }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: agora
+          image: registro.orgao.gov.br/agora:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 3000 }
+          envFrom:
+            - configMapRef: { name: agora-config }
+            - secretRef: { name: agora-segredos }
+          readinessProbe:
+            httpGet: { path: /saude/pronto, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /saude/vivo, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: "1", memory: 768Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agora
+  namespace: agora
+spec:
+  selector: { app: agora }
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agora
+  namespace: agora
+spec:
+  tls:
+    - hosts: [agora.orgao.gov.br]
+      secretName: agora-tls
+  rules:
+    - host: agora.orgao.gov.br
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: agora, port: { name: http } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agora
+  namespace: agora
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: agora }
+---
+# Saída liberada só para DNS, o banco e HTTPS (APIs públicas do governo: PNCP etc.).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agora-saida
+  namespace: agora
+spec:
+  podSelector:
+    matchLabels: { app: agora }
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - ports:
+        - { protocol: TCP, port: 5432 }
+    - ports:
+        - { protocol: TCP, port: 443 }

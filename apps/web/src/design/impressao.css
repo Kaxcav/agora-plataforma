@@ -1,0 +1,108 @@
+/* Impressão: só o conteúdo, sem navegação, com tabelas legíveis e URLs dos links externos. */
+@media print {
+  @page {
+    margin: 16mm 14mm;
+  }
+
+  :root {
+    --cor-fundo: #fff;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+    font-size: 10.5pt;
+  }
+
+  .link-salto,
+  .faixa-ambiente,
+  .cabecalho,
+  .menu-lateral,
+  .gaveta,
+  .rodape,
+  .avisos,
+  .pagina__acoes,
+  .tabela-ferramentas,
+  .paginacao__navegacao,
+  .paginacao__tamanho,
+  .barra-filtros,
+  .abas__lista,
+  .botao,
+  .botao-copiar,
+  .texto-longo__alternar,
+  .nao-imprimir {
+    display: none !important;
+  }
+
+  .casca,
+  .casca--menu,
+  .casca--menu-recolhido {
+    display: block;
+  }
+
+  .conteudo {
+    padding: 0;
+  }
+
+  .pagina {
+    max-width: none;
+  }
+
+  .cartao,
+  .indicador,
+  .tabela-rolagem,
+  .painel-regras,
+  .regra,
+  .proveniencia {
+    box-shadow: none !important;
+    border-color: #999 !important;
+    background: #fff !important;
+  }
+
+  .texto-longo__texto--recolhido {
+    display: block;
+    -webkit-line-clamp: unset !important;
+    overflow: visible;
+  }
+
+  .tabela-rolagem {
+    overflow: visible;
+  }
+
+  .tabela thead th {
+    position: static;
+    background: #eee !important;
+  }
+
+  .tabela tr,
+  .regra,
+  .indicador,
+  .linha-tempo__evento {
+    break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 8.5pt;
+    color: #333;
+    word-break: break-all;
+  }
+
+  .esqueleto {
+    animation: none;
+  }
+
+  .so-impressao {
+    display: block !important;
+  }
+}
+
+.so-impressao {
+  display: none;
+}
