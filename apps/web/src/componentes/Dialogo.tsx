@@ -131,7 +131,7 @@ export interface PropsConfirmarAcao {
   titulo: string;
   descricao: ReactNode;
   rotuloConfirmar: string;
-  variante?: Extract<VarianteBotao, 'primario' | 'perigo'>;
+  variante?: Extract<VarianteBotao, 'primario' | 'perigo' | 'avanco'>;
   aoConfirmar: () => void;
   processando?: boolean;
   erro?: unknown;

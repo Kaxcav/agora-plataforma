@@ -188,10 +188,11 @@ export interface FornecedorResumo {
   porte: 'ME' | 'EPP' | 'DEMAIS' | null;
   uf: string | null;
   sancoesVigentes: number;
+  impedido: boolean;
   idc: { nota: number; faixa: FaixaIdc; semHistorico: boolean } | null;
 }
 
-export type FaixaIdc = 'excelente' | 'bom' | 'regular' | 'insuficiente' | 'critico';
+export type FaixaIdc = 'diamante' | 'ouro' | 'prata' | 'em_observacao' | 'critico' | 'sem_historico';
 
 // ───────────────────────── Painel e pendências ─────────────────────────
 

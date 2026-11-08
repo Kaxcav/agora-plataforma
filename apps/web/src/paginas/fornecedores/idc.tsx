@@ -8,13 +8,31 @@ export function formatarNotaIdc(nota: number): string {
 }
 
 /** IDC resumido: nota + faixa; sem histórico não é penalizado (aparece como tal). */
-export function ResumoIdc({ idc }: { idc: FornecedorResumo['idc'] }) {
-  if (idc === null) return <span className="texto-secundario">—</span>;
+export function ResumoIdc({ idc, impedido }: { idc: FornecedorResumo['idc']; impedido?: boolean }) {
+  if (idc === null) {
+    return (
+      <span className="idc-resumo">
+        <span className="texto-secundario">—</span>
+        {impedido ? (
+          <Etiqueta tom="erro" compacta>
+            Impedido
+          </Etiqueta>
+        ) : null}
+      </span>
+    );
+  }
   if (idc.semHistorico) {
     return (
-      <Etiqueta tom="neutro" compacta>
-        Sem histórico
-      </Etiqueta>
+      <span className="idc-resumo">
+        <Etiqueta tom="neutro" compacta>
+          Sem histórico
+        </Etiqueta>
+        {impedido ? (
+          <Etiqueta tom="erro" compacta>
+            Impedido
+          </Etiqueta>
+        ) : null}
+      </span>
     );
   }
   const faixa = FAIXAS_IDC[idc.faixa];
@@ -24,6 +42,11 @@ export function ResumoIdc({ idc }: { idc: FornecedorResumo['idc'] }) {
       <Etiqueta tom={faixa.tom} compacta>
         {faixa.rotulo}
       </Etiqueta>
+      {impedido ? (
+        <Etiqueta tom="erro" compacta>
+          Impedido
+        </Etiqueta>
+      ) : null}
     </span>
   );
 }

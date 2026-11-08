@@ -58,7 +58,7 @@ const COLUNAS: ColunaTabela<FornecedorResumo>[] = [
     cabecalho: 'IDC',
     ordenavel: true,
     prioritaria: true,
-    celula: (f) => <ResumoIdc idc={f.idc} />,
+    celula: (f) => <ResumoIdc idc={f.idc} impedido={f.impedido} />,
   },
   {
     id: 'sancoesVigentes',
