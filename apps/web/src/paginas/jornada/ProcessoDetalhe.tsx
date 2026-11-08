@@ -45,6 +45,9 @@ const PAINEIS: Record<EtapaJornada, LazyExoticComponent<ComponentType<PropsEtapa
   7: lazy(() => import('./etapas/Etapa7Contrato')),
 };
 
+/** Rota de contratação (RF-34): adapta o painel da etapa à rota escolhida. */
+const PainelRota = lazy(() => import('../rotas-contratacao/PainelRota'));
+
 /** Catálogo de regras e dossiê só são baixados quando usados. */
 const RegrasEtapa = lazy(() => import('./RegrasEtapa'));
 const Dossie = lazy(() => import('./Dossie'));
@@ -239,7 +242,9 @@ function ConteudoProcesso({ processo, etapa, endereco, falha, aoFecharFalha, foc
               </Carregando>
             }
           >
-            <Painel key={`${processo.id}-${etapa}`} processo={processo} atual={atual} editavel={atual && podeEditar} />
+            <PainelRota processo={processo} etapa={etapa} atual={atual} editavel={atual && podeEditar}>
+              <Painel key={`${processo.id}-${etapa}`} processo={processo} atual={atual} editavel={atual && podeEditar} />
+            </PainelRota>
             <PecasComplementares key={`pecas-${processo.id}-${etapa}`} processo={processo} etapa={etapa} atual={atual} podeEditar={podeEditar} />
           </Suspense>
         </section>

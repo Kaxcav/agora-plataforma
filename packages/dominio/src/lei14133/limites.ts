@@ -20,6 +20,8 @@ export const LIMITES_DISPENSA: readonly LimiteDispensa[] = Object.freeze([
   { norma: 'Decreto 11.317/2022', vigenteDesde: '2023-01-01', obrasServicosEngenharia: 11_441_665, demais: 5_720_833 },
   { norma: 'Decreto 11.871/2023', vigenteDesde: '2024-01-01', obrasServicosEngenharia: 11_981_202, demais: 5_990_602 },
   { norma: 'Decreto 12.343/2024', vigenteDesde: '2025-01-01', obrasServicosEngenharia: 12_545_115, demais: 6_272_559 },
+  // Decreto 12.807, de 29/12/2025 (DOU de 30/12/2025, Seção 1, p. 17), em vigor em 1º/1/2026: IPCA-E de 4,41%.
+  { norma: 'Decreto 12.807/2025', vigenteDesde: '2026-01-01', obrasServicosEngenharia: 13_098_420, demais: 6_549_211 },
 ]);
 
 export type TipoObjetoDispensa = 'obras_servicos_engenharia' | 'demais';

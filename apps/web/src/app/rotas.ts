@@ -104,6 +104,10 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/jornada/:id/sigilo', permissao: 'sigilo:ler', pagina: lazy(() => import('../paginas/sigilo/SigiloProcesso')) },
   // Desempenho de fornecedores: registro cadastral, ranking e simulador (RN-37, RF-30)
   { caminho: '/desempenho', permissao: 'fornecedores:ler', pagina: lazy(() => import('../paginas/desempenho/Desempenho')) },
+  // Rotas de contratação (F9): vitrine do Sicx, cartão de pagamento e adesões às atas
+  { caminho: '/sicx', permissao: 'jornada:ler', pagina: lazy(() => import('../paginas/rotas-contratacao/VitrineSicx')) },
+  { caminho: '/cartao-pagamento', permissao: 'pagamentos:ler', pagina: lazy(() => import('../paginas/rotas-contratacao/CartaoPagamento')) },
+  { caminho: '/atas/adesoes', permissao: 'atas:ler', pagina: lazy(() => import('../paginas/rotas-contratacao/AdesoesAtas')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

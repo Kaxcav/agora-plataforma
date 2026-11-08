@@ -166,3 +166,13 @@ export function codigosContratacaoPncp(p: { modalidade: string; criterio: Criter
     categoriaProcessoId,
   };
 }
+
+/**
+ * Categoria do processo no PNCP (seção 5.11) pelo tipo de objeto, sem depender da modalidade: usada na divulgação do
+ * contrato (art. 94), inclusive o das contratações diretas (dispensa e inexigibilidade), que não têm edital.
+ */
+export function categoriaProcessoPncp(objeto: ObjetoLicitacao): number {
+  const categoria = CATEGORIAS[objeto];
+  if (categoria === undefined) throw new ErroDominio('PNCP_INVALIDO', `Objeto inválido: ${String(objeto)}.`);
+  return categoria;
+}

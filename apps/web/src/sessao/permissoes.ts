@@ -111,6 +111,7 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'desempenho:avaliar': 'Emitir a avaliação de desempenho do contratado (gestor ou fiscal designado)',
   'desempenho:certificar': 'Emitir o certificado e a declaração de desempenho do fornecedor',
   'licoes:registrar': 'Registrar ocorrências da execução (base de lições aprendidas)',
+  'pagamentos:registrar': 'Registrar compras com cartão de pagamento e pagamentos do Sicx',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

@@ -72,6 +72,7 @@ import { permissaoAprovacaoDocumento } from '../preparatorios/constantes.ts';
 import { exigirCitacoesRevisadas, resumoCitacoes } from '../ia-ancorada/servico.ts';
 import { notasDoRegistro } from '../desempenho/repositorio.ts';
 import { carregarAnexosDocumento } from '../licoes/anexos-documento.ts';
+import { ajustarContratoPelaRota, exigirAcaoNaRota } from '../rotas-contratacao/jornada.ts';
 
 // ───────────────────────── esquemas ─────────────────────────
 
@@ -760,6 +761,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       request,
       async (tx, linha, c) => {
         exigirEtapa(linha, 5, 'A publicação do edital');
+        await exigirAcaoNaRota(tx, linha.id, 'publicar_edital');
         if (linha.publicacao.pncp === 'publicado') throw regraNegocio('O edital já foi publicado no PNCP.');
         const conclusao = linha.parecer.conclusao;
         if (conclusao !== 'favoravel' && conclusao !== 'favoravel_com_ressalvas') {
@@ -797,6 +799,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     const { licitantes } = esquemaDisputa.parse(request.body);
     return alterar(request, async (tx, linha, c) => {
       exigirEtapa(linha, 6, 'O registro da disputa');
+      await exigirAcaoNaRota(tx, linha.id, 'registrar_disputa');
       if (selecaoIniciada(linha.selecao)) {
         throw regraNegocio('A disputa já tem atos da seleção registrados (prova de conceito, habilitação ou recursos) e não pode ser alterada.', [
           { campo: 'RN-22', mensagem: 'O resultado da disputa fica fixo depois do primeiro ato da seleção (art. 17).' },
@@ -857,6 +860,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     if (previa && verificacao) await comTrava(alvoDoProcesso(previa, 'assinatura'), () => exigirRegularidade(verificacao, 'O vencedor não atende à verificação prévia à assinatura (RN-09, art. 91, § 4º).'));
     return alterar(request, async (tx, linha, c) => {
       exigirEtapa(linha, 7, 'A geração do contrato');
+      await exigirAcaoNaRota(tx, linha.id, 'contratar');
       if (linha.contrato_id !== null) throw regraNegocio(`O processo já gerou o contrato ${linha.contrato_numero ?? ''}.`.trim());
       // RN-30 (art. 171, §§ 1º e 2º): cautelar suspensiva ativa impede gerar e assinar o contrato.
       await comTrava(alvoDoProcesso(linha, 'assinatura'), () => exigirSemCautelarSuspensiva(tx, { processoId: linha.id }, c.hoje));
@@ -878,6 +882,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       }
       const carga = await carregarProcesso(tx, linha);
       const contrato = await criarContratoDoProcesso(tx, carga, c, randomUUID);
+      await ajustarContratoPelaRota(tx, linha.id, contrato.id, c);
       return {
         acao: 'contratar',
         resumo: `Gerou o contrato ${contrato.numero} na carteira, com ${contrato.tarefas} tarefa(s) do plano de gestão`,

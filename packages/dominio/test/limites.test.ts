@@ -6,7 +6,7 @@ const comCodigo = (codigo: string) => (e: unknown) => e instanceof ErroDominio &
 
 describe('LIMITES_DISPENSA', () => {
   it('contém a série de decretos de atualização e é imutável', () => {
-    assert.equal(LIMITES_DISPENSA.length, 5);
+    assert.equal(LIMITES_DISPENSA.length, 6);
     assert.ok(Object.isFrozen(LIMITES_DISPENSA));
     assert.deepEqual(
       LIMITES_DISPENSA.map((l) => l.norma),
@@ -16,6 +16,7 @@ describe('LIMITES_DISPENSA', () => {
         'Decreto 11.317/2022',
         'Decreto 11.871/2023',
         'Decreto 12.343/2024',
+        'Decreto 12.807/2025',
       ],
     );
   });
@@ -50,7 +51,15 @@ describe('limiteDispensaVigente', () => {
   });
 
   it('usa a vigência mais recente da tabela para datas futuras', () => {
-    assert.equal(limiteDispensaVigente('2026-11-08', 'demais').norma, 'Decreto 12.343/2024');
+    assert.equal(limiteDispensaVigente('2027-06-01', 'demais').norma, 'Decreto 12.807/2025');
+  });
+
+  it('Decreto 12.807/2025 vale desde 1º/1/2026: R$ 130.984,20 (I) e R$ 65.492,11 (II)', () => {
+    assert.equal(limiteDispensaVigente('2025-12-31', 'demais').norma, 'Decreto 12.343/2024');
+    const demais = limiteDispensaVigente('2026-01-01', 'demais');
+    assert.equal(demais.valor, 6_549_211);
+    assert.equal(demais.norma, 'Decreto 12.807/2025');
+    assert.equal(limiteDispensaVigente('2026-11-08', 'obras_servicos_engenharia').valor, 13_098_420);
   });
 
   it('aceita tabela própria fora de ordem', () => {

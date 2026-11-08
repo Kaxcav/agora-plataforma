@@ -85,6 +85,7 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'desempenho:avaliar',
   'desempenho:certificar',
   'licoes:registrar',
+  'pagamentos:registrar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -217,6 +218,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'agentes:declarar',
       'garantias:registrar',
       'pagamentos:conferir',
+      'pagamentos:registrar',
     ],
   },
   {

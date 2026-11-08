@@ -26,6 +26,7 @@ import { bloqueiosControleExterno } from '../../compartilhado/controle-externo.t
 import { sinaisVinculosDaDisputa } from '../impedimentos/jornada.ts';
 import { regrasPlanejamentoEtapa1 } from '../planejamento/dfd.ts';
 import { avaliarDotacaoDoProcesso, carregarDadosPreparatorios } from '../preparatorios/dotacao.ts';
+import { aplicarRotaContratacao } from '../rotas-contratacao/jornada.ts';
 import { ITENS_PARECER, PAPEIS_PROCESSO, TIPOS_DOCUMENTO } from './constantes.ts';
 import {
   analisarCesta,
@@ -379,6 +380,8 @@ export async function avaliarProcesso(
       break;
     }
   }
+  // RF-34: a rota de contratação (dispensa, inexigibilidade, adesão, Sicx) adapta as regras da etapa.
+  resultado = await aplicarRotaContratacao(executor, carga, resultado, hoje, calendario, valorEstimado);
   // RN-30: cautelar suspensiva do controle externo bloqueia o avanço em qualquer etapa.
   const controleExterno = await bloqueiosControleExterno(executor, linha.id, linha.etapa_atual, hoje);
   // RN-39: na etapa 4, o processo só segue para o edital com a dotação declarada e trazida pelo TR e pela minuta.

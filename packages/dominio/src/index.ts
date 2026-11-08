@@ -59,3 +59,4 @@ export * from './lei14133/dou.ts';
 export * from './lei14133/sigilo.ts';
 export * from './lei14133/avaliacao-desempenho.ts';
 export * from './lei14133/licoes-aprendidas.ts';
+export * from './lei14133/rotas-contratacao.ts';

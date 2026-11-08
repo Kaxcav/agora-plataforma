@@ -5,6 +5,7 @@
 import { useId, useState, type FormEvent } from 'react';
 import { Lock, RotateCcw, Save, Send } from 'lucide-react';
 import { dataMinimaAberturaPropostas, diasEntre, formatarData, hojeISO } from '@agora/dominio';
+import { rotaDiretaPelaModalidade } from '../../rotas-contratacao/componentes';
 import { usePublicarProcesso, useSalvarParecer, type ItemParecer } from '../../../api/jornada';
 import { Alerta, AreaTexto, Botao, ConfirmarAcao, Etiqueta, GrupoOpcoes, ListaDefinicoes, useAvisos } from '../../../componentes';
 import { useSessao } from '../../../sessao/ContextoSessao';
@@ -46,6 +47,8 @@ export default function Etapa5Juridico({ processo, atual }: PropsEtapa) {
   const podePublicar = atual && !encerrado && temPermissao('jornada:publicar');
   const salvarParecer = useSalvarParecer(processo.id);
   const publicar = usePublicarProcesso(processo.id);
+  // Rotas diretas (RF-34) não publicam edital: o aviso ou o ato de autorização ficam no painel da rota.
+  const rotaDireta = rotaDiretaPelaModalidade(processo.modalidadePrevista);
   const [itens, definirItens] = useState<ItemParecer[]>(() => processo.parecer.itens);
   const [conclusao, definirConclusao] = useState<ConclusaoParecer | null>(processo.parecer.conclusao);
   const [confirmarPublicacao, definirConfirmarPublicacao] = useState(false);
@@ -73,7 +76,7 @@ export default function Etapa5Juridico({ processo, atual }: PropsEtapa) {
       atendido: prazoCumprido,
       detalhe: pub.dataMinimaPropostas ? ` — a partir de ${formatarData(pub.dataMinimaPropostas)}` : ' — depende da publicação',
     },
-  ];
+  ].filter((r) => !rotaDireta || r.id === 'parecer');
 
   const alterarItem = (id: string, mudanca: Partial<ItemParecer>) => definirItens((lista) => lista.map((i) => (i.id === id ? { ...i, ...mudanca } : i)));
 
@@ -225,6 +228,7 @@ export default function Etapa5Juridico({ processo, atual }: PropsEtapa) {
         )}
       </section>
 
+      {rotaDireta ? null : (
       <section className="secao jornada-subsecao" aria-labelledby={`${base}-publicacao`}>
         <div className="secao__cabecalho">
           <div>
@@ -305,6 +309,7 @@ export default function Etapa5Juridico({ processo, atual }: PropsEtapa) {
           </p>
         </div>
       </section>
+      )}
 
       <DocumentosEtapa
         processo={processo}

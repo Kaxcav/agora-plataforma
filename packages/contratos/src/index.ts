@@ -163,7 +163,8 @@ export type Permissao =
   | 'auditoria:ancorar'
   | 'desempenho:avaliar'
   | 'desempenho:certificar'
-  | 'licoes:registrar';
+  | 'licoes:registrar'
+  | 'pagamentos:registrar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -2556,7 +2557,9 @@ export type TipoTarefaFila =
   | 'sei.envio'
   | 'sei.assinaturas'
   | 'dou.conferencia'
-  | 'pncp.pca';
+  | 'pncp.pca'
+  | 'pncp.contratacao_direta'
+  | 'pncp.extrato_cartao';
 /** 'pendente' inclui a espera de nova tentativa (`tentativas` > 0 e `proximaTentativaEm`); 'erro' é a fila de erro (dead letter). */
 export type SituacaoTarefaFila = 'pendente' | 'executando' | 'concluida' | 'erro';
 export interface TarefaFila {
@@ -5244,3 +5247,351 @@ export interface EntradaDecisaoLicao {
 }
 // GET  /processos/:id/licoes-aprendidas?documento=dfd|etp|tr → LicoesAprendidasProcesso (jornada:ler)
 // POST /processos/:id/licoes-aprendidas/decisoes EntradaDecisaoLicao → LicoesAprendidasProcesso (jornada:editar; auditado)
+// ───────────────────────── Rotas de contratação, dispensa eletrônica, Sicx e cartão de pagamento (F9: RN-41, RN-42, RF-34) ─────────────────────────
+
+export type RotaContratacao = 'licitacao' | 'dispensa' | 'inexigibilidade' | 'adesao_ata' | 'sicx';
+export type HipoteseDispensa = 'valor_obras_engenharia' | 'valor_demais' | 'outra';
+export type HipoteseInexigibilidade = 'exclusividade' | 'artista' | 'notoria_especializacao' | 'credenciamento' | 'imovel';
+export type ExigenciaDocumentoRota = 'obrigatorio' | 'facultativo' | 'nao_se_aplica';
+
+export interface DocumentoRotaContratacao {
+  id: string;
+  titulo: string;
+  exigencia: ExigenciaDocumentoRota;
+  fundamento: string;
+}
+
+/** PUT /processos/:id/rota (jornada:editar, só na etapa 1) → RotaProcesso */
+export interface EntradaRotaContratacao {
+  rota: RotaContratacao;
+  hipoteseDispensa?: HipoteseDispensa | null;
+  incisoDispensa?: string | null;
+  hipoteseInexigibilidade?: HipoteseInexigibilidade | null;
+  justificativa?: string | null;
+  /** Ramo de atividade do objeto (art. 75, § 1º, II). */
+  natureza?: string | null;
+  /** Análise do agente quando a soma do mesmo ramo passa do limite (indício de fracionamento). */
+  justificativaFracionamento?: string | null;
+}
+
+export interface FracionamentoRota {
+  natureza: string;
+  somaComNova: number;
+  limite: number;
+  percentualDoLimite: number;
+  sinal: 'sem_risco' | 'atencao' | 'risco';
+  explicacao: string;
+  fundamento: string;
+  consideradas: number;
+}
+
+export interface AvisoDispensa {
+  situacao: 'na_fila' | 'publicado' | 'erro';
+  publicadoEm: DataISO | null;
+  /** Último dia do prazo de 3 dias úteis (art. 75, § 3º). */
+  encerramento: DataISO | null;
+  aberto: boolean;
+  julgamentoLiberado: boolean;
+  diasUteisRestantes: number;
+  mensagem: string;
+  protocolo: string | null;
+  numeroControle: string | null;
+  modo: 'offline' | 'online' | null;
+  ultimoErro: string | null;
+}
+
+export interface PropostaDispensaResumo {
+  id: Id;
+  fornecedor: { id: Id; nome: string };
+  valor: number;
+  recebidaEm: InstanteISO;
+  /** Recebida durante o aviso (proposta adicional, art. 75, § 3º). */
+  adicional: boolean;
+  /** Posição no julgamento (null antes do julgamento ou se desclassificada). */
+  posicao: number | null;
+  motivoDesclassificacao: string | null;
+}
+
+export interface ComprovacaoInexigibilidadeProcesso {
+  hipotese: HipoteseInexigibilidade;
+  justificativaInviabilidade: string | null;
+  documentoExclusividade?: 'atestado' | 'contrato' | 'declaracao' | 'carta_exclusividade' | 'outro' | null;
+  semPreferenciaMarca?: boolean;
+  consagracao?: string | null;
+  porEmpresario?: boolean;
+  exclusividadePermanente?: boolean;
+  alinea?: string | null;
+  elementosNotoriaEspecializacao?: string | null;
+  publicidade?: boolean;
+  editalChamamento?: string | null;
+  avaliacaoPrevia?: boolean;
+  semImovelPublicoDisponivel?: boolean;
+  justificativaSingularidade?: string | null;
+}
+
+export interface AdesaoProcesso {
+  id: Id;
+  ata: { id: Id; numero: string; uasg: string; objeto: string; vigenciaFim: DataISO };
+  item: { id: Id; numero: number; descricao: string; unidade: string; valorUnitario: number; quantidadeRegistrada: number };
+  fornecedor: { id: Id; nome: string };
+  quantidade: number;
+  valorTotal: number;
+  justificativaVantagem: string;
+  situacao: 'solicitada' | 'aceita_fornecedor' | 'autorizada' | 'recusada';
+  aceiteFornecedorEm: DataISO | null;
+  anuenciaEm: DataISO | null;
+  anuenciaPor: UsuarioResumo | null;
+  motivoRecusa: string | null;
+  /** Até 90 dias da anuência, na vigência da ata (Decreto 11.462/2023, art. 31, § 2º). */
+  limiteContratacao: DataISO | null;
+  limites: { limitePorOrgao: number; limiteTotal: number; aderidoPeloOrgao: number; aderidoTotal: number };
+}
+
+/** POST /processos/:id/adesao (jornada:editar) → RotaProcesso; acima dos limites do art. 86, §§ 4º e 5º → 422 */
+export interface EntradaAdesao {
+  ataId: Id;
+  itemId: Id;
+  quantidade: number;
+  justificativaVantagem: string;
+}
+
+export interface AutorizacaoContratacaoDireta {
+  fornecedor: { id: Id; nome: string };
+  valor: number;
+  razaoEscolha: string;
+  justificativaPreco: string;
+  data: DataISO;
+  por: UsuarioResumo;
+}
+
+/** POST /processos/:id/contratacao-direta/autorizacao (jornada:homologar + autoridade designada, etapa 6) → RotaProcesso */
+export interface EntradaAutorizacaoContratacao {
+  fornecedorId: Id;
+  /** Valor contratado; na dispensa por valor e na adesão vem da proposta selecionada e do item da ata. */
+  valor?: number | null;
+  razaoEscolha: string;
+  justificativaPreco: string;
+  habilitacaoVerificada: boolean;
+}
+
+export interface RotaProcesso {
+  processoId: Id;
+  /** UASG do processo (a vitrine do Sicx usa a UF dela). */
+  uasg: string;
+  rota: RotaContratacao;
+  titulo: string;
+  fundamento: string;
+  modalidade: string;
+  hipoteseDispensa: HipoteseDispensa | null;
+  incisoDispensa: string | null;
+  hipoteseInexigibilidade: HipoteseInexigibilidade | null;
+  natureza: string | null;
+  justificativa: string | null;
+  justificativaFracionamento: string | null;
+  escolhidaEm: InstanteISO | null;
+  escolhidaPor: UsuarioResumo | null;
+  documentos: DocumentoRotaContratacao[];
+  exigencias: {
+    etp: ExigenciaDocumentoRota;
+    matrizRiscos: ExigenciaDocumentoRota;
+    pesquisaPrecos: ExigenciaDocumentoRota;
+    termoReferencia: ExigenciaDocumentoRota;
+    edital: ExigenciaDocumentoRota;
+    minutaContrato: ExigenciaDocumentoRota;
+    parecerJuridico: ExigenciaDocumentoRota;
+    avisoDispensa: boolean;
+    autorizacaoContratacao: boolean;
+    contratoNaJornada: boolean;
+  };
+  limite: { valor: number; norma: string; fundamento: string } | null;
+  valorEstimado: number | null;
+  fracionamento: FracionamentoRota | null;
+  aviso: AvisoDispensa | null;
+  /** Prévia do encerramento se o aviso fosse publicado hoje. */
+  previaEncerramentoAviso: DataISO | null;
+  propostas: PropostaDispensaResumo[];
+  julgadoEm: InstanteISO | null;
+  inexigibilidade: (ComprovacaoInexigibilidadeProcesso & { pendencias: string[] }) | null;
+  adesao: AdesaoProcesso | null;
+  autorizacao: AutorizacaoContratacaoDireta | null;
+  comprasSicx: CompraSicx[];
+  /** O que falta na etapa atual por causa da rota (as regras da etapa também aparecem nos bloqueios do processo). */
+  pendencias: string[];
+}
+
+// ── Sicx (RN-42) ──
+
+export interface FaixaPrecoSicx {
+  aPartirDe: number;
+  precoUnitario: number;
+}
+
+export interface OfertaVitrineSicx {
+  id: Id;
+  fornecedor: { id: Id; nome: string };
+  precoUnitario: number;
+  faixas: FaixaPrecoSicx[];
+  localidades: string[];
+  prazoEntregaDias: number;
+  prazoPagamentoDias: number;
+  reputacao: number;
+  /** Ranqueamento para a quantidade e a UF informadas (null = inapta). */
+  posicao: number | null;
+  precoNaQuantidade: number;
+  valorTotal: number;
+  desempate: 'nenhum' | 'reputacao' | 'sorteio';
+  motivoInaptidao: string | null;
+}
+
+export interface ItemVitrineSicx {
+  codigo: string;
+  descricao: string;
+  unidade: string;
+  categoria: string;
+  ofertas: OfertaVitrineSicx[];
+}
+
+/** GET /sicx/ofertas?busca&quantidade&uasg → VitrineSicx (jornada:ler) */
+export interface VitrineSicx {
+  uf: string;
+  uasg: string;
+  quantidade: number;
+  modo: 'offline' | 'online';
+  itens: ItemVitrineSicx[];
+  fundamento: string;
+}
+
+export interface ReservaSicx {
+  id: Id;
+  uasg: string;
+  descricao: string;
+  etpReferencia: string;
+  limite: number;
+  utilizado: number;
+  saldo: number;
+  autorizacaoPrevia: boolean;
+  vigenciaFim: DataISO;
+}
+
+export type SituacaoCompraSicx = 'ordem_emitida' | 'concluida' | 'cancelada';
+
+export interface PrazosCompraSicxResumo {
+  situacao: 'aguardando_entrega' | 'aguardando_recebimento_provisorio' | 'aguardando_recebimento_definitivo' | 'aguardando_pagamento' | 'paga';
+  limiteRecebimentoProvisorio: DataISO | null;
+  limiteRecebimentoDefinitivo: DataISO | null;
+  recebimentoTacito: boolean;
+  limitePagamento: DataISO | null;
+  pagamentoVencido: boolean;
+  mensagem: string;
+}
+
+export interface CompraSicx {
+  id: Id;
+  numero: string;
+  uasg: string;
+  processoId: Id | null;
+  reservaId: Id | null;
+  item: { codigo: string; descricao: string; unidade: string };
+  fornecedor: { id: Id; nome: string };
+  quantidade: number;
+  precoUnitario: number;
+  valorTotal: number;
+  posicao: number;
+  justificativaSelecao: string | null;
+  situacao: SituacaoCompraSicx;
+  ordemEm: InstanteISO;
+  ordemPor: UsuarioResumo;
+  conclusaoEm: InstanteISO | null;
+  conclusaoPor: UsuarioResumo | null;
+  entregaRegistradaEm: DataISO | null;
+  recebimentoProvisorioEm: DataISO | null;
+  recebimentoDefinitivoEm: DataISO | null;
+  pagoEm: DataISO | null;
+  /** Só depois da conclusão da compra. */
+  prazos: PrazosCompraSicxResumo | null;
+}
+
+/** POST /sicx/compras (jornada:editar) → CompraSicx (ordem de compra; processo na rota Sicx ou reserva do ETP abrangente) */
+export interface EntradaCompraSicx {
+  ofertaId: Id;
+  quantidade: number;
+  uasg: string;
+  processoId?: Id | null;
+  reservaId?: Id | null;
+  justificativaSelecao?: string | null;
+}
+
+// ── Cartão de pagamento (art. 75, § 4º) ──
+
+export interface CompraCartaoPagamento {
+  id: Id;
+  uasg: string;
+  data: DataISO;
+  fornecedor: { id: Id; nome: string; documento: string };
+  valor: number;
+  objeto: string;
+  natureza: string;
+  tipoObjeto: 'obras_servicos_engenharia' | 'demais';
+  registradaPor: UsuarioResumo;
+  extratoId: Id | null;
+}
+
+/** POST /cartao-pagamento/compras (pagamentos:registrar) → RespostaCompraCartao */
+export interface EntradaCompraCartao {
+  uasg: string;
+  data: DataISO;
+  fornecedorId: Id;
+  valor: number;
+  objeto: string;
+  natureza: string;
+  tipoObjeto: 'obras_servicos_engenharia' | 'demais';
+}
+
+export interface RespostaCompraCartao {
+  compra: CompraCartaoPagamento;
+  fracionamento: FracionamentoRota;
+}
+
+export interface ExtratoCartaoPagamento {
+  id: Id;
+  uasg: string;
+  competencia: string;
+  quantidade: number;
+  total: number;
+  hash: string;
+  texto: string;
+  situacao: 'na_fila' | 'publicado' | 'erro';
+  protocolo: string | null;
+  modo: 'offline' | 'online' | null;
+  publicadoEm: InstanteISO | null;
+  ultimoErro: string | null;
+}
+// GET /cartao-pagamento/compras?uasg&competencia → CompraCartaoPagamento[] (pagamentos:ler)
+// GET /cartao-pagamento/extratos → ExtratoCartaoPagamento[] (pagamentos:ler)
+// POST /cartao-pagamento/extratos { uasg, competencia } → ExtratoCartaoPagamento (pagamentos:registrar): divulgação no PNCP pela fila
+
+export interface ItemAtaDisponivelAdesao {
+  id: Id;
+  numero: number;
+  descricao: string;
+  unidade: string;
+  valorUnitario: number;
+  quantidadeRegistrada: number;
+  fornecedor: { id: Id; nome: string };
+  /** 50% do registrado por órgão aderente (art. 86, § 4º) e o que ainda cabe para a UASG do processo. */
+  limitePorOrgao: number;
+  saldoOrgao: number;
+  /** O dobro do registrado no total das adesões (art. 86, § 5º) e o que ainda cabe. */
+  limiteTotal: number;
+  saldoTotal: number;
+}
+
+/** GET /processos/:id/adesao/atas-disponiveis?busca → AtaDisponivelAdesao[] (jornada:ler): atas vigentes que aceitam adesão, de outra UASG */
+export interface AtaDisponivelAdesao {
+  id: Id;
+  numero: string;
+  uasg: string;
+  objeto: string;
+  vigenciaFim: DataISO;
+  itens: ItemAtaDisponivelAdesao[];
+}

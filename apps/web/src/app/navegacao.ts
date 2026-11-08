@@ -41,6 +41,8 @@ import {
   FileCheck,
   Newspaper,
   Trophy,
+  ShoppingCart,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -188,5 +190,14 @@ export const MENU: readonly SecaoMenu[] = [
     id: 'publicacoes',
     titulo: 'Publicações',
     itens: [{ rotulo: 'Publicações no DOU', caminho: '/publicacoes-dou', icone: Newspaper, permissao: ['jornada:ler', 'contratos:ler'] }],
+  },
+  {
+    id: 'contratacao-direta',
+    titulo: 'Contratação direta',
+    itens: [
+      { rotulo: 'Vitrine do Sicx', caminho: '/sicx', icone: ShoppingCart, permissao: 'jornada:ler' },
+      { rotulo: 'Cartão de pagamento', caminho: '/cartao-pagamento', icone: CreditCard, permissao: 'pagamentos:ler' },
+      { rotulo: 'Adesões às atas', caminho: '/atas/adesoes', icone: Handshake, permissao: 'atas:ler' },
+    ],
   },
 ];

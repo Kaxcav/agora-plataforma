@@ -175,6 +175,8 @@ export interface SelecaoArmazenada {
   adjudicacao?: AtoAutoridadeArmazenado | null;
   homologacao?: AtoAutoridadeArmazenado | null;
   preparatoriosDivulgadosEm?: string | null;
+  /** Autorização da contratação direta ou da adesão pela autoridade competente (art. 72, VIII; rotas de contratação, RF-34). */
+  contratacaoDireta?: AtoAutoridadeArmazenado | null;
 }
 
 /** Coluna `processos.sustentabilidade` (`{}` até o primeiro registro). */

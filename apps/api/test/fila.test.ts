@@ -29,6 +29,8 @@ function manipuladoresCom(sincronizacao: Manipuladores['sincronizacao']): Manipu
     'sei.assinaturas': nunca,
     'dou.conferencia': nunca,
     'pncp.pca': nunca,
+    'pncp.contratacao_direta': nunca,
+    'pncp.extrato_cartao': nunca,
   };
 }
 

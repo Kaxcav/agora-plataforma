@@ -1197,6 +1197,42 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'sugerirClausulasLicoes, semelhancaObjeto, termosObjeto, derivarFatosExecucao, categoriaPadraoFato, secaoLicoesAceitas, rotuloCategoriaLicao; api: GET /processos/:id/licoes-aprendidas; POST /processos/:id/licoes-aprendidas/decisoes; POST /contratos/:id/ocorrencias-execucao',
   },
+  {
+    id: 'RN-41',
+    tipo: 'RN',
+    titulo: 'Dispensa eletrônica: aviso de 3 dias úteis, propostas adicionais, limites e fracionamento',
+    descricao:
+      'A dispensa por valor (art. 75, I e II) só é aceita até o limite vigente, atualizado por decreto (Decreto 12.807/2025 em 2026). O processo informa o ramo de atividade do objeto, e a Ágora soma as dispensas por valor de mesma natureza da unidade gestora no exercício, inclusive as compras com cartão de pagamento; compras pelo Sicx e licitações não entram na soma. A partir de 80% do limite há sinal de atenção; acima dele, sinal de risco de fracionamento, que só deixa avançar com a análise do agente registrada. Antes da seleção, o aviso de contratação direta é divulgado no PNCP pela fila de integrações por no mínimo 3 dias úteis, com a manifestação de interesse em propostas adicionais; enquanto o aviso está aberto, as propostas adicionais são registradas, e o julgamento só começa depois do encerramento, selecionando a proposta mais vantajosa dentro do limite. A contratação depende da autorização da autoridade competente, e as compras pagas com cartão de pagamento têm extrato mensal divulgado no PNCP.',
+    fundamento: 'Lei 14.133/2021, art. 72, art. 75, I e II e §§ 1º, 3º e 4º, e art. 182; Decreto 12.807/2025',
+    etapa: 5,
+    telas: ['jornada.detalhe', 'jornada.rota', 'jornada.dispensa', 'cartao-pagamento'],
+    implementacao:
+      'situacaoAvisoDispensa, prazoAvisoDispensaEletronica, julgarPropostasDispensa, avaliarFracionamentoPorObjeto, validarCompraCartao, montarExtratoCartao, limiteDispensaVigente; api: POST /processos/:id/dispensa/aviso; POST /processos/:id/dispensa/propostas; POST /processos/:id/dispensa/julgamento; POST /cartao-pagamento/compras; POST /cartao-pagamento/extratos',
+  },
+  {
+    id: 'RN-42',
+    tipo: 'RN',
+    titulo: 'Comércio eletrônico pelo Sicx: ranqueamento, segregação, recebimento e pagamento em até 30 dias',
+    descricao:
+      'Bens e serviços comuns padronizados podem ser comprados na vitrine do Sistema de Compras Expressas (Sicx), sem termo de referência nem edital da contratação. A vitrine ranqueia só as ofertas aptas: fornecedor credenciado, sem restrição no Cadin, que atende à UF do comprador e com prazo de pagamento de até 30 dias; ordena pelo valor total com o preço escalonado e desempata pela reputação e por sorteio. A melhor oferta é selecionada sem justificativa; outra exige justificativa. Quem emite a ordem de compra não conclui a compra, salvo autorização prévia no ETP abrangente, cuja reserva de limite controla os valores. A conclusão vale como contratação; o recebimento provisório é de até 2 dias úteis da entrega e o definitivo de até 10 dias, com recebimento tácito no silêncio, e o pagamento ocorre em até 30 dias do recebimento. No modo offline a vitrine é simulada; a integração com a plataforma do governo depende das normas complementares da SGI.',
+    fundamento: 'Lei 14.133/2021, art. 79, IV e § 1º, VII, e art. 174, § 3º, VII (Lei 15.266/2025); Decreto 13.106/2026, arts. 11 a 23 e 37',
+    etapa: 6,
+    telas: ['jornada.detalhe', 'sicx'],
+    implementacao:
+      'ranquearOfertasSicx, validarCompraSicx, prazosCompraSicx, avaliarReservaSicx; api: GET /sicx/ofertas; POST /sicx/compras; POST /sicx/compras/:id/conclusao; POST /sicx/compras/:id/recebimento; POST /sicx/compras/:id/pagamento',
+  },
+  {
+    id: 'RF-34',
+    tipo: 'RF',
+    titulo: 'Rotas de contratação: licitação, dispensa, inexigibilidade, adesão a ata e Sicx',
+    descricao:
+      'Na etapa 1 da jornada o processo escolhe a rota de contratação, e cada rota define os documentos e as travas do art. 72. A licitação segue a jornada completa. Na dispensa e na inexigibilidade não há edital nem disputa: o processo traz a razão da escolha, a justificativa de preço e a autorização da autoridade competente, e o contrato é divulgado em 10 dias úteis. Na dispensa por valor, o ETP e a matriz de riscos são facultativos e há o aviso de 3 dias úteis. A inexigibilidade exige a hipótese do art. 74 com a sua comprovação: exclusividade sem preferência por marca, notória especialização, credenciamento, artista consagrado ou imóvel singular. A adesão a ata confere a vigência e a previsão de adesão, recusa pedido acima de 50% do registrado por órgão ou do dobro no total, exige aceite do fornecedor e anuência do gerenciador e conta 90 dias para contratar. No Sicx a compra é feita na vitrine.',
+    fundamento: 'Lei 14.133/2021, arts. 72, 74, 75, 79, IV, e 86, §§ 2º a 5º e 8º; Decreto 11.462/2023, arts. 31 e 32; Decreto 13.106/2026',
+    etapa: 1,
+    telas: ['jornada.detalhe', 'jornada.rota', 'jornada.dispensa', 'jornada.adesao', 'sicx'],
+    implementacao:
+      'adaptacaoDaRota, validarEscolhaRota, validarInexigibilidade, avaliarAdesaoAta, prazoContratacaoAdesao; api: GET /processos/:id/rota; PUT /processos/:id/rota; PUT /processos/:id/inexigibilidade; POST /processos/:id/adesao; POST /processos/:id/adesao/anuencia; POST /processos/:id/contratacao-direta/autorizacao',
+  },
 ]);
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
 export function regrasPorTela(tela: string): RegraCatalogo[] {

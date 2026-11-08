@@ -8,6 +8,7 @@
  * Modo offline (padrão): simulação determinística — mesmo número de controle e mesmo protocolo para o mesmo envio.
  */
 import {
+  categoriaProcessoPncp,
   chaveIdempotencia,
   codigosContratacaoPncp,
   dataMinimaAberturaPropostas,
@@ -404,11 +405,8 @@ export async function executarPublicacaoContrato(ctx: ContextoApp, tarefa: Linha
       throw new FalhaTarefa('Retido por sigilo, não enviado ao PNCP: contrato sigiloso (Lei 14.133/2021, art. 91, § 1º).', false);
     }
     const { cnpj, ano, sequencial } = partesCompra(numeroCompra);
-    const codigos = codigosContratacaoPncp({
-      modalidade: linha.modalidade_prevista ?? 'Pregão eletrônico',
-      criterio: linha.edital.criterioJulgamento,
-      objeto: linha.dfd.tipoObjeto as ObjetoLicitacao,
-    });
+    // Categoria pelo objeto: vale também para os contratos das contratações diretas, sem edital (rotas de contratação, F9).
+    const codigos = { categoriaProcessoId: categoriaProcessoPncp(linha.dfd.tipoObjeto as ObjetoLicitacao) };
     const dados: ContratoPncp = {
       cnpjCompra: cnpj,
       anoCompra: ano,

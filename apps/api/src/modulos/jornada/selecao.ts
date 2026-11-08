@@ -32,6 +32,7 @@ export function selecaoCompleta(s: SelecaoArmazenada): Required<SelecaoArmazenad
     adjudicacao: s.adjudicacao ?? null,
     homologacao: s.homologacao ?? null,
     preparatoriosDivulgadosEm: s.preparatoriosDivulgadosEm ?? null,
+    contratacaoDireta: s.contratacaoDireta ?? null,
   };
 }
 
@@ -69,6 +70,7 @@ export function avaliarSelecaoProcesso(linha: Pick<LinhaProcesso, 'disputa' | 'e
  */
 export function vencedorDoProcesso(linha: Pick<LinhaProcesso, 'disputa' | 'selecao'>): string | null {
   const s = selecaoCompleta(linha.selecao);
+  if (s.contratacaoDireta) return s.contratacaoDireta.fornecedorId;
   if (s.legado) return classificacaoDaDisputa(linha.disputa)[0] ?? null;
   return s.homologacao && s.adjudicacao ? s.adjudicacao.fornecedorId : null;
 }

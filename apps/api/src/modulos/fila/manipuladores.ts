@@ -5,6 +5,7 @@ import { executarPublicacaoPca } from '../planejamento/publicacao.ts';
 import { executarDivulgacaoTermo } from '../alteracoes/tarefas.ts';
 import { executarConsultaAssinaturasSei, executarEnvioSei } from '../sei/tarefas.ts';
 import { executarConferenciaDou } from '../dou/tarefas.ts';
+import { executarPublicacaoContratacaoDireta, executarPublicacaoExtratoCartao } from '../rotas-contratacao/tarefas.ts';
 
 /** O que o trabalhador sabe executar, por tipo de tarefa (usado pela API com trabalhador embutido e por src/trabalhador.ts). */
 export const MANIPULADORES: Manipuladores = {
@@ -17,4 +18,6 @@ export const MANIPULADORES: Manipuladores = {
   'sei.envio': executarEnvioSei,
   'sei.assinaturas': executarConsultaAssinaturasSei,
   'dou.conferencia': executarConferenciaDou,
+  'pncp.contratacao_direta': executarPublicacaoContratacaoDireta,
+  'pncp.extrato_cartao': executarPublicacaoExtratoCartao,
 };
