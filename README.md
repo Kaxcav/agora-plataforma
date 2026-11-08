@@ -52,6 +52,23 @@ docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
 - Integrações online (PNCP): `AGORA_INTEGRACOES=online` e `AGORA_ORGAO_CNPJ`.
 - IA opcional, somente auto-hospedada: `AGORA_IA_PROVEDOR=openai_compativel` e `AGORA_IA_URL`.
 
+## Ambiente de demonstração (Railway)
+
+A Railway serve **apenas para demonstração, com dados 100% sintéticos**. Dados reais e a produção ficam na infraestrutura do órgão (seção anterior).
+
+- Cada push na branch `master` publica uma nova versão. A configuração está em `railway.json`: imagem `deploy/Dockerfile` e verificação de saúde em `/saude/pronto`.
+- Serviços: `agora` (esta aplicação) e `Postgres`.
+- Variáveis do serviço `agora`:
+  - `AGORA_BANCO_URL=${{Postgres.DATABASE_URL}}`
+  - `AGORA_SEGREDO_SESSAO` (aleatório, ≥ 32 bytes)
+  - `AGORA_AMBIENTE=demonstracao`
+  - `AGORA_SEED_DEMONSTRACAO=true`
+  - `AGORA_COOKIE_SEGURO=true`
+  - `AGORA_CONFIAR_PROXY=true`
+  - `AGORA_INTEGRACOES=offline`
+  - `AGORA_IA_PROVEDOR=nenhum`
+  - `PORT=3000`
+
 ## Estrutura
 
 ```
