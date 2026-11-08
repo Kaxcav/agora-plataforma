@@ -99,6 +99,8 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/publicacoes-dou', permissao: ['jornada:ler', 'contratos:ler'], pagina: lazy(() => import('../paginas/publicacoes/PublicacoesDou')) },
   // Sigilo de segurança pública (F25: RN-40, RF-33 e RNF-09)
   { caminho: '/jornada/:id/sigilo', permissao: 'sigilo:ler', pagina: lazy(() => import('../paginas/sigilo/SigiloProcesso')) },
+  // Desempenho de fornecedores: registro cadastral, ranking e simulador (RN-37, RF-30)
+  { caminho: '/desempenho', permissao: 'fornecedores:ler', pagina: lazy(() => import('../paginas/desempenho/Desempenho')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

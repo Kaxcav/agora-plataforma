@@ -39,6 +39,7 @@ import type {
   RiscoProcesso,
   TipoDocumento,
 } from './tipos.ts';
+import type { AnexosDocumento } from '../licoes/anexos-documento.ts';
 
 export interface ContextoJornada {
   hoje: string;
@@ -46,6 +47,8 @@ export interface ContextoJornada {
   calendario: OpcoesCalendario;
   /** Política de sustentabilidade do órgão (RN-21); ausente = ligada (padrão). */
   politicaSustentabilidade?: boolean;
+  /** Lições aprendidas aceitas (RIA-12) e fórmula do desempenho na pontuação técnica (RN-37), para os rascunhos. */
+  anexos?: AnexosDocumento;
 }
 
 // ───────────────────────── numeração ─────────────────────────
@@ -267,6 +270,7 @@ export function dadosDocumento(carga: CargaProcesso, ctx: ContextoJornada): Dado
     dataGeracao: ctx.hoje,
     calendario: ctx.calendario,
     politicaSustentabilidade: ctx.politicaSustentabilidade ?? true,
+    ...(ctx.anexos ? { anexos: ctx.anexos } : {}),
   };
 }
 

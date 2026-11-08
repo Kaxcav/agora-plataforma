@@ -41,6 +41,8 @@ import { rotasIaAncorada } from './ia-ancorada/rotas.ts';
 import { rotasSei } from './sei/rotas.ts';
 import { rotasDou } from './dou/rotas.ts';
 import { rotasSigilo } from './sigilo/rotas.ts';
+import { rotasDesempenho } from './desempenho/rotas.ts';
+import { rotasLicoes } from './licoes/rotas.ts';
 
 export type ModuloRotas = (api: FastifyInstance) => Promise<void>;
 
@@ -88,4 +90,6 @@ export const MODULOS_API: readonly ModuloRotas[] = [
   rotasSei,
   rotasDou,
   rotasSigilo,
+  rotasDesempenho,
+  rotasLicoes,
 ];

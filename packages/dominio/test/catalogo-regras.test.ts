@@ -371,3 +371,28 @@ describe('CATALOGO_REGRAS — frente Q (IA ancorada: RNF-08, RIA-14 e RIA-15)', 
     assert.match(regra('RNF-08').descricao, /sem serviço externo nem embeddings de terceiros/);
   });
 });
+
+describe('CATALOGO_REGRAS — frente N (desempenho do contratado e lições aprendidas)', () => {
+  const casos: [string, number, string[], string, RegExp][] = [
+    ['RN-37', 7, ['contratos.detalhe', 'fornecedores', 'desempenho'], 'consolidarRegistroDesempenho', /art\. 88, §§ 2º a 4º/],
+    ['RF-30', 7, ['contratos.detalhe', 'fornecedores', 'desempenho'], 'redigirCertificadoDesempenho', /art\. 87/],
+    ['RIA-12', 1, ['jornada.dfd', 'jornada.detalhe'], 'sugerirClausulasLicoes', /art\. 117/],
+  ];
+  for (const [id, etapa, telas, implementacao, fundamento] of casos) {
+    it(`${id}: etapa ${etapa}, ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, etapa);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+    });
+  }
+
+  it('RN-37 cita o desempate e a técnica; RIA-12 só sinaliza e exige revisão humana', () => {
+    assert.match(regra('RN-37').fundamento, /art\. 60, II/);
+    assert.match(regra('RN-37').fundamento, /art\. 37, III/);
+    assert.match(regra('RN-37').descricao, /não é digitada/);
+    assert.match(regra('RIA-12').descricao, /requer revisão humana/);
+    assert.match(regra('RIA-12').descricao, /não decisão/);
+  });
+});

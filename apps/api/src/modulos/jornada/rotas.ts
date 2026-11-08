@@ -70,6 +70,8 @@ import { alvoDoProcesso, comTrava, travaAplicada } from '../../compartilhado/tra
 import { exigirAutoridadeDesignada, verificarAprovacaoComplementar } from '../preparatorios/aprovacao.ts';
 import { permissaoAprovacaoDocumento } from '../preparatorios/constantes.ts';
 import { exigirCitacoesRevisadas, resumoCitacoes } from '../ia-ancorada/servico.ts';
+import { notasDoRegistro } from '../desempenho/repositorio.ts';
+import { carregarAnexosDocumento } from '../licoes/anexos-documento.ts';
 
 // ───────────────────────── esquemas ─────────────────────────
 
@@ -612,7 +614,8 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     const carga = await carregarProcesso(ctx.banco, linha);
     await comTrava(alvoDoProcesso(linha, 'documento_gerar'), () => exigirSemArtigoLuxoPendente(linha));
     // Redação fora da transação: a IA pode levar até 60 s e não deve travar o processo.
-    const preparado = await prepararDocumento(carga, entrada.tipo, provedorIa, c);
+    // Lições aprendidas aceitas (RIA-12) e fórmula do desempenho na pontuação técnica (RN-37) entram no rascunho.
+    const preparado = await prepararDocumento(carga, entrada.tipo, provedorIa, { ...c, anexos: await carregarAnexosDocumento(ctx.banco, id) });
     if (preparado.falhaIa) request.log.warn({ tipo: entrada.tipo, falha: preparado.falhaIa }, 'redação por IA falhou; usado o modelo de texto');
     return alterar(request, async (tx, atual) => {
       exigirEtapaDocumento(atual, entrada.tipo);
@@ -799,7 +802,9 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
           { campo: 'RN-22', mensagem: 'O resultado da disputa fica fixo depois do primeiro ato da seleção (art. 17).' },
         ]);
       }
-      const disputa = await montarDisputa(tx, licitantes, c.agora);
+      // Art. 60, II: a nota de desempenho vem do registro cadastral (RN-37), nunca do valor enviado pelo navegador.
+      const notas = await notasDoRegistro(tx, licitantes.map((l) => l.id.toLowerCase()), c.hoje);
+      const disputa = await montarDisputa(tx, licitantes.map((l) => ({ ...l, notaDesempenhoPrevio: notas.get(l.id.toLowerCase()) ?? null })), c.agora);
       await gravarJson(tx, linha.id, 'disputa', disputa, c.agora);
       const resultado = disputa.resultado;
       return {
