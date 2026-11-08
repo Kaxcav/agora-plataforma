@@ -73,6 +73,7 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'impedimentos:parecer': 'Emitir a análise jurídica da extensão de sanção',
   'impedimentos:decidir': 'Decidir a extensão de sanção (autoridade competente)',
   'agentes:declarar': 'Assinar a própria declaração de inexistência de impedimento',
+  'jornada:autorizar': 'Aprovar a portaria de designação, a declaração orçamentária e o despacho de autorização (autoridade competente designada)',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

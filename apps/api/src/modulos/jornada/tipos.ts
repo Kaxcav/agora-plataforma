@@ -1,5 +1,6 @@
 import type { aplicarDesempate, analisarCestaPrecos, EfeitoReforma, FonteCotacao, PapelProcesso } from '@agora/dominio';
 import type { DocumentoGerado, EtapaJornada, OrgaoRequisitante, ParametrosEdital, ProcessoDetalhe } from '@agora/contratos';
+import type { DadosPreparatorios } from '../preparatorios/dotacao.ts';
 
 export type { ParametrosEdital };
 
@@ -210,4 +211,6 @@ export interface CargaProcesso {
   equipe: MembroEquipe[];
   arvore: EntradaArvore[];
   documentos: DocumentoCarregado[];
+  /** Dotação orçamentária e declarações dos agentes designados (frente P — RN-39 e RF-32). */
+  preparatorios?: DadosPreparatorios;
 }

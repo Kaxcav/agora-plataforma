@@ -781,6 +781,17 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
     p = await ok(planejamento, 'POST', `${base}/avancar`);
     assert.equal(p.etapaAtual, 4);
 
+    // RN-39: dotação estruturada e declaração de adequação orçamentária aprovada pela autoridade designada antes do edital.
+    await ok(agente, 'PUT', `${base}/dotacao`, {
+      linhas: [
+        { unidadeGestora: '910001', programaTrabalho: '06.181.9990.AG99.0001', naturezaDespesa: '3.3.90.30', fonteRecursos: '1001000000', exercicio: Number(hoje.slice(0, 4)), valor: 25_000_000, preEmpenho: null },
+      ],
+    });
+    const comDeclaracao = await ok(agente, 'POST', `${base}/documentos/gerar`, { tipo: 'declaracao_orcamentaria' });
+    const declaracao = comDeclaracao.documentos.find((d) => d.tipo === 'declaracao_orcamentaria');
+    assert.ok(declaracao);
+    const declarada = await ok(gestor, 'POST', `${base}/documentos/${declaracao.id}/aprovar`);
+    await ok(gestor, 'POST', `${base}/sei/assinar`, { documentoNumero: declarada.documentos.find((d) => d.id === declaracao.id)?.numeroSei });
     for (const tipo of ['tr', 'edital', 'minuta_contrato']) await aprovarEAssinar(agente, tipo);
     p = await ok(agente, 'POST', `${base}/avancar`);
     assert.equal(p.etapaAtual, 5);
@@ -840,6 +851,7 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
       'processo.selecao.homologar',
       'processo.selecao.divulgar_preparatorios',
       'processo.contratar',
+      'processo.dotacao.atualizar',
     ]) {
       assert.ok(doProcesso.includes(acao), `trilha sem ${acao}`);
     }

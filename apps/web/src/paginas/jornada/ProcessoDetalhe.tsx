@@ -32,6 +32,7 @@ import { AvisoSomenteConsulta, ListaRegras, type MotivoSomenteConsulta } from '.
 import type { PropsEtapa } from './etapas/tipos';
 import { ArvoreSei, ListaBloqueios, ListaSinais } from './Lateral';
 import { ehEtapa, ORGAOS, TOTAL_ETAPAS, tituloEtapa } from './rotulos';
+import { documentoDaAutoridade, permissaoAssinatura } from './preparatorios/rotulos';
 import { TrilhaEtapas } from './TrilhaEtapas';
 
 const PAINEIS: Record<EtapaJornada, LazyExoticComponent<ComponentType<PropsEtapa>>> = {
@@ -47,6 +48,8 @@ const PAINEIS: Record<EtapaJornada, LazyExoticComponent<ComponentType<PropsEtapa
 /** Catálogo de regras e dossiê só são baixados quando usados. */
 const RegrasEtapa = lazy(() => import('./RegrasEtapa'));
 const Dossie = lazy(() => import('./Dossie'));
+/** Dotação, peças complementares e checklist da fase preparatória (RF-32 e RN-39). */
+const PecasComplementares = lazy(() => import('./preparatorios/PecasComplementares'));
 
 interface FalhaAvanco {
   etapa: EtapaJornada;
@@ -237,6 +240,7 @@ function ConteudoProcesso({ processo, etapa, endereco, falha, aoFecharFalha, foc
             }
           >
             <Painel key={`${processo.id}-${etapa}`} processo={processo} atual={atual} editavel={atual && podeEditar} />
+            <PecasComplementares key={`pecas-${processo.id}-${etapa}`} processo={processo} etapa={etapa} atual={atual} podeEditar={podeEditar} />
           </Suspense>
         </section>
         <div className="detalhe-grade__lateral">
@@ -245,7 +249,9 @@ function ConteudoProcesso({ processo, etapa, endereco, falha, aoFecharFalha, foc
             podeAssinar={(doc) => {
               if (encerrado) return false;
               const tipo = processo.documentos.find((d) => d.numeroSei === doc.numero)?.tipo;
-              return temPermissao(tipo === 'parecer_checklist' ? 'jornada:aprovar_juridico' : 'jornada:editar');
+              // Atos da autoridade (RF-32): só a autoridade competente designada assina.
+              if (documentoDaAutoridade(tipo)) return temPermissao('jornada:autorizar') && autoridadeDesignada;
+              return temPermissao(permissaoAssinatura(tipo));
             }}
           />
           <ListaBloqueios processo={processo} />

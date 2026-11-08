@@ -3,9 +3,10 @@
  * visualização lado a lado (documento renderizado × premissas e fontes) e aprovação após revisão humana.
  */
 import { useId, useState, type ReactNode } from 'react';
-import { BadgeCheck, Eye, FilePlus, TriangleAlert, X } from 'lucide-react';
+import { BadgeCheck, Eye, FileDown, FilePlus, TriangleAlert, X } from 'lucide-react';
 import type { DocumentoGerado, ProcessoDetalhe } from '@agora/contratos';
 import { useAprovarDocumento, useGerarDocumento, type TipoDocumento } from '../../api/jornada';
+import { urlPdfDocumento } from '../../api/preparatorios';
 import { Alerta, Botao, CaixaSelecao, ConfirmarAcao, Etiqueta, useAvisos } from '../../componentes';
 import { formatarInstante } from '../../utilitarios/formatacao';
 import { ErroOperacao } from './comum';
@@ -78,11 +79,13 @@ function Visualizador({
   podeAprovar,
   aoAprovar,
   aoFechar,
+  urlPdf,
 }: {
   documento: DocumentoGerado;
   podeAprovar: boolean;
   aoAprovar: () => void;
   aoFechar: () => void;
+  urlPdf: string;
 }) {
   const idTitulo = useId();
   const situacao = SITUACOES_DOCUMENTO[documento.situacao];
@@ -106,6 +109,10 @@ function Visualizador({
               Aprovar
             </Botao>
           ) : null}
+          <a className="botao botao--terciario botao--compacto" href={urlPdf} download>
+            <FileDown size={16} aria-hidden="true" />
+            <span>Baixar PDF</span>
+          </a>
           <Botao variante="terciario" tamanho="compacto" icone={X} onClick={aoFechar}>
             Fechar visualização
           </Botao>
@@ -155,9 +162,11 @@ export interface PropsDocumentosEtapa {
   descricao?: ReactNode;
   /** Abre a visualização do primeiro documento já gerado (etapa 4). */
   abrirPrimeiro?: boolean;
+  /** Quem aprova cada tipo, quando não é quem edita (atos da autoridade competente — RF-32). Padrão: `editavel`. */
+  podeAprovar?: (tipo: TipoDocumento) => boolean;
 }
 
-export function DocumentosEtapa({ processo, tipos, editavel, titulo, descricao, abrirPrimeiro }: PropsDocumentosEtapa) {
+export function DocumentosEtapa({ processo, tipos, editavel, titulo, descricao, abrirPrimeiro, podeAprovar }: PropsDocumentosEtapa) {
   const idTitulo = useId();
   const { avisar } = useAvisos();
   const gerar = useGerarDocumento(processo.id);
@@ -278,7 +287,8 @@ export function DocumentosEtapa({ processo, tipos, editavel, titulo, descricao, 
       {selecionado ? (
         <Visualizador
           documento={selecionado}
-          podeAprovar={editavel}
+          podeAprovar={podeAprovar ? podeAprovar(selecionado.tipo) : editavel}
+          urlPdf={urlPdfDocumento(processo.id, selecionado.id)}
           aoAprovar={() => {
             aprovar.reset();
             definirRevisado(false);

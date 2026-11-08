@@ -865,6 +865,29 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'interpretarLocalizacaoPncp, numeroControlePncp, codigosContratacaoPncp, tituloDocumentoPncp, prazoDivulgacaoContratoPncp; api: POST /processos/:id/publicar; GET /processos/:id/publicacao-pncp; POST /processos/:id/contrato/publicar-pncp',
   },
+  {
+    id: 'RN-39',
+    tipo: 'RN',
+    titulo: 'Dotação orçamentária declarada antes do edital',
+    descricao:
+      'A área responsável informa a dotação orçamentária do processo em campos estruturados: unidade gestora, programa de trabalho, natureza da despesa, fonte de recursos, exercício, valor e, quando houver, o pré-empenho. A Ágora confere o formato de cada campo, a coerência da natureza da despesa e a existência de crédito do exercício em que a contratação é feita; créditos menores que o valor estimado viram sinal. A declaração de adequação orçamentária é aprovada pela autoridade competente designada no processo, e o termo de referência e a minuta do contrato passam a trazer a dotação. O processo só avança da etapa 4 para a 5 com a dotação declarada e com o TR e a minuta gerados com ela; mudar a dotação depois da declaração exige nova declaração.',
+    fundamento: 'Lei 14.133/2021, art. 6º, XXIII, "j", art. 18, caput, e art. 150',
+    etapa: 4,
+    telas: ['jornada.detalhe'],
+    implementacao: 'validarDotacaoOrcamentaria, chaveDotacao, verificarDotacaoParaEdital; api: GET e PUT /processos/:id/dotacao; POST /processos/:id/avancar',
+  },
+  {
+    id: 'RF-32',
+    tipo: 'RF',
+    titulo: 'Documentos complementares da fase preparatória e checklist do processo',
+    descricao:
+      'Gera, com os dados do processo e por modelos de texto determinísticos, as peças que completam a instrução: portaria de designação da equipe e dos agentes, declaração de adequação orçamentária, despacho de autorização da contratação, nota técnica de encaminhamento à assessoria jurídica com quesitos objetivos, modelos de proposta comercial, de ordem de serviço, de termo de compromisso e de sigilo e de termos de recebimento provisório e definitivo, e o caderno de casos de teste da prova de conceito com a planilha de julgamento da comissão. Cada peça tem versões, aprovação humana registrada na trilha de auditoria, entrada na árvore do SEI e PDF gerado no servidor. A portaria, a declaração e o despacho só são aprovados pela autoridade competente designada. O checklist mostra, por etapa, as peças prontas, em rascunho, desatualizadas e as que faltam.',
+    fundamento: 'Lei 14.133/2021, arts. 7º, 8º, 17, § 3º, 18, 53, 72, VIII, e 140',
+    etapa: 4,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'gerarQuesitosControleLegalidade, montarCasosTesteProvaConceito, montarChecklistPecas; api: POST /processos/:id/documentos/gerar; GET /processos/:id/checklist-documentos; GET /processos/:id/documentos/:docId/pdf',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

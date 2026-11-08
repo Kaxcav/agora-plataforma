@@ -125,7 +125,8 @@ export type Permissao =
   | 'impedimentos:registrar'
   | 'impedimentos:parecer'
   | 'impedimentos:decidir'
-  | 'agentes:declarar';
+  | 'agentes:declarar'
+  | 'jornada:autorizar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -879,7 +880,7 @@ export interface Sinal {
 
 export interface DocumentoGerado {
   id: Id;
-  tipo: 'dfd' | 'etp' | 'matriz_riscos' | 'nota_tecnica_precos' | 'tr' | 'edital' | 'minuta_contrato' | 'parecer_checklist';
+  tipo: 'dfd' | 'etp' | 'matriz_riscos' | 'nota_tecnica_precos' | 'tr' | 'edital' | 'minuta_contrato' | 'parecer_checklist' | TipoDocumentoComplementar;
   titulo: string;
   versao: number;
   conteudo: string; // Markdown
@@ -2564,3 +2565,88 @@ export interface PublicacaoPncp {
 // GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
 // POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)
+
+// ───────────────────────── Fase preparatória: peças complementares e dotação (frente P — RF-32 e RN-39) ─────────────────────────
+
+/**
+ * Peças complementares da instrução, geradas pelo mesmo painel de documentos da jornada (POST /processos/:id/documentos/gerar),
+ * com versões, aprovação e entrada na árvore do SEI. Portaria, declaração orçamentária e despacho são aprovados e assinados
+ * pela autoridade competente designada no processo (`jornada:autorizar`).
+ */
+export type TipoDocumentoComplementar =
+  | 'portaria_designacao'
+  | 'declaracao_orcamentaria'
+  | 'despacho_autorizacao'
+  | 'nota_tecnica_conjur'
+  | 'modelo_proposta'
+  | 'ordem_servico'
+  | 'termo_sigilo'
+  | 'termo_recebimento_provisorio'
+  | 'termo_recebimento_definitivo'
+  | 'caderno_prova_conceito'
+  | 'checklist_documentos';
+
+/** Crédito orçamentário da contratação (RN-39; art. 150 e art. 6º, XXIII, "j"). */
+export interface LinhaDotacao {
+  unidadeGestora: string; // 6 dígitos
+  programaTrabalho: string; // 00.000.0000.0000.0000 (função.subfunção.programa.ação.localizador)
+  naturezaDespesa: string; // 4.4.90.52 (categoria.grupo.modalidade.elemento)
+  fonteRecursos: string; // 10 dígitos (ou 3 a 4 na classificação anterior)
+  exercicio: number;
+  valor: Centavos;
+  preEmpenho: string | null; // AAAAPE000000
+}
+export interface EntradaDotacao {
+  linhas: LinhaDotacao[];
+}
+export type SituacaoDeclaracaoOrcamentaria = 'nao_gerada' | 'rascunho' | 'aprovada' | 'desatualizada';
+export interface DotacaoProcesso {
+  linhas: LinhaDotacao[];
+  registradaEm: InstanteISO | null;
+  registradaPor: UsuarioResumo | null;
+  exercicioReferencia: number;
+  total: Centavos;
+  totalExercicio: Centavos;
+  /** Campos completos e coerentes (validarDotacaoOrcamentaria). */
+  valida: boolean;
+  pendencias: string[];
+  sinais: string[];
+  /** Declaração de adequação orçamentária (documento `declaracao_orcamentaria`) frente à dotação atual. */
+  declaracao: {
+    situacao: SituacaoDeclaracaoOrcamentaria;
+    versao: number | null;
+    aprovadaPor: UsuarioResumo | null;
+    numeroSei: string | null;
+  };
+  /** Dotação válida e declaração aprovada com ela: o que a RN-39 exige para seguir ao edital. */
+  declarada: boolean;
+  /** Pode ser alterada (até a etapa 4, processo sem contrato). */
+  editavel: boolean;
+  fundamento: string;
+}
+// GET /processos/:id/dotacao → DotacaoProcesso (jornada:ler)
+// PUT /processos/:id/dotacao body EntradaDotacao → DotacaoProcesso (jornada:editar; até a etapa 4; mudar a dotação desatualiza a declaração)
+
+export type SituacaoPecaProcesso = 'pronta' | 'rascunho' | 'desatualizada' | 'falta' | 'nao_aplicavel';
+export interface ItemChecklistDocumentos {
+  tipo: DocumentoGerado['tipo'];
+  titulo: string;
+  fundamento: string;
+  obrigatoriedade: 'obrigatoria' | 'condicional' | 'recomendada';
+  situacao: SituacaoPecaProcesso;
+  versao: number | null;
+  /** Assinada na árvore do SEI (só para peça aprovada). */
+  assinado: boolean | null;
+  /** Peça exigida que ainda não está pronta. */
+  falta: boolean;
+}
+export interface ChecklistDocumentosProcesso {
+  etapaAtual: EtapaJornada;
+  etapas: { etapa: EtapaJornada; titulo: string; itens: ItemChecklistDocumentos[]; prontas: number; faltantes: number }[];
+  prontas: number;
+  faltantes: number;
+  recomendadasPendentes: number;
+  fundamento: string;
+}
+// GET /processos/:id/checklist-documentos → ChecklistDocumentosProcesso (jornada:ler)
+// GET /processos/:id/documentos/:docId/pdf → application/pdf (jornada:ler; escopo de UASG): qualquer versão de documento da jornada

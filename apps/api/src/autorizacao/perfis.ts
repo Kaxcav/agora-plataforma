@@ -48,6 +48,7 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'impedimentos:parecer',
   'impedimentos:decidir',
   'agentes:declarar',
+  'jornada:autorizar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -94,6 +95,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'impedimentos:registrar',
       'impedimentos:decidir',
       'agentes:declarar',
+      'jornada:autorizar',
     ],
   },
   {

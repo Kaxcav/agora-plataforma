@@ -226,3 +226,23 @@ describe('CATALOGO_REGRAS — frente C (CEIS, CNEP e certidões)', () => {
     assert.match(d, /protocolo/);
   });
 });
+
+describe('CATALOGO_REGRAS — frente P (dotação e documentos da fase preparatória)', () => {
+  it('RN-39: dotação estruturada, declaração da autoridade e bloqueio do avanço da etapa 4', () => {
+    const r = regra('RN-39');
+    assert.equal(r.etapa, 4);
+    assert.ok(r.telas.includes('jornada.detalhe'));
+    assert.match(r.fundamento, /art\. 150/);
+    assert.match(r.fundamento, /XXIII, "j"/);
+    for (const simbolo of ['validarDotacaoOrcamentaria', 'verificarDotacaoParaEdital']) assert.ok(r.implementacao.includes(simbolo), simbolo);
+    assert.match(r.descricao, /unidade gestora, programa de trabalho, natureza da despesa, fonte de recursos, exercício/);
+    assert.match(r.descricao, /autoridade competente designada/);
+  });
+
+  it('RF-32: peças complementares com PDF, aprovação e checklist por etapa', () => {
+    const r = regra('RF-32');
+    assert.match(r.fundamento, /53/);
+    for (const simbolo of ['gerarQuesitosControleLegalidade', 'montarCasosTesteProvaConceito', 'montarChecklistPecas']) assert.ok(r.implementacao.includes(simbolo), simbolo);
+    for (const peca of ['portaria de designação', 'nota técnica de encaminhamento', 'planilha de julgamento', 'termos de recebimento', 'PDF']) assert.ok(r.descricao.includes(peca), peca);
+  });
+});
