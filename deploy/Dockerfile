@@ -48,6 +48,8 @@ COPY --from=build --chown=node:node /app/apps/api/package.json ./apps/api/packag
 COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /app/apps/api/migracoes ./apps/api/migracoes
 COPY --from=build --chown=node:node /app/apps/web/dist ./apps/web/dist
+# Base normativa soberana (RNF-08): texto estruturado da Lei 14.133/2021, lido pela API.
+COPY --from=build --chown=node:node /app/apps/api/dados ./apps/api/dados
 # Ponto de montagem dos documentos do processo (AGORA_ARQUIVOS_DIR), gravável pelo usuário sem privilégios.
 RUN mkdir -p /var/lib/agora/arquivos && chown -R node:node /var/lib/agora
 USER node

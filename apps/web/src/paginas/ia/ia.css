@@ -1,0 +1,80 @@
+/* IA ancorada: base normativa, conferência de citações, conferência cruzada e auditor contínuo. Tokens do tema da Ágora. */
+
+.lista-sinais {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista-sinais > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--esp-1) var(--esp-3);
+  padding: var(--esp-3) 0;
+  border-bottom: 1px solid var(--cor-divisoria);
+}
+
+.lista-sinais > li:last-child {
+  border-bottom: 0;
+}
+
+.lista-sinais__titulo {
+  font-weight: var(--peso-semi);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lista-sinais__corpo {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lista-sinais__corpo > * + * {
+  margin-top: var(--esp-1);
+}
+
+.trecho-citado {
+  border-left: 3px solid var(--cor-divisoria);
+  padding-left: var(--esp-3);
+  overflow-wrap: anywhere;
+}
+
+.artigo-lei {
+  display: grid;
+  gap: var(--esp-2);
+  overflow-wrap: anywhere;
+}
+
+.artigo-lei p {
+  margin: 0;
+}
+
+.artigo-lei__inciso {
+  padding-left: var(--esp-4);
+}
+
+.artigo-lei__alinea {
+  padding-left: var(--esp-7);
+}
+
+.artigo-lei__rotulo {
+  font-weight: var(--peso-semi);
+}
+
+.busca-normas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--esp-3);
+}
+
+.busca-normas > :first-child {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.conferencia-citacoes {
+  display: grid;
+  gap: var(--esp-2);
+}

@@ -996,6 +996,40 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'avaliarReajuste, avaliarRepactuacao, avaliarReequilibrio, avaliarInstauracaoExtincao, avaliarDecisaoExtincao, avaliarLimiteAditivos; api: GET /contratos/:id/alteracoes; POST /contratos/:id/reajustes; POST /contratos/:id/repactuacoes; POST /contratos/:id/extincao; POST /contratos/:id/alteracoes/:alteracaoId/defesa; POST /contratos/:id/alteracoes/:alteracaoId/decidir-extincao',
   },
+  {
+    id: 'RNF-08',
+    tipo: 'RNF',
+    titulo: 'Base normativa soberana e busca na lei',
+    descricao:
+      'O texto compilado da Lei 14.133/2021 fica no repositório da Ágora, estruturado por artigo, parágrafo, inciso e alínea, com a fonte oficial, a data de obtenção e o hash do arquivo e do texto. A busca roda no próprio servidor, por recuperação BM25 com peso para as divisões da lei e para o caput, sem serviço externo nem embeddings de terceiros. A mesma base ancora a redação dos rascunhos (RAG), confere as citações dos documentos e mostra o artigo na consulta à lei. Os modelos padronizados entram como estrutura de seções obrigatórias, sem copiar texto de terceiros.',
+    fundamento: 'Lei 14.133/2021, art. 19, IV; Lei 9.610/1998, art. 8º, IV; matriz de riscos do cliente (R02)',
+    etapa: null,
+    telas: ['normas.base'],
+    implementacao: 'estruturarTextoLei, indexarBaseNormativa, buscarNaBaseNormativa, localizarDispositivo; api: GET /normas; GET /normas/busca; GET /normas/artigos/:numero; GET /normas/modelos',
+  },
+  {
+    id: 'RIA-14',
+    tipo: 'RIA',
+    titulo: 'Conferência das citações legais e precisão normativa (IMR-02)',
+    descricao:
+      'Em todo rascunho gerado, encontra as referências à lei (artigo, parágrafo, inciso e alínea, também em lista, em faixa e na forma invertida) e confere na base normativa se o dispositivo existe, se não foi vetado ou revogado e se o assunto do trecho corresponde ao dispositivo citado. A citação inexistente, sem efeito ou suspeita é apontada com o trecho e a sugestão do artigo que parece tratar do assunto. O rascunho com citação inexistente ou sem efeito só é aprovado depois de revisão humana registrada, com justificativa. O painel de qualidade normativa mede o IMR-02, percentual de minutas com citações fiéis, com meta de 100%. A conferência é um sinal e requer revisão humana.',
+    fundamento: 'Lei 14.133/2021, art. 19, IV, e art. 53; IMR-02 do termo de referência do cliente',
+    etapa: 4,
+    telas: ['normas.qualidade', 'jornada.detalhe', 'jornada.conferencia'],
+    implementacao:
+      'extrairCitacoesLegais, conferirCitacoesLegais, conferirEstruturaModelo; api: GET /qualidade-normativa; GET /processos/:id/citacoes; POST /processos/:id/documentos/:docId/citacoes/revisao; POST /normas/conferir',
+  },
+  {
+    id: 'RIA-15',
+    tipo: 'RIA',
+    titulo: 'Conferência cruzada dos documentos e auditor contínuo',
+    descricao:
+      'Compara os documentos do processo (DFD, ETP, matriz de riscos, nota técnica de preços, termo de referência, edital e minuta do contrato) e aponta divergência de objeto, quantidades, valor estimado, prazos, dotação, modalidade e critério de julgamento, com o trecho de cada documento. Para a 2ª linha de defesa, o auditor contínuo varre notas fiscais, medições e termos aditivos dos contratos e sinaliza nota duplicada ou atípica, notas acima do valor do contrato, pagamento antes do atesto, reajuste antes de 1 ano, recebimento acima do contratado e valor contratado acima da estimativa. Cada sinal traz o fundamento e as evidências e requer revisão humana: não acusa, não glosa e não sanciona.',
+    fundamento: 'Lei 14.133/2021, art. 6º, XXIII, LVI e LVII, arts. 18, 25 e 92, art. 145 e art. 169',
+    etapa: 4,
+    telas: ['jornada.conferencia', 'controle'],
+    implementacao: 'extrairFatosDocumento, conferirDocumentosCruzados, sinaisAuditorContinuo; api: GET /processos/:id/conferencia-cruzada; GET /controle/auditor-ia',
+  },
 ]);
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
 export function regrasPorTela(tela: string): RegraCatalogo[] {

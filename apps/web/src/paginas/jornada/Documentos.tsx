@@ -12,6 +12,7 @@ import { formatarInstante } from '../../utilitarios/formatacao';
 import { ErroOperacao } from './comum';
 import { Markdown } from './Markdown';
 import { SITUACOES_DOCUMENTO, TIPOS_DOCUMENTO } from './rotulos';
+import { ConferenciaCitacoesDocumento } from '../ia/ConferenciaCitacoesDocumento';
 
 /** Versão mais recente de um tipo de documento. */
 export function ultimaVersao(documentos: readonly DocumentoGerado[], tipo: TipoDocumento): DocumentoGerado | null {
@@ -75,12 +76,14 @@ export function PremissasFontes({ documento, nivel = 5 }: { documento: Documento
 }
 
 function Visualizador({
+  processoId,
   documento,
   podeAprovar,
   aoAprovar,
   aoFechar,
   urlPdf,
 }: {
+  processoId: string;
   documento: DocumentoGerado;
   podeAprovar: boolean;
   aoAprovar: () => void;
@@ -130,6 +133,7 @@ function Visualizador({
         </article>
         <aside className="jornada-visualizador__apoio" aria-label="Premissas, fontes e registro do documento">
           <PremissasFontes documento={documento} />
+          <ConferenciaCitacoesDocumento processoId={processoId} documento={documento} podeRevisar={podeAprovar} />
           <h5 className="jornada-apoio__titulo">Registro</h5>
           <dl className="jornada-apoio__registro">
             <div>
@@ -286,6 +290,7 @@ export function DocumentosEtapa({ processo, tipos, editavel, titulo, descricao, 
       <ErroOperacao erro={gerar.error} titulo="Não foi possível gerar o documento" />
       {selecionado ? (
         <Visualizador
+          processoId={processo.id}
           documento={selecionado}
           podeAprovar={podeAprovar ? podeAprovar(selecionado.tipo) : editavel}
           urlPdf={urlPdfDocumento(processo.id, selecionado.id)}
