@@ -47,6 +47,13 @@
 - **Alteração justificada da ordem cronológica** (art. 141, § 1º): hipótese (incisos I a V), justificativa, autoridade, ato e data; decisão posterior ao pagamento é recusada (não é prévia); comunicação posterior ao **controle interno** e ao **tribunal de contas**, com protocolo.
 - **Ligação com a 2ª linha da frente H**: a alteração registrada aparece como **exceção justificada**; a nota preterida cujas notas pagas antes dela estão todas justificadas deixa de ser achado de risco e, sem as comunicações, vira achado de **atenção**.
 
+### Ordem de serviço e reservas legais de cargos (art. 92, § 2º e XVII)
+
+A frente K deixou estes dois pontos da F22 para esta parte (`docs/entregas/frente-k-alteracoes-contratuais.md`).
+
+- **Período antecedente à ordem de serviço** (art. 92, § 2º): os prazos do contrato trazem o período, em dias úteis da assinatura, e a aba Recebimentos registra as **ordens de serviço**. A ordem expedida antes do fim do período fica marcada, com aviso para registrar a concordância da contratada.
+- **Reservas legais de cargos** (art. 92, XVII; conversa, linha 1042): os prazos do contrato trazem o percentual de vagas para mulheres vítimas de violência doméstica exigido no edital (Decreto 11.430/2023, mantido na execução pelo art. 3º, § 2º) e se o edital exigiu vagas para pessoas presas ou egressas (Decreto 9.450/2018, 3% a 6% conforme o número de empregados, art. 6º). Na aba Fiscalização, o fiscal registra a **verificação mensal**: empregados no contrato, vagas ocupadas e a comprovação das cotas da empresa (pessoas com deficiência, Lei 8.213/1991, art. 93; aprendizes, CLT, art. 429). Com pendência, a verificação entra no livro de ocorrências; a providência é do fiscal.
+
 ### Registro de desempenho (art. 88, § 3º)
 
 - Os atos da fiscalização alimentam os indicadores do IDC (RN-02, tabela `fornecedores_indicadores`): cada recebimento definitivo conta, e conta como aprovado quando a entrega não teve ressalva nem rejeição; cada ocorrência registrada conta, e a regularizada até o prazo conta como resolvida no prazo.
@@ -68,7 +75,9 @@
 | 982 | Prazos de recebimento provisório e definitivo, por comissão | Prazos do contrato; termo definitivo pelo gestor ou pela comissão |
 | 1005–1010 | Garantia contratual, modalidades, prazo de apresentação; garantia adicional na antecipação | Exigência e apresentação; finalidade "antecipação" |
 | 1011–1013 | Garantia técnica do objeto contada do recebimento definitivo | Prazos do contrato e coluna da entrega |
+| 942 | Período antecedente à expedição da ordem de serviço (art. 92, § 2º) | Prazos do contrato e ordens de serviço |
 | 1041 | Manter as condições de habilitação na execução | Recheque de regularidade no definitivo (frente C) |
+| 1042 | Reservas de cargos e percentuais do Decreto 11.430/2023 na execução | Verificação mensal das reservas legais de cargos |
 | 1104–1110 e 1236–1246 | Cockpit: ordem cronológica de pagamentos e validade das apólices; notificações | Prazos de pagamento, alteração da ordem e alerta de garantia |
 | 1129 | Desconto da multa na garantia ou na fatura | Desconto de multa (art. 156, § 8º), com decisão humana |
 | 1532 | RF-04.1: garantias, termos de recebimento, ordem cronológica | RF-28 |
@@ -86,9 +95,9 @@
 
 - **RN-34** — Recebimento provisório e definitivo, liquidação e prazo de pagamento (`prazoRecebimentoProvisorio`, `avaliarTermoRecebimento`, `calcularGarantiaObjeto`, `calcularPrazoPagamento`, `calcularAtualizacaoMonetaria`, `corrigirPorIndice`).
 - **RN-35** — Garantias contratuais e desconto de multa (`baseCalculoGarantia`, `avaliarPercentualGarantia`, `validarApresentacaoGarantia`, `situacaoGarantia`, `avaliarLiberacaoGarantia`, `atualizarCaucaoDinheiro`, `avaliarExecucaoGarantia`, `planejarDescontoMulta`, `validarDecisaoAutoridade`).
-- **RF-28** — Execução do contrato: fiscalização, recebimentos, garantias e prazos de pagamento (`verificarDesignacoesContrato`, `validarOcorrencia`, `validarAlteracaoOrdemCronologica`, `classificarPreteridosComAlteracoes`). Telas `contratos.detalhe` e `pagamentos.prazos`.
+- **RF-28** — Execução do contrato: fiscalização, recebimentos, garantias e prazos de pagamento (`verificarDesignacoesContrato`, `validarOcorrencia`, `validarAlteracaoOrdemCronologica`, `classificarPreteridosComAlteracoes`, `avaliarOrdemServico`, `avaliarReservasCargos`). Telas `contratos.detalhe` e `pagamentos.prazos`.
 
-Domínio: `packages/dominio/src/lei14133/execucao-contratual.ts` e `garantias.ts` (44 testes novos, mais 4 no catálogo). API: `apps/api/test/execucao-contratual.test.ts` (10 testes). E2e: `e2e/testes/execucao-recebimento-garantias.spec.ts` (4 cenários, com verificação axe).
+Domínio: `packages/dominio/src/lei14133/execucao-contratual.ts` e `garantias.ts` (49 testes novos, mais 4 no catálogo). API: `apps/api/test/execucao-contratual.test.ts` (11 testes). E2e: `e2e/testes/execucao-recebimento-garantias.spec.ts` (4 cenários, com verificação axe).
 
 ## 5. Rotas novas (`/api/v1`)
 
@@ -101,6 +110,8 @@ Domínio: `packages/dominio/src/lei14133/execucao-contratual.ts` e `garantias.ts
 | `POST /designacoes/:id/encerrar` | `fiscalizacao:designar` | Encerra a designação |
 | `POST /contratos/:id/ocorrencias` | `fiscalizacao:registrar` | Ocorrência no livro (designado); notifica a contratada |
 | `POST /ocorrencias/:id/regularizar` | `fiscalizacao:registrar` | Registra a regularização |
+| `POST /contratos/:id/ordens-servico` | `fiscalizacao:designar` | Ordem de serviço, com o período antecedente |
+| `POST /contratos/:id/reservas-cargos` | `fiscalizacao:registrar` | Verificação mensal das reservas legais de cargos (designado) |
 | `POST /contratos/:id/recebimentos` | `recebimentos:registrar` | Entrega da contratada (designado) |
 | `POST /recebimentos/:id/termos` | `recebimentos:registrar` | Termo provisório ou definitivo; o definitivo atesta a nota |
 | `GET /recebimentos/termos/:id/termo.pdf` | `contratos:ler` | PDF do termo |
@@ -133,7 +144,7 @@ Mudaram respostas existentes:
 
 Além da permissão, o servidor exige a **designação no contrato** para registrar ocorrências, entregas e termos.
 
-**Migração:** `021_execucao_recebimento_garantias.sql` — `contratos_parametros_execucao`, `contratos_designacoes`, `contratos_ocorrencias`, `contratos_recebimentos`, `recebimentos_termos`, `contratos_garantias`, `garantias_movimentos`, `multas_descontos`, `alteracoes_ordem_cronologica`, `alteracoes_ordem_comunicacoes` e a coluna `pagamentos.liquidado_em`.
+**Migração:** `021_execucao_recebimento_garantias.sql` — `contratos_parametros_execucao`, `contratos_designacoes`, `contratos_ocorrencias`, `contratos_recebimentos`, `recebimentos_termos`, `contratos_ordens_servico`, `contratos_reservas_cargos`, `contratos_garantias`, `garantias_movimentos`, `multas_descontos`, `alteracoes_ordem_cronologica`, `alteracoes_ordem_comunicacoes` e a coluna `pagamentos.liquidado_em`.
 
 **Carga sintética** (`apps/api/src/seed/execucao-contratual.ts`, PRNG próprio): prazos de todos os contratos, designação do gestor e do fiscal cadastrados, garantias registradas a partir das colunas do contrato, data de liquidação das notas liquidadas e pagas, três entregas aguardando o provisório e duas ocorrências. A conta **fiscal.tecnico@agora.demo**, usada no e2e, é criada pela carga da frente M.
 
@@ -176,6 +187,12 @@ Nenhuma nova. Os avisos usam a configuração da central de notificações (fren
 >
 > Com **ressalva** ou **rejeição**, descreva o que está em desacordo: a contratada recebe o prazo para corrigir ou substituir, e a ocorrência entra no livro. O termo definitivo aceito **atesta a nota fiscal** ligada, depois da nova consulta de regularidade do contratado, e o prazo de pagamento começa. Cada termo tem o seu PDF na coluna **Termos**.
 >
+> Na seção **Ordens de serviço**, o gestor registra o número, a data e o que cada ordem autoriza. Se o contrato prevê um período antes da ordem de serviço, a ordem expedida antes do fim desse período fica marcada.
+>
+> ### Reservas legais de cargos
+>
+> Todo mês, na aba **Fiscalização**, o fiscal clica em **Registrar verificação** e informa a competência, os empregados alocados no contrato, as vagas ocupadas por mulheres vítimas de violência doméstica e por pessoas presas ou egressas, e se a empresa comprovou as cotas de pessoas com deficiência e de aprendizes. Os percentuais exigidos vêm do edital, registrados nos prazos do contrato. Com pendência, a verificação entra no livro de ocorrências.
+>
 > ### Garantias
 >
 > 1. Clique em **Exigir garantia**, informe o percentual (até 5%; acima disso, justifique) e o **Prazo de apresentação**. A contratada é notificada.
@@ -204,6 +221,7 @@ Nenhuma nova. Os avisos usam a configuração da central de notificações (fren
 - **Publicação mensal da ordem cronológica e das justificativas** no portal (art. 141, § 3º): os dados estão registrados, mas a página de transparência não foi alterada nesta frente.
 - **Garantia adicional da antecipação**: sem aviso automático de vencimento (o aviso usa a garantia de execução espelhada no contrato).
 - O "contínuo" da base anual da garantia é inferido pela vigência acima de um ano (o cadastro do contrato não tem o campo).
+- **Reservas de cargos:** os percentuais do Decreto 11.430/2023 (8%, com 25 colaboradores ou mais, e percentual menor admitido pelo Decreto 12.516/2025) e as faixas do Decreto 9.450/2018 (3% a 6%) foram conferidos em fontes secundárias; o percentual efetivo vem do edital e é informado no contrato. O arredondamento para cima precisa de confirmação.
 
 ### Pontos de ligação com as frentes K e M (não tratados aqui)
 

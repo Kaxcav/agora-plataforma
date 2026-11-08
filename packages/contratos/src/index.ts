@@ -2674,6 +2674,12 @@ export interface ParametrosExecucaoContrato {
   jurosMoraMensal: number;
   /** Prazo de garantia técnica do objeto contado do recebimento definitivo (0 = sem). */
   garantiaObjetoMeses: number;
+  /** Período antecedente à ordem de serviço, em dias úteis da assinatura (art. 92, § 2º; 0 = sem). */
+  periodoAntecedenteDiasUteis: number;
+  /** Percentual de vagas para mulheres vítimas de violência doméstica exigido no edital (Decreto 11.430/2023; 0 = não exigido). */
+  reservaMulheresPercentual: number;
+  /** O edital exigiu vagas para pessoas presas ou egressas do sistema prisional (Decreto 9.450/2018). */
+  reservaEgressos: boolean;
   atualizadoEm: InstanteISO | null;
   atualizadoPor: UsuarioResumo | null;
 }
@@ -2796,10 +2802,55 @@ export interface NotaFiscalExecucao {
   situacao: SituacaoPagamento;
 }
 
+/** Ordem de serviço do contrato (art. 92, § 2º). */
+export interface OrdemServicoContrato {
+  id: Id;
+  numero: string;
+  expedidaEm: DataISO;
+  descricao: string;
+  antesDoPeriodo: boolean;
+  registradoPor: UsuarioResumo | null;
+  registradoEm: InstanteISO;
+}
+
+export type ReservaCargos = 'mulheres_violencia_domestica' | 'egressos_sistema_prisional' | 'pessoas_com_deficiencia' | 'aprendizes';
+
+/** Verificação das reservas legais de cargos em uma competência (art. 92, XVII). */
+export interface VerificacaoReservasCargos {
+  id: Id;
+  competencia: string;
+  empregados: number;
+  atende: boolean;
+  itens: { reserva: ReservaCargos; descricao: string; aplica: boolean; exigido: number | null; informado: number | null; atende: boolean; fundamento: string }[];
+  pendencias: string[];
+  observacao: string | null;
+  ocorrenciaId: Id | null;
+  registradoPor: UsuarioResumo | null;
+  registradoEm: InstanteISO;
+}
+
+export interface EntradaOrdemServico {
+  numero: string;
+  expedidaEm: DataISO;
+  descricao: string;
+}
+
+export interface EntradaReservasCargos {
+  competencia: string;
+  empregados: number;
+  mulheres: number;
+  egressos: number;
+  pcdComprovada: boolean;
+  aprendizesComprovada: boolean;
+  observacao: string | null;
+}
+
 /** GET /contratos/:id/execucao → ExecucaoContrato (contratos:ler): abas Fiscalização, Recebimentos e Garantias. */
 export interface ExecucaoContrato {
   contratoId: Id;
   parametros: ParametrosExecucaoContrato | null;
+  ordensServico: OrdemServicoContrato[];
+  reservasCargos: VerificacaoReservasCargos[];
   designacoes: DesignacaoContrato[];
   equipe: { completa: boolean; temFiscal: boolean; faltantes: PapelFiscalizacao[] };
   ocorrencias: OcorrenciaContrato[];

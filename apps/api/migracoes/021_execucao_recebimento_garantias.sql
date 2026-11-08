@@ -15,6 +15,10 @@ CREATE TABLE contratos_parametros_execucao (
   indice_atualizacao text NOT NULL DEFAULT 'IPCA',
   juros_mora_mensal numeric(5, 3) NOT NULL DEFAULT 0 CHECK (juros_mora_mensal BETWEEN 0 AND 2),
   garantia_objeto_meses integer NOT NULL DEFAULT 0 CHECK (garantia_objeto_meses BETWEEN 0 AND 120),
+  -- Período antecedente à ordem de serviço (art. 92, § 2º) e reservas de vagas exigidas no edital (art. 92, XVII).
+  periodo_antecedente_dias_uteis integer NOT NULL DEFAULT 0 CHECK (periodo_antecedente_dias_uteis BETWEEN 0 AND 60),
+  reserva_mulheres_percentual numeric(5, 2) NOT NULL DEFAULT 0 CHECK (reserva_mulheres_percentual BETWEEN 0 AND 100),
+  reserva_egressos boolean NOT NULL DEFAULT false,
   atualizado_por uuid REFERENCES usuarios (id),
   atualizado_em timestamptz
 );
@@ -195,3 +199,37 @@ CREATE TABLE alteracoes_ordem_comunicacoes (
   registrado_em timestamptz NOT NULL,
   PRIMARY KEY (alteracao_id, orgao)
 );
+
+-- Ordens de serviço do contrato (art. 92, § 2º: período antecedente à expedição).
+CREATE TABLE contratos_ordens_servico (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contrato_id uuid NOT NULL REFERENCES contratos (id) ON DELETE CASCADE,
+  numero text NOT NULL,
+  expedida_em date NOT NULL,
+  descricao text NOT NULL,
+  antes_do_periodo boolean NOT NULL DEFAULT false,
+  registrado_por uuid REFERENCES usuarios (id),
+  registrado_em timestamptz NOT NULL,
+  CONSTRAINT contratos_ordens_servico_numero_unico UNIQUE (contrato_id, numero)
+);
+CREATE INDEX contratos_ordens_servico_contrato_idx ON contratos_ordens_servico (contrato_id);
+
+-- Verificação das reservas legais de cargos na execução (art. 92, XVII; Decretos 11.430/2023 e 9.450/2018).
+CREATE TABLE contratos_reservas_cargos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contrato_id uuid NOT NULL REFERENCES contratos (id) ON DELETE CASCADE,
+  competencia text NOT NULL CHECK (competencia ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  empregados integer NOT NULL CHECK (empregados >= 0),
+  mulheres integer NOT NULL CHECK (mulheres >= 0),
+  egressos integer NOT NULL CHECK (egressos >= 0),
+  pcd_comprovada boolean NOT NULL,
+  aprendizes_comprovada boolean NOT NULL,
+  atende boolean NOT NULL,
+  resultado jsonb NOT NULL,
+  observacao text,
+  ocorrencia_id uuid REFERENCES contratos_ocorrencias (id),
+  registrado_por uuid REFERENCES usuarios (id),
+  registrado_em timestamptz NOT NULL,
+  CONSTRAINT contratos_reservas_cargos_competencia_unica UNIQUE (contrato_id, competencia)
+);
+CREATE INDEX contratos_reservas_cargos_contrato_idx ON contratos_reservas_cargos (contrato_id);

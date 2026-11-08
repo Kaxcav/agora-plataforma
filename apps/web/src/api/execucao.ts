@@ -12,14 +12,17 @@ import type {
   EntradaExigenciaGarantia,
   EntradaLiberacaoGarantia,
   EntradaOcorrencia,
+  EntradaOrdemServico,
   EntradaParametrosExecucao,
   EntradaRecebimento,
   EntradaRegularizarOcorrencia,
   EntradaRenovacaoGarantia,
+  EntradaReservasCargos,
   EntradaTermoRecebimento,
   ExecucaoContrato,
   FiltroPrazosPagamento,
   OcorrenciaContrato,
+  OrdemServicoContrato,
   PaginaPrazosPagamento,
   ParametrosExecucaoContrato,
   RecebimentoContrato,
@@ -27,6 +30,7 @@ import type {
   RespostaGarantia,
   RespostaTermoRecebimento,
   ServidorDesignavel,
+  VerificacaoReservasCargos,
 } from '@agora/contratos';
 import { api, urlApi } from './cliente';
 
@@ -154,5 +158,15 @@ export function useRegistrarAlteracaoOrdem() {
 export function useComunicarAlteracaoOrdem() {
   return useMutacaoExecucao(({ id, entrada }: { id: string; entrada: EntradaComunicacaoAlteracao }) =>
     api.criar<AlteracaoOrdemCronologica>(`/alteracoes-ordem/${segmento(id)}/comunicacoes`, entrada),
+  );
+}
+
+export function useRegistrarOrdemServico(contratoId: string) {
+  return useMutacaoExecucao((entrada: EntradaOrdemServico) => api.criar<OrdemServicoContrato>(`/contratos/${segmento(contratoId)}/ordens-servico`, entrada));
+}
+
+export function useRegistrarReservasCargos(contratoId: string) {
+  return useMutacaoExecucao((entrada: EntradaReservasCargos) =>
+    api.criar<VerificacaoReservasCargos>(`/contratos/${segmento(contratoId)}/reservas-cargos`, entrada),
   );
 }

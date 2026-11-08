@@ -2,7 +2,15 @@ import { useState, type FormEvent } from 'react';
 import { BookOpenText, UserPlus, Users } from 'lucide-react';
 import type { ContratoDetalhe, DesignacaoContrato, ExecucaoContrato, OcorrenciaContrato, PapelFiscalizacao, TipoOcorrenciaContrato } from '@agora/contratos';
 import { formatarData, validarDataISO } from '@agora/dominio';
-import { useDesignar, useEncerrarDesignacao, useExecucaoContrato, useRegistrarOcorrencia, useRegularizarOcorrencia, useServidoresDesignaveis } from '../../../api/execucao';
+import {
+  useDesignar,
+  useEncerrarDesignacao,
+  useExecucaoContrato,
+  useRegistrarOcorrencia,
+  useRegistrarReservasCargos,
+  useRegularizarOcorrencia,
+  useServidoresDesignaveis,
+} from '../../../api/execucao';
 import {
   AreaTexto,
   Botao,
@@ -271,6 +279,81 @@ function DialogoRegularizar({ ocorrencia, aoFechar }: { ocorrencia: OcorrenciaCo
   );
 }
 
+function DialogoReservas({ contrato, aberto, aoFechar }: { contrato: ContratoDetalhe; aberto: boolean; aoFechar: () => void }) {
+  const { avisar } = useAvisos();
+  const registrar = useRegistrarReservasCargos(contrato.id);
+  const [competencia, definirCompetencia] = useState(hoje().slice(0, 7));
+  const [empregados, definirEmpregados] = useState('');
+  const [mulheres, definirMulheres] = useState('0');
+  const [egressos, definirEgressos] = useState('0');
+  const [pcd, definirPcd] = useState(false);
+  const [aprendizes, definirAprendizes] = useState(false);
+  const [observacao, definirObservacao] = useState('');
+  const [erro, definirErro] = useState<string | undefined>();
+  const inteiro = (v: string) => (/^\d+$/.test(v) ? Number(v) : NaN);
+  const fechar = () => {
+    definirEmpregados('');
+    definirObservacao('');
+    definirErro(undefined);
+    registrar.reset();
+    aoFechar();
+  };
+  const enviar = (evento: FormEvent) => {
+    evento.preventDefault();
+    const total = inteiro(empregados);
+    const m = inteiro(mulheres);
+    const e = inteiro(egressos);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia) || Number.isNaN(total) || Number.isNaN(m) || Number.isNaN(e)) {
+      definirErro('Informe a competência e as quantidades em números inteiros.');
+      return;
+    }
+    definirErro(undefined);
+    registrar.mutate(
+      { competencia, empregados: total, mulheres: m, egressos: e, pcdComprovada: pcd, aprendizesComprovada: aprendizes, observacao: observacao.trim() || null },
+      {
+        onSuccess: (v) => {
+          avisar({
+            tipo: v.atende ? 'sucesso' : 'aviso',
+            titulo: v.atende ? 'Reservas atendidas' : 'Reservas com pendência',
+            mensagem: v.atende ? 'A verificação foi registrada.' : `${v.pendencias.join(' ')} A pendência entrou no livro de ocorrências.`,
+          });
+          fechar();
+        },
+      },
+    );
+  };
+  return (
+    <Dialogo
+      aberto={aberto}
+      aoFechar={registrar.isPending ? () => undefined : fechar}
+      titulo="Verificar reservas de cargos"
+      largura="media"
+      descricao={<p>Informe os empregados alocados no contrato na competência e as vagas reservadas ocupadas. As cotas da empresa são conferidas pela comprovação apresentada.</p>}
+      rodape={
+        <>
+          <Botao variante="secundario" onClick={fechar} disabled={registrar.isPending}>
+            Cancelar
+          </Botao>
+          <Botao variante="primario" type="submit" form="formulario-reservas" carregando={registrar.isPending}>
+            Registrar verificação
+          </Botao>
+        </>
+      }
+    >
+      <form id="formulario-reservas" className="formulario" onSubmit={enviar} noValidate>
+        <CampoTexto rotulo="Competência" type="month" obrigatorio value={competencia} onChange={(ev) => definirCompetencia(ev.target.value)} />
+        <CampoTexto rotulo="Empregados alocados no contrato" type="number" min={0} obrigatorio value={empregados} onChange={(ev) => definirEmpregados(ev.target.value)} />
+        <CampoTexto rotulo="Mulheres vítimas de violência doméstica" type="number" min={0} value={mulheres} onChange={(ev) => definirMulheres(ev.target.value)} />
+        <CampoTexto rotulo="Pessoas presas ou egressas do sistema prisional" type="number" min={0} value={egressos} onChange={(ev) => definirEgressos(ev.target.value)} />
+        <CaixaSelecao rotulo="A empresa comprovou a cota de pessoas com deficiência e reabilitados" checked={pcd} onChange={(ev) => definirPcd(ev.target.checked)} />
+        <CaixaSelecao rotulo="A empresa comprovou a cota de aprendizes" checked={aprendizes} onChange={(ev) => definirAprendizes(ev.target.checked)} />
+        <AreaTexto rotulo="Observação" rows={2} maxLength={2000} value={observacao} onChange={(ev) => definirObservacao(ev.target.value)} erro={erro} />
+        <ErroFormulario erro={registrar.error} titulo="A verificação não foi registrada" />
+      </form>
+    </Dialogo>
+  );
+}
+
 function ConteudoFiscalizacao({ contrato, execucao }: { contrato: ContratoDetalhe; execucao: ExecucaoContrato }) {
   const { temPermissao } = useSessao();
   const { avisar } = useAvisos();
@@ -278,6 +361,7 @@ function ConteudoFiscalizacao({ contrato, execucao }: { contrato: ContratoDetalh
   const [designando, definirDesignando] = useState(false);
   const [registrando, definirRegistrando] = useState(false);
   const [regularizando, definirRegularizando] = useState<OcorrenciaContrato | null>(null);
+  const [verificando, definirVerificando] = useState(false);
   const podeDesignar = temPermissao('fiscalizacao:designar');
   const podeRegistrar = temPermissao('fiscalizacao:registrar') && execucao.meusPapeis.length > 0;
   const ativas = execucao.designacoes.filter((d) => d.fim === null);
@@ -418,6 +502,42 @@ function ConteudoFiscalizacao({ contrato, execucao }: { contrato: ContratoDetalh
         />
       </Secao>
 
+      <Secao
+        titulo="Reservas legais de cargos"
+        id="reservas-cargos"
+        nivel={3}
+        descricao={
+          <p>
+            Verificação mensal das vagas reservadas exigidas no edital e das cotas da empresa (art. 92, XVII; Decretos 11.430/2023 e 9.450/2018). Com
+            pendência, a verificação entra no livro de ocorrências.
+          </p>
+        }
+        acoes={
+          podeRegistrar ? (
+            <Botao variante="secundario" icone={Users} onClick={() => definirVerificando(true)}>
+              Registrar verificação
+            </Botao>
+          ) : null
+        }
+      >
+        {execucao.reservasCargos.length === 0 ? (
+          <p className="texto-secundario">Nenhuma verificação registrada.</p>
+        ) : (
+          <ul className="lista-simples">
+            {execucao.reservasCargos.map((v) => (
+              <li key={v.id}>
+                <Etiqueta tom={v.atende ? 'sucesso' : 'aviso'} compacta>
+                  {v.atende ? 'Atendidas' : 'Com pendência'}
+                </Etiqueta>{' '}
+                Competência {v.competencia.split('-').reverse().join('/')}, {v.empregados} empregados no contrato
+                {v.pendencias.length > 0 ? `: ${v.pendencias.join(' ')}` : '.'}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Secao>
+
+      {podeRegistrar ? <DialogoReservas contrato={contrato} aberto={verificando} aoFechar={() => definirVerificando(false)} /> : null}
       {podeDesignar ? <DialogoDesignar contrato={contrato} aberto={designando} aoFechar={() => definirDesignando(false)} /> : null}
       {podeRegistrar ? <DialogoOcorrencia contrato={contrato} aberto={registrando} aoFechar={() => definirRegistrando(false)} /> : null}
       <DialogoRegularizar ocorrencia={regularizando} aoFechar={() => definirRegularizando(null)} />

@@ -20,9 +20,11 @@ import type {
   MovimentoGarantia,
   MultaContrato,
   OcorrenciaContrato,
+  OrdemServicoContrato,
   ParametrosExecucaoContrato,
   RecebimentoContrato,
   TermoRecebimento,
+  VerificacaoReservasCargos,
 } from '@agora/contratos';
 import type { Executor } from '../../banco/tipos.ts';
 import { usuarioResumo } from '../../compartilhado/instrumentos.ts';
@@ -71,6 +73,9 @@ interface LinhaParametros {
   indice_atualizacao: string;
   juros_mora_mensal: string | number;
   garantia_objeto_meses: number;
+  periodo_antecedente_dias_uteis: number;
+  reserva_mulheres_percentual: string | number;
+  reserva_egressos: boolean;
   atualizado_em: string | null;
   atualizado_por: string | null;
   atualizado_por_nome: string | null;
@@ -94,9 +99,53 @@ export async function carregarParametros(executor: Executor, contratoId: string)
     indiceAtualizacao: l.indice_atualizacao,
     jurosMoraMensal: Number(l.juros_mora_mensal),
     garantiaObjetoMeses: l.garantia_objeto_meses,
+    periodoAntecedenteDiasUteis: l.periodo_antecedente_dias_uteis,
+    reservaMulheresPercentual: Number(l.reserva_mulheres_percentual),
+    reservaEgressos: l.reserva_egressos,
     atualizadoEm: l.atualizado_em,
     atualizadoPor: usuarioResumo(l.atualizado_por, l.atualizado_por_nome),
   };
+}
+
+// ───────── ordens de serviço e reservas de cargos ─────────
+
+export async function carregarOrdensServico(executor: Executor, contratoId: string): Promise<OrdemServicoContrato[]> {
+  const linhas = await executor.consultar<{ id: string; numero: string; expedida_em: string; descricao: string; antes_do_periodo: boolean; registrado_por: string | null; registrado_por_nome: string | null; registrado_em: string }>(
+    `SELECT o.id, o.numero, o.expedida_em, o.descricao, o.antes_do_periodo, o.registrado_por, u.nome AS registrado_por_nome, o.registrado_em
+       FROM contratos_ordens_servico o LEFT JOIN usuarios u ON u.id = o.registrado_por
+      WHERE o.contrato_id = $1 ORDER BY o.expedida_em DESC, o.registrado_em DESC`,
+    [contratoId],
+  );
+  return linhas.map((l) => ({
+    id: l.id,
+    numero: l.numero,
+    expedidaEm: l.expedida_em,
+    descricao: l.descricao,
+    antesDoPeriodo: l.antes_do_periodo,
+    registradoPor: usuarioResumo(l.registrado_por, l.registrado_por_nome),
+    registradoEm: l.registrado_em,
+  }));
+}
+
+export async function carregarReservasCargos(executor: Executor, contratoId: string): Promise<VerificacaoReservasCargos[]> {
+  const linhas = await executor.consultar<{ id: string; competencia: string; empregados: number; atende: boolean; resultado: { itens: VerificacaoReservasCargos['itens']; pendencias: string[] }; observacao: string | null; ocorrencia_id: string | null; registrado_por: string | null; registrado_por_nome: string | null; registrado_em: string }>(
+    `SELECT r.id, r.competencia, r.empregados, r.atende, r.resultado, r.observacao, r.ocorrencia_id, r.registrado_por, u.nome AS registrado_por_nome, r.registrado_em
+       FROM contratos_reservas_cargos r LEFT JOIN usuarios u ON u.id = r.registrado_por
+      WHERE r.contrato_id = $1 ORDER BY r.competencia DESC`,
+    [contratoId],
+  );
+  return linhas.map((l) => ({
+    id: l.id,
+    competencia: l.competencia,
+    empregados: l.empregados,
+    atende: l.atende,
+    itens: l.resultado.itens,
+    pendencias: l.resultado.pendencias,
+    observacao: l.observacao,
+    ocorrenciaId: l.ocorrencia_id,
+    registradoPor: usuarioResumo(l.registrado_por, l.registrado_por_nome),
+    registradoEm: l.registrado_em,
+  }));
 }
 
 // ───────── designações ─────────
@@ -568,6 +617,8 @@ export async function montarExecucao(executor: Executor, contrato: ContratoExecu
   return {
     contratoId: contrato.id,
     parametros,
+    ordensServico: await carregarOrdensServico(executor, contrato.id),
+    reservasCargos: await carregarReservasCargos(executor, contrato.id),
     designacoes,
     equipe: { completa: equipe.completa, temFiscal: equipe.temFiscal, faltantes: equipe.faltantes },
     ocorrencias: await carregarOcorrencias(executor, contrato.id),

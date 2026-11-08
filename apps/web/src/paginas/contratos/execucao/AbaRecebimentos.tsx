@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { CalendarClock, FileCheck2, PackageCheck, PackagePlus } from 'lucide-react';
+import { CalendarClock, FileSignature, FileCheck2, PackageCheck, PackagePlus } from 'lucide-react';
 import type {
   ContratoDetalhe,
   EntradaParametrosExecucao,
@@ -10,10 +10,11 @@ import type {
   TipoTermoRecebimento,
 } from '@agora/contratos';
 import { formatarData, formatarMoeda, validarDataISO, type Centavos } from '@agora/dominio';
-import { useExecucaoContrato, useLavrarTermo, useRegistrarEntrega, useSalvarParametrosExecucao, urlTermoRecebimento } from '../../../api/execucao';
+import { useExecucaoContrato, useLavrarTermo, useRegistrarEntrega, useRegistrarOrdemServico, useSalvarParametrosExecucao, urlTermoRecebimento } from '../../../api/execucao';
 import {
   AreaTexto,
   Botao,
+  CaixaSelecao,
   CampoMoeda,
   CampoTexto,
   ConteudoConsulta,
@@ -52,6 +53,9 @@ const PARAMETROS_VAZIOS: EntradaParametrosExecucao = {
   indiceAtualizacao: 'IPCA',
   jurosMoraMensal: 0,
   garantiaObjetoMeses: 0,
+  periodoAntecedenteDiasUteis: 0,
+  reservaMulheresPercentual: 0,
+  reservaEgressos: false,
 };
 
 function paraEntrada(p: ParametrosExecucaoContrato | null): EntradaParametrosExecucao {
@@ -135,6 +139,27 @@ function DialogoPrazos({ contrato, atuais, aberto, aoFechar }: { contrato: Contr
           ajuda="Use zero se o contrato não prevê juros por atraso imputável à Administração."
         />
         {numero('garantiaObjetoMeses', 'Garantia técnica do objeto (meses)', 'Contada do recebimento definitivo; zero se não houver.', 0)}
+        {numero(
+          'periodoAntecedenteDiasUteis',
+          'Período antes da ordem de serviço (dias úteis)',
+          'Contado da assinatura, para verificar pendências e preparar a execução (art. 92, § 2º); zero se não houver.',
+          0,
+        )}
+        <CampoTexto
+          rotulo="Vagas para mulheres vítimas de violência doméstica (%)"
+          type="number"
+          step="0.5"
+          min={0}
+          max={100}
+          value={String(valores.reservaMulheresPercentual)}
+          onChange={(e) => definirValores((v) => ({ ...v, reservaMulheresPercentual: Number(e.target.value) }))}
+          ajuda="Percentual exigido no edital (Decreto 11.430/2023); zero se não houver."
+        />
+        <CaixaSelecao
+          rotulo="O edital exigiu vagas para pessoas presas ou egressas do sistema prisional (Decreto 9.450/2018)"
+          checked={valores.reservaEgressos}
+          onChange={(e) => definirValores((v) => ({ ...v, reservaEgressos: e.target.checked }))}
+        />
         <ErroFormulario erro={salvar.error} titulo="Os prazos não foram salvos" />
       </form>
     </Dialogo>
@@ -313,6 +338,69 @@ function DialogoTermo({ alvo, aoFechar }: { alvo: { recebimento: RecebimentoCont
   );
 }
 
+function DialogoOrdemServico({ contrato, aberto, aoFechar }: { contrato: ContratoDetalhe; aberto: boolean; aoFechar: () => void }) {
+  const { avisar } = useAvisos();
+  const registrar = useRegistrarOrdemServico(contrato.id);
+  const [numeroOrdem, definirNumero] = useState('');
+  const [expedidaEm, definirExpedidaEm] = useState(hoje());
+  const [descricao, definirDescricao] = useState('');
+  const [erro, definirErro] = useState<string | undefined>();
+  const fechar = () => {
+    definirNumero('');
+    definirDescricao('');
+    definirErro(undefined);
+    registrar.reset();
+    aoFechar();
+  };
+  const enviar = (evento: FormEvent) => {
+    evento.preventDefault();
+    if (!numeroOrdem.trim() || descricao.trim().length < 5 || !validarDataISO(expedidaEm)) {
+      definirErro('Informe o número, a data de expedição e o que a ordem autoriza.');
+      return;
+    }
+    definirErro(undefined);
+    registrar.mutate(
+      { numero: numeroOrdem.trim(), expedidaEm, descricao: descricao.trim() },
+      {
+        onSuccess: (o) => {
+          avisar({
+            tipo: o.antesDoPeriodo ? 'aviso' : 'sucesso',
+            titulo: `Ordem de serviço ${o.numero} registrada`,
+            mensagem: o.antesDoPeriodo ? 'Expedida antes do fim do período antecedente: registre no processo a concordância da contratada.' : 'Registro feito na trilha de auditoria.',
+          });
+          fechar();
+        },
+      },
+    );
+  };
+  return (
+    <Dialogo
+      aberto={aberto}
+      aoFechar={registrar.isPending ? () => undefined : fechar}
+      titulo="Registrar ordem de serviço"
+      largura="media"
+      descricao={<p>O contrato pode prever um período, depois da assinatura, para verificar pendências antes da ordem de serviço (art. 92, § 2º).</p>}
+      rodape={
+        <>
+          <Botao variante="secundario" onClick={fechar} disabled={registrar.isPending}>
+            Cancelar
+          </Botao>
+          <Botao variante="primario" type="submit" form="formulario-ordem-servico" carregando={registrar.isPending}>
+            Registrar ordem
+          </Botao>
+        </>
+      }
+    >
+      <form id="formulario-ordem-servico" className="formulario" onSubmit={enviar} noValidate>
+        <CampoTexto rotulo="Número da ordem" obrigatorio maxLength={60} value={numeroOrdem} onChange={(e) => definirNumero(e.target.value)} />
+        <CampoTexto rotulo="Expedida em" type="date" obrigatorio value={expedidaEm} max={hoje()} onChange={(e) => definirExpedidaEm(e.target.value)} />
+        <AreaTexto rotulo="O que a ordem autoriza" obrigatorio rows={3} maxLength={2000} value={descricao} onChange={(e) => definirDescricao(e.target.value)} erro={erro} />
+        <ErroFormulario erro={registrar.error} titulo="A ordem de serviço não foi registrada" />
+      </form>
+    </Dialogo>
+  );
+}
+
 function proximoTermo(r: RecebimentoContrato): TipoTermoRecebimento | null {
   if (r.situacao === 'recebido') return null;
   if (r.situacao === 'aguardando_provisorio') return 'provisorio';
@@ -324,6 +412,7 @@ function ConteudoRecebimentos({ contrato, execucao }: { contrato: ContratoDetalh
   const { temPermissao } = useSessao();
   const [editandoPrazos, definirEditandoPrazos] = useState(false);
   const [registrando, definirRegistrando] = useState(false);
+  const [registrandoOrdem, definirRegistrandoOrdem] = useState(false);
   const [termo, definirTermo] = useState<{ recebimento: RecebimentoContrato; tipo: TipoTermoRecebimento } | null>(null);
   const podeDefinirPrazos = temPermissao('fiscalizacao:designar');
   const designado = execucao.meusPapeis.length > 0;
@@ -410,10 +499,48 @@ function ConteudoRecebimentos({ contrato, execucao }: { contrato: ContratoDetalh
               },
               { termo: 'Atualização por atraso', valor: `${p.indiceAtualizacao}${p.jurosMoraMensal > 0 ? ` e juros de ${p.jurosMoraMensal}% ao mês` : ', sem juros'}` },
               { termo: 'Garantia técnica do objeto', valor: p.garantiaObjetoMeses > 0 ? `${p.garantiaObjetoMeses} meses do definitivo` : 'Não prevista' },
+              {
+                termo: 'Período antes da ordem de serviço',
+                valor: p.periodoAntecedenteDiasUteis > 0 ? `${p.periodoAntecedenteDiasUteis} dias úteis da assinatura` : 'Não previsto',
+              },
+              {
+                termo: 'Reservas de vagas do edital',
+                valor:
+                  [p.reservaMulheresPercentual > 0 ? `${p.reservaMulheresPercentual}% para mulheres vítimas de violência doméstica` : null, p.reservaEgressos ? 'pessoas presas ou egressas' : null]
+                    .filter(Boolean)
+                    .join('; ') || 'Nenhuma',
+              },
             ]}
           />
         ) : (
           <p className="texto-secundario">Os prazos ainda não foram registrados. Sem eles, as entregas não podem ser recebidas na Ágora.</p>
+        )}
+      </Secao>
+
+      <Secao
+        titulo="Ordens de serviço"
+        id="ordens-servico"
+        nivel={3}
+        descricao={<p>Ordens de serviço expedidas, com o período antecedente previsto no contrato (art. 92, § 2º).</p>}
+        acoes={
+          podeDefinirPrazos ? (
+            <Botao variante="secundario" icone={FileSignature} onClick={() => definirRegistrandoOrdem(true)}>
+              Registrar ordem de serviço
+            </Botao>
+          ) : null
+        }
+      >
+        {execucao.ordensServico.length === 0 ? (
+          <p className="texto-secundario">Nenhuma ordem de serviço registrada.</p>
+        ) : (
+          <ul className="lista-simples">
+            {execucao.ordensServico.map((o) => (
+              <li key={o.id}>
+                <strong>{o.numero}</strong>, expedida em <span className="numero">{formatarData(o.expedidaEm)}</span>: {o.descricao}
+                {o.antesDoPeriodo ? <span className="texto-pequeno"> (antes do fim do período antecedente)</span> : null}
+              </li>
+            ))}
+          </ul>
         )}
       </Secao>
 
@@ -468,6 +595,7 @@ function ConteudoRecebimentos({ contrato, execucao }: { contrato: ContratoDetalh
       </Secao>
 
       {podeDefinirPrazos ? <DialogoPrazos key={p?.atualizadoEm ?? 'novo'} contrato={contrato} atuais={p} aberto={editandoPrazos} aoFechar={() => definirEditandoPrazos(false)} /> : null}
+      {podeDefinirPrazos ? <DialogoOrdemServico contrato={contrato} aberto={registrandoOrdem} aoFechar={() => definirRegistrandoOrdem(false)} /> : null}
       {podeRegistrar ? <DialogoEntrega contrato={contrato} execucao={execucao} aberto={registrando} aoFechar={() => definirRegistrando(false)} /> : null}
       <DialogoTermo alvo={termo} aoFechar={() => definirTermo(null)} />
     </div>

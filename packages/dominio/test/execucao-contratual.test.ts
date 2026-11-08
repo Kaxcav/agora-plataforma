@@ -2,6 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ErroDominio,
+  avaliarOrdemServico,
+  avaliarReservasCargos,
   avaliarTermoRecebimento,
   calcularAtualizacaoMonetaria,
   calcularGarantiaObjeto,
@@ -361,5 +363,49 @@ describe('alteração justificada da ordem cronológica (art. 141, § 1º)', () 
     const justificado = classificarPreteridosComAlteracoes(pagamentos, [{ id: 'a', pagamentoId: 'p', comunicadaControleInterno: true, comunicadaTribunal: true }], HOJE);
     assert.equal(justificado[0]?.situacao, 'justificado');
     assert.deepEqual(justificado[0]?.alteracoes, ['a']);
+  });
+});
+
+describe('ordem de serviço e período antecedente (art. 92, § 2º)', () => {
+  it('expedida depois do período: sem aviso; antes: aviso de concordância da contratada', () => {
+    // 02/11 é feriado: 03/11 (terça) + 5 dias úteis = 10/11
+    const depois = avaliarOrdemServico({ assinaturaEm: '2026-11-03', periodoAntecedenteDiasUteis: 5, expedidaEm: '2026-11-10', hoje: '2026-11-10' });
+    assert.equal(depois.fimPeriodoAntecedente, '2026-11-10');
+    assert.equal(depois.antesDoPeriodo, false);
+    assert.deepEqual(depois.avisos, []);
+    const antes = avaliarOrdemServico({ assinaturaEm: '2026-11-03', periodoAntecedenteDiasUteis: 5, expedidaEm: '2026-11-05', hoje: '2026-11-10' });
+    assert.equal(antes.antesDoPeriodo, true);
+    assert.match(antes.avisos[0] ?? '', /concordância da contratada/);
+    assert.equal(avaliarOrdemServico({ assinaturaEm: '2026-11-03', periodoAntecedenteDiasUteis: 0, expedidaEm: '2026-11-03', hoje: HOJE }).fimPeriodoAntecedente, null);
+  });
+
+  it('ordem futura ou anterior à assinatura → ORDEM_SERVICO_INVALIDA', () => {
+    assert.throws(() => avaliarOrdemServico({ assinaturaEm: '2026-11-03', periodoAntecedenteDiasUteis: 0, expedidaEm: '2026-11-20', hoje: HOJE }), comCodigo('ORDEM_SERVICO_INVALIDA'));
+    assert.throws(() => avaliarOrdemServico({ assinaturaEm: '2026-11-03', periodoAntecedenteDiasUteis: 0, expedidaEm: '2026-11-01', hoje: HOJE }), comCodigo('ORDEM_SERVICO_INVALIDA'));
+  });
+});
+
+describe('reservas legais de cargos na execução (art. 92, XVII)', () => {
+  const base = { empregados: 40, percentualMulheres: 8, reservaEgressos: true, mulheres: 4, egressos: 2, pcdComprovada: true, aprendizesComprovada: true };
+
+  it('8% de 40 = 4 mulheres; 3% de 40 = 2 egressos (arredondado para cima): atende', () => {
+    const r = avaliarReservasCargos(base);
+    assert.equal(r.atende, true);
+    assert.equal(r.itens.find((i) => i.reserva === 'mulheres_violencia_domestica')?.exigido, 4);
+    assert.equal(r.itens.find((i) => i.reserva === 'egressos_sistema_prisional')?.exigido, 2);
+    assert.match(r.itens[0]?.fundamento ?? '', /Decreto 11\.430\/2023/);
+  });
+
+  it('faixas do Decreto 9.450/2018 e pendências listadas', () => {
+    assert.equal(avaliarReservasCargos({ ...base, empregados: 300, mulheres: 24, egressos: 12 }).itens[1]?.exigido, 12);
+    const r = avaliarReservasCargos({ ...base, mulheres: 3, pcdComprovada: false });
+    assert.equal(r.atende, false);
+    assert.equal(r.pendencias.length, 2);
+  });
+
+  it('reserva não exigida no edital não gera pendência; informado acima do total é recusado', () => {
+    const r = avaliarReservasCargos({ ...base, percentualMulheres: 0, reservaEgressos: false, mulheres: 0, egressos: 0 });
+    assert.equal(r.atende, true);
+    assert.throws(() => avaliarReservasCargos({ ...base, mulheres: 41 }), comCodigo('RESERVAS_INVALIDAS'));
   });
 });

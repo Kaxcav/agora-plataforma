@@ -12,7 +12,9 @@ import {
   atualizarCaucaoDinheiro,
   avaliarExecucaoGarantia,
   avaliarLiberacaoGarantia,
+  avaliarOrdemServico,
   avaliarPercentualGarantia,
+  avaliarReservasCargos,
   avaliarTermoRecebimento,
   baseCalculoGarantia,
   calcularPrazoPagamento,
@@ -32,6 +34,7 @@ import type {
   DesignacaoContrato,
   ExecucaoContrato,
   OcorrenciaContrato,
+  OrdemServicoContrato,
   ParametrosExecucaoContrato,
   RecebimentoContrato,
   RespostaDescontoMulta,
@@ -39,6 +42,7 @@ import type {
   RespostaTermoRecebimento,
   ServidorDesignavel,
   VerificacaoRegularidade,
+  VerificacaoReservasCargos,
 } from '@agora/contratos';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -61,7 +65,9 @@ import {
   carregarGarantias,
   carregarMultas,
   carregarOcorrencias,
+  carregarOrdensServico,
   carregarParametros,
+  carregarReservasCargos,
   carregarRecebimentos,
   contratoExecucao,
   designacoesAtivas,
@@ -97,6 +103,21 @@ const esquemaParametros = z.object({
   indiceAtualizacao: texto(2, 40),
   jurosMoraMensal: z.number().min(0).max(2),
   garantiaObjetoMeses: z.number().int().min(0).max(120),
+  periodoAntecedenteDiasUteis: z.number().int().min(0).max(60).default(0),
+  reservaMulheresPercentual: z.number().min(0).max(100).default(0),
+  reservaEgressos: z.boolean().default(false),
+});
+
+const esquemaOrdemServico = z.object({ numero: texto(1, 60), expedidaEm: dataIso, descricao: texto(5, 2000) });
+
+const esquemaReservas = z.object({
+  competencia: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use o formato AAAA-MM'),
+  empregados: z.number().int().min(0).max(1_000_000),
+  mulheres: z.number().int().min(0).max(1_000_000),
+  egressos: z.number().int().min(0).max(1_000_000),
+  pcdComprovada: z.boolean(),
+  aprendizesComprovada: z.boolean(),
+  observacao: textoOpcional(2000),
 });
 
 const esquemaDesignacao = z.object({
@@ -242,14 +263,17 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
       await tx.executar(
         `INSERT INTO contratos_parametros_execucao (contrato_id, prazo_provisorio_dias_uteis, prazo_definitivo_dias_uteis, prazo_correcao_dias_uteis,
                                                     prazo_liquidacao_dias_uteis, prazo_pagamento_dias, marco_pagamento, indice_atualizacao,
-                                                    juros_mora_mensal, garantia_objeto_meses, atualizado_por, atualizado_em)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                                                    juros_mora_mensal, garantia_objeto_meses, periodo_antecedente_dias_uteis,
+                                                    reserva_mulheres_percentual, reserva_egressos, atualizado_por, atualizado_em)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          ON CONFLICT (contrato_id) DO UPDATE SET
            prazo_provisorio_dias_uteis = EXCLUDED.prazo_provisorio_dias_uteis, prazo_definitivo_dias_uteis = EXCLUDED.prazo_definitivo_dias_uteis,
            prazo_correcao_dias_uteis = EXCLUDED.prazo_correcao_dias_uteis, prazo_liquidacao_dias_uteis = EXCLUDED.prazo_liquidacao_dias_uteis,
            prazo_pagamento_dias = EXCLUDED.prazo_pagamento_dias, marco_pagamento = EXCLUDED.marco_pagamento,
            indice_atualizacao = EXCLUDED.indice_atualizacao, juros_mora_mensal = EXCLUDED.juros_mora_mensal,
-           garantia_objeto_meses = EXCLUDED.garantia_objeto_meses, atualizado_por = EXCLUDED.atualizado_por, atualizado_em = EXCLUDED.atualizado_em`,
+           garantia_objeto_meses = EXCLUDED.garantia_objeto_meses, periodo_antecedente_dias_uteis = EXCLUDED.periodo_antecedente_dias_uteis,
+           reserva_mulheres_percentual = EXCLUDED.reserva_mulheres_percentual, reserva_egressos = EXCLUDED.reserva_egressos,
+           atualizado_por = EXCLUDED.atualizado_por, atualizado_em = EXCLUDED.atualizado_em`,
         [
           contrato.id,
           entrada.prazoProvisorioDiasUteis,
@@ -261,6 +285,9 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
           entrada.indiceAtualizacao,
           entrada.jurosMoraMensal,
           entrada.garantiaObjetoMeses,
+          entrada.periodoAntecedenteDiasUteis,
+          entrada.reservaMulheresPercentual,
+          entrada.reservaEgressos,
           sessao.usuario.id,
           ctx.relogio().toISOString(),
         ],
@@ -281,6 +308,112 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
     const parametros = await carregarParametros(ctx.banco, id);
     if (!parametros) throw naoEncontrado();
     return parametros;
+  });
+
+  // ───────── ordem de serviço (art. 92, § 2º) ─────────
+
+  app.post('/contratos/:id/ordens-servico', { preHandler: exigir('fiscalizacao:designar') }, async (request, reply): Promise<OrdemServicoContrato> => {
+    const entrada = esquemaOrdemServico.parse(request.body);
+    const sessao = sessaoDe(request);
+    const calendario = await opcoesCalendario(ctx.banco);
+    const { contratoId, ordemId } = await ctx.banco.transacao(async (tx) => {
+      const contrato = await contratoDaRota(request, tx, true);
+      const parametros = await carregarParametros(tx, contrato.id);
+      const avaliacao = avaliarOrdemServico({
+        assinaturaEm: contrato.assinatura_em,
+        periodoAntecedenteDiasUteis: parametros?.periodoAntecedenteDiasUteis ?? 0,
+        expedidaEm: entrada.expedidaEm,
+        hoje: ctx.hoje(),
+        opcoes: calendario,
+      });
+      const [criada] = await tx.consultar<{ id: string }>(
+        `INSERT INTO contratos_ordens_servico (contrato_id, numero, expedida_em, descricao, antes_do_periodo, registrado_por, registrado_em)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [contrato.id, entrada.numero, entrada.expedidaEm, entrada.descricao, avaliacao.antesDoPeriodo, sessao.usuario.id, ctx.relogio().toISOString()],
+      );
+      if (!criada) throw new Error('Falha ao registrar a ordem de serviço');
+      await auditar(tx, request, {
+        acao: 'contrato.ordem_servico',
+        recurso: 'contrato',
+        recursoId: contrato.id,
+        resumo: `Registrou a ordem de serviço ${entrada.numero}, expedida em ${formatarData(entrada.expedidaEm)}`,
+        dados: { ordemId: criada.id, numero: entrada.numero, expedidaEm: entrada.expedidaEm, fimPeriodoAntecedente: avaliacao.fimPeriodoAntecedente, avisos: avaliacao.avisos, fundamento: avaliacao.fundamento },
+      });
+      return { contratoId: contrato.id, ordemId: criada.id };
+    });
+    const ordem = (await carregarOrdensServico(ctx.banco, contratoId)).find((o) => o.id === ordemId);
+    if (!ordem) throw naoEncontrado();
+    reply.status(201);
+    return ordem;
+  });
+
+  // ───────── reservas legais de cargos (art. 92, XVII) ─────────
+
+  /**
+   * Verificação mensal das reservas de cargos pela fiscalização. Com pendência, a Ágora registra a ocorrência no livro
+   * (o fiscal decide a providência e a notificação).
+   */
+  app.post('/contratos/:id/reservas-cargos', { preHandler: exigir('fiscalizacao:registrar') }, async (request, reply): Promise<VerificacaoReservasCargos> => {
+    const entrada = esquemaReservas.parse(request.body);
+    const sessao = sessaoDe(request);
+    const contratoId = await ctx.banco.transacao(async (tx) => {
+      const contrato = await contratoDaRota(request, tx, true);
+      await exigirDesignado(tx, contrato.id, sessao.usuario.id, 'Só o gestor ou um fiscal designado no contrato registra a verificação das reservas de cargos.');
+      const parametros = await carregarParametros(tx, contrato.id);
+      const r = avaliarReservasCargos({
+        empregados: entrada.empregados,
+        percentualMulheres: parametros?.reservaMulheresPercentual ?? 0,
+        reservaEgressos: parametros?.reservaEgressos ?? false,
+        mulheres: entrada.mulheres,
+        egressos: entrada.egressos,
+        pcdComprovada: entrada.pcdComprovada,
+        aprendizesComprovada: entrada.aprendizesComprovada,
+      });
+      const instante = ctx.relogio().toISOString();
+      let ocorrenciaId: string | null = null;
+      if (!r.atende) {
+        const numero = await proximoNumero(tx, 'contratos_ocorrencias', contrato.id);
+        const [ocorrencia] = await tx.consultar<{ id: string }>(
+          `INSERT INTO contratos_ocorrencias (contrato_id, numero, tipo, data_fato, relato, registrada_por, registrada_em)
+           VALUES ($1, $2, 'inconformidade', $3, $4, $5, $6) RETURNING id`,
+          [contrato.id, numero, ctx.hoje(), `Reservas legais de cargos na competência ${entrada.competencia}: ${r.pendencias.join(' ')}`, sessao.usuario.id, instante],
+        );
+        ocorrenciaId = ocorrencia?.id ?? null;
+        await registrarDesempenho(tx, contrato.fornecedor_id, { ocorrencias: 1 });
+      }
+      await tx.executar(
+        `INSERT INTO contratos_reservas_cargos (contrato_id, competencia, empregados, mulheres, egressos, pcd_comprovada, aprendizes_comprovada, atende,
+                                                resultado, observacao, ocorrencia_id, registrado_por, registrado_em)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13)`,
+        [
+          contrato.id,
+          entrada.competencia,
+          entrada.empregados,
+          entrada.mulheres,
+          entrada.egressos,
+          entrada.pcdComprovada,
+          entrada.aprendizesComprovada,
+          r.atende,
+          JSON.stringify({ itens: r.itens, pendencias: r.pendencias }),
+          entrada.observacao,
+          ocorrenciaId,
+          sessao.usuario.id,
+          instante,
+        ],
+      );
+      await auditar(tx, request, {
+        acao: 'contrato.reservas_cargos',
+        recurso: 'contrato',
+        recursoId: contrato.id,
+        resumo: `Verificou as reservas legais de cargos da competência ${entrada.competencia}: ${r.atende ? 'atendidas' : `${r.pendencias.length} pendência(s), registrada no livro`}`,
+        dados: { competencia: entrada.competencia, empregados: entrada.empregados, atende: r.atende, pendencias: r.pendencias, ocorrenciaId, fundamento: r.fundamento },
+      });
+      return contrato.id;
+    });
+    const verificacao = (await carregarReservasCargos(ctx.banco, contratoId)).find((v) => v.competencia === entrada.competencia);
+    if (!verificacao) throw naoEncontrado();
+    reply.status(201);
+    return verificacao;
   });
 
   // ───────── designações (art. 117) ─────────

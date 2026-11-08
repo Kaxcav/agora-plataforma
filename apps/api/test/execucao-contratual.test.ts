@@ -137,6 +137,51 @@ describe('execução contratual: fiscalização, recebimentos, garantias e prazo
     return linha;
   };
 
+  test('ordem de serviço com período antecedente e verificação das reservas legais de cargos (art. 92, § 2º e XVII)', async () => {
+    const parametros = await chamar(app, gestor, 'PUT', `/api/v1/contratos/${contratoId}/parametros-execucao`, {
+      ...PARAMETROS,
+      periodoAntecedenteDiasUteis: 5,
+      reservaMulheresPercentual: 8,
+      reservaEgressos: true,
+    });
+    assert.equal(parametros.statusCode, 200, parametros.body);
+    const ordem = { numero: 'OS 1/2026', expedidaEm: hoje, descricao: 'Ordem de serviço inicial da execução do contrato.' };
+    assert.equal((await chamar(app, consulta, 'POST', `/api/v1/contratos/${contratoId}/ordens-servico`, ordem)).statusCode, 403);
+    const os = await chamar(app, gestor, 'POST', `/api/v1/contratos/${contratoId}/ordens-servico`, ordem);
+    assert.equal(os.statusCode, 201, os.body);
+    assert.equal(os.json<{ antesDoPeriodo: boolean }>().antesDoPeriodo, false, 'contrato assinado há mais de 5 dias úteis');
+    assert.equal((await chamar(app, gestor, 'POST', `/api/v1/contratos/${contratoId}/ordens-servico`, { ...ordem, expedidaEm: '2099-01-01' })).statusCode, 422);
+
+    const pendente = await chamar(app, gestor, 'POST', `/api/v1/contratos/${contratoId}/reservas-cargos`, {
+      competencia: '2026-10',
+      empregados: 40,
+      mulheres: 3,
+      egressos: 2,
+      pcdComprovada: true,
+      aprendizesComprovada: true,
+      observacao: null,
+    });
+    assert.equal(pendente.statusCode, 201, pendente.body);
+    const verificacao = pendente.json<{ atende: boolean; pendencias: string[]; ocorrenciaId: string | null }>();
+    assert.equal(verificacao.atende, false);
+    assert.equal(verificacao.pendencias.length, 1);
+    assert.ok(verificacao.ocorrenciaId, 'a pendência entra no livro de ocorrências');
+    const repetida = await chamar(app, gestor, 'POST', `/api/v1/contratos/${contratoId}/reservas-cargos`, {
+      competencia: '2026-10',
+      empregados: 40,
+      mulheres: 4,
+      egressos: 2,
+      pcdComprovada: true,
+      aprendizesComprovada: true,
+      observacao: null,
+    });
+    assert.equal(repetida.statusCode, 409);
+    const execucao = await obterJson<ExecucaoContrato>(app, gestor, `/api/v1/contratos/${contratoId}/execucao`);
+    assert.equal(execucao.ordensServico.length, 1);
+    assert.equal(execucao.reservasCargos[0]?.competencia, '2026-10');
+    assert.equal(execucao.parametros?.reservaMulheresPercentual, 8);
+  });
+
   test('ocorrência com prazo de regularização notifica a contratada pela central', async () => {
     const antes = await indicadores();
     const r = await chamar(app, fiscalTecnico, 'POST', `/api/v1/contratos/${contratoId}/ocorrencias`, {

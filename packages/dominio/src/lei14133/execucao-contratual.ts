@@ -319,6 +319,131 @@ export function avaliarTermoRecebimento(e: {
 }
 
 /**
+ * Ordem de serviço e período antecedente (art. 92, § 2º): o contrato pode prever um período, depois da assinatura e
+ * antes da ordem de serviço, para verificar pendências, liberar áreas ou adotar outras providências para a execução.
+ * A ordem expedida antes do fim desse período é registrada com aviso (a antecipação depende da concordância da
+ * contratada e deve constar do processo).
+ */
+export function avaliarOrdemServico(e: {
+  assinaturaEm: DataISO;
+  periodoAntecedenteDiasUteis: number;
+  expedidaEm: DataISO;
+  hoje: DataISO;
+  opcoes?: OpcoesCalendario;
+}): { fimPeriodoAntecedente: DataISO | null; antesDoPeriodo: boolean; avisos: string[]; fundamento: string } {
+  exigirInteiro(e.periodoAntecedenteDiasUteis, 'periodoAntecedenteDiasUteis', 'PARAMETROS_EXECUCAO_INVALIDOS', 0);
+  const expedida = lerData(e.expedidaEm, 'expedidaEm');
+  if (expedida > lerData(e.hoje, 'hoje')) throw new ErroDominio('ORDEM_SERVICO_INVALIDA', 'A data de expedição da ordem de serviço não pode ser futura.');
+  if (expedida < lerData(e.assinaturaEm, 'assinaturaEm')) {
+    throw new ErroDominio('ORDEM_SERVICO_INVALIDA', 'A ordem de serviço não pode ser anterior à assinatura do contrato.');
+  }
+  const fimPeriodoAntecedente = e.periodoAntecedenteDiasUteis > 0 ? adicionarDiasUteis(e.assinaturaEm, e.periodoAntecedenteDiasUteis, e.opcoes) : null;
+  const antesDoPeriodo = fimPeriodoAntecedente !== null && expedida < lerData(fimPeriodoAntecedente);
+  return {
+    fimPeriodoAntecedente,
+    antesDoPeriodo,
+    avisos: antesDoPeriodo && fimPeriodoAntecedente
+      ? [`Ordem expedida antes do fim do período antecedente (${formatarData(fimPeriodoAntecedente)}): registre no processo a concordância da contratada.`]
+      : [],
+    fundamento: 'Lei 14.133/2021, art. 92, § 2º',
+  };
+}
+
+export type ReservaCargos = 'mulheres_violencia_domestica' | 'egressos_sistema_prisional' | 'pessoas_com_deficiencia' | 'aprendizes';
+
+export interface ItemReservaCargos {
+  reserva: ReservaCargos;
+  descricao: string;
+  aplica: boolean;
+  /** Mínimo de pessoas no contrato (null quando a obrigação é da empresa como um todo). */
+  exigido: number | null;
+  informado: number | null;
+  atende: boolean;
+  fundamento: string;
+}
+
+/** Percentual de vagas para pessoas presas ou egressas, pela quantidade de empregados do contrato (Decreto 9.450/2018, art. 6º). */
+function percentualEgressos(empregados: number): number {
+  if (empregados <= 200) return 3;
+  if (empregados <= 500) return 4;
+  if (empregados <= 1000) return 5;
+  return 6;
+}
+
+/**
+ * Verificação, na execução, das reservas legais de cargos (art. 92, XVII; conversa, linha 1042):
+ * - mulheres vítimas de violência doméstica: o percentual do edital, mantido durante a execução (Decreto 11.430/2023,
+ *   art. 3º, § 2º);
+ * - pessoas presas ou egressas do sistema prisional, quando o edital a exigiu: 3% a 6% das vagas, conforme a quantidade
+ *   de empregados do contrato (Decreto 9.450/2018, art. 6º);
+ * - pessoas com deficiência e reabilitados (Lei 8.213/1991, art. 93) e aprendizes (CLT, art. 429): obrigações da
+ *   empresa como um todo, conferidas pela comprovação apresentada.
+ * O mínimo é arredondado para cima. O resultado é um sinal para a fiscalização, que decide a providência.
+ */
+export function avaliarReservasCargos(e: {
+  empregados: number;
+  percentualMulheres: number;
+  reservaEgressos: boolean;
+  mulheres: number;
+  egressos: number;
+  pcdComprovada: boolean;
+  aprendizesComprovada: boolean;
+}): { itens: ItemReservaCargos[]; atende: boolean; pendencias: string[]; fundamento: string } {
+  exigirInteiro(e.empregados, 'empregados', 'RESERVAS_INVALIDAS', 0);
+  exigirInteiro(e.mulheres, 'mulheres', 'RESERVAS_INVALIDAS', 0);
+  exigirInteiro(e.egressos, 'egressos', 'RESERVAS_INVALIDAS', 0);
+  exigirFinito(e.percentualMulheres, 'percentualMulheres', 'RESERVAS_INVALIDAS');
+  if (e.percentualMulheres < 0 || e.percentualMulheres > 100) throw new ErroDominio('RESERVAS_INVALIDAS', 'O percentual de vagas deve ficar entre 0 e 100.');
+  if (e.mulheres > e.empregados || e.egressos > e.empregados) {
+    throw new ErroDominio('RESERVAS_INVALIDAS', 'As vagas reservadas informadas passam do total de empregados do contrato.');
+  }
+  const minimo = (pct: number) => Math.ceil((e.empregados * pct) / 100 - 1e-9);
+  const pctEgressos = percentualEgressos(e.empregados);
+  const itens: ItemReservaCargos[] = [
+    {
+      reserva: 'mulheres_violencia_domestica',
+      descricao: `Mulheres vítimas de violência doméstica (${formatarNumero(e.percentualMulheres)}% das vagas, conforme o edital)`,
+      aplica: e.percentualMulheres > 0,
+      exigido: e.percentualMulheres > 0 ? minimo(e.percentualMulheres) : null,
+      informado: e.mulheres,
+      atende: e.percentualMulheres === 0 || e.mulheres >= minimo(e.percentualMulheres),
+      fundamento: 'Decreto 11.430/2023, art. 3º, § 2º; Lei 14.133/2021, art. 92, XVII',
+    },
+    {
+      reserva: 'egressos_sistema_prisional',
+      descricao: `Pessoas presas ou egressas do sistema prisional (${pctEgressos}% das vagas)`,
+      aplica: e.reservaEgressos,
+      exigido: e.reservaEgressos ? minimo(pctEgressos) : null,
+      informado: e.egressos,
+      atende: !e.reservaEgressos || e.egressos >= minimo(pctEgressos),
+      fundamento: 'Decreto 9.450/2018, art. 6º; Lei 14.133/2021, art. 92, XVII',
+    },
+    {
+      reserva: 'pessoas_com_deficiencia',
+      descricao: 'Pessoas com deficiência e reabilitados da Previdência Social (cota da empresa)',
+      aplica: true,
+      exigido: null,
+      informado: null,
+      atende: e.pcdComprovada,
+      fundamento: 'Lei 8.213/1991, art. 93; Lei 14.133/2021, arts. 92, XVII, e 116',
+    },
+    {
+      reserva: 'aprendizes',
+      descricao: 'Aprendizes (cota da empresa)',
+      aplica: true,
+      exigido: null,
+      informado: null,
+      atende: e.aprendizesComprovada,
+      fundamento: 'CLT, art. 429; Lei 14.133/2021, art. 92, XVII',
+    },
+  ];
+  const pendencias = itens
+    .filter((i) => i.aplica && !i.atende)
+    .map((i) => (i.exigido !== null ? `${i.descricao}: ${i.informado ?? 0} de ${i.exigido} exigidas.` : `${i.descricao}: comprovação não apresentada.`));
+  return { itens, atende: pendencias.length === 0, pendencias, fundamento: 'Lei 14.133/2021, art. 92, XVI e XVII, e art. 116' };
+}
+
+/**
  * Fim do prazo de garantia técnica do objeto, contado do recebimento definitivo, quando o contrato o prevê
  * (art. 92, XIII, e art. 40, § 4º). `meses` 0 = sem garantia técnica no contrato.
  */
