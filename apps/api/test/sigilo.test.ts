@@ -176,8 +176,11 @@ describe('sigilo de segurança pública (RN-40, RF-33, RNF-09) — API', () => {
     await app.close();
   });
 
-  test('permissões novas no fim da matriz e nos perfis certos', () => {
-    assert.deepEqual(TODAS_PERMISSOES.slice(-5), ['sigilo:ler', 'sigilo:classificar', 'sigilo:credenciar', 'sigilo:controle', 'auditoria:ancorar']);
+  test('permissões do sigilo na matriz e nos perfis certos', () => {
+    // A ordem relativa importa (exibição na matriz); outras frentes podem acrescentar permissões depois destas.
+    const inicio = TODAS_PERMISSOES.indexOf('sigilo:ler');
+    assert.ok(inicio >= 0, 'sigilo:ler na matriz');
+    assert.deepEqual(TODAS_PERMISSOES.slice(inicio, inicio + 5), ['sigilo:ler', 'sigilo:classificar', 'sigilo:credenciar', 'sigilo:controle', 'auditoria:ancorar']);
     const perfil = (codigo: string) => PERFIS.find((p) => p.codigo === codigo)?.permissoes ?? [];
     assert.ok(perfil('auditor').includes('sigilo:controle'));
     assert.ok(perfil('controle_interno').includes('sigilo:controle'));
