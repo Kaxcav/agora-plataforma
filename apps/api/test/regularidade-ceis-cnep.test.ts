@@ -26,6 +26,7 @@ import {
   FONTE_TRANSPARENCIA,
 } from '../src/integracoes/transparencia.ts';
 import { chamar, criarAppTeste, entrar, INICIO_TESTES, obterJson, type Credenciais } from './apoio.ts';
+import { concluirSelecao } from './apoio-selecao.ts';
 
 const SEM_LIMITE = { AGORA_LIMITE_REQUISICOES_MINUTO: '100000' };
 const HOJE = hojeISO(new Date(INICIO_TESTES));
@@ -187,6 +188,8 @@ describe('regularidade do contratado (modo offline): CEIS/CNEP simulados, certid
       ],
     });
     assert.equal(disputa.statusCode, 200);
+    // Atos da seleção até a homologação (RN-20, RN-22 e RF-18), pela autoridade competente designada (gestor).
+    await concluirSelecao(app, radios.id, agente, gestor);
     // A habilitação da etapa 6 confere as sanções do próprio órgão; o CEIS/CNEP é consultado na assinatura.
     assert.equal((await chamar(app, agente, 'POST', `/api/v1/processos/${radios.id}/avancar`)).statusCode, 200, 'etapa 6 → 7');
 
