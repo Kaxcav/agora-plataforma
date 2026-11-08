@@ -38,9 +38,11 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'precos', executar: gerarReferenciasPrecos },
   { nome: 'sala-disputa', executar: gerarVinculoSalaDisputa },
   { nome: 'controle', executar: gerarControle },
-  { nome: 'regularidade', executar: gerarRegularidade },
   { nome: 'qualificacao-tecnica', executar: gerarQualificacaoTecnica },
   { nome: 'vinculos-impedimentos', executar: gerarVinculosImpedimentos },
+  // Depois de toda etapa que acrescenta fornecedores (a de vínculos cria a possível sucessora): certidões e
+  // primeira consulta ao CEIS/CNEP para cada um. Usa PRNG próprio, então a posição não altera as outras etapas.
+  { nome: 'regularidade', executar: gerarRegularidade },
   { nome: 'fila', executar: gerarFila },
   { nome: 'sociedade', executar: gerarSociedade },
 ];

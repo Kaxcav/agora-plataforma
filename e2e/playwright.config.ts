@@ -7,6 +7,14 @@ const PORTA = Number(process.env.AGORA_E2E_PORTA ?? 3100);
 const raiz = resolve(import.meta.dirname, '..');
 // Banco novo (PGlite) a cada execução: dados sintéticos determinísticos.
 const dados = mkdtempSync(join(tmpdir(), 'agora-e2e-'));
+const navegador = { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } };
+/**
+ * O banco é um só para a suíte, e os arquivos rodam em ordem alfabética. O processo dos rádios é o único da carga
+ * pronto para passar da etapa 5 à 6: a sala de disputa (PoC-03) precisa dele na etapa 5 ou 6, e o PoC-04
+ * (`ceis-cnep.spec.ts`) o leva até a etapa 7. A sala roda antes, na ordem da jornada (disputa → seleção → contrato);
+ * o PoC-04 parte da etapa em que a sala deixou o processo.
+ */
+const ANTES_DA_CONTRATACAO = /sala-disputa\.spec\.ts$/;
 
 export default defineConfig({
   testDir: './testes',
@@ -23,7 +31,12 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
+  // Com um único worker, os projetos rodam na ordem desta lista. Sem `dependencies` de propósito: uma falha na sala
+  // não deixa de executar o resto da suíte.
+  projects: [
+    { name: 'disputa', testMatch: ANTES_DA_CONTRATACAO, use: navegador },
+    { name: 'chromium', testIgnore: ANTES_DA_CONTRATACAO, use: navegador },
+  ],
   webServer: {
     command: 'node apps/api/dist/servidor.js',
     cwd: raiz,
