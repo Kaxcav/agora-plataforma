@@ -27,6 +27,9 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'auditoria:ler',
   'lgpd:revelar',
   'lgpd:relatorio',
+  'notificacoes:ler',
+  'notificacoes:enviar',
+  'notificacoes:administrar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -59,6 +62,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'sancoes:ler',
       'sancoes:instruir',
       'jornada:ler',
+      'notificacoes:ler',
+      'notificacoes:enviar',
     ],
   },
   {
@@ -77,6 +82,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'tarefas:editar',
       'fornecedores:ler',
       'sancoes:ler',
+      'notificacoes:ler',
+      'notificacoes:enviar',
     ],
   },
   {
@@ -93,6 +100,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'vinculos:editar',
       'integracoes:executar',
       'fornecedores:ler',
+      'notificacoes:ler',
     ],
   },
   {

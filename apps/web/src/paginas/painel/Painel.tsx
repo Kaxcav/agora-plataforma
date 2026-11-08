@@ -34,6 +34,7 @@ import { formatarNumero, formatarPercentual } from '../../utilitarios/formatacao
 import { useParametrosUrl } from '../../utilitarios/parametrosUrl';
 import { CampoUasg } from '../compartilhado/CampoUasg';
 import { FilaPendencias } from './FilaPendencias';
+import { LinhaTempoVencimentos } from './LinhaTempoVencimentos';
 
 function percentualDe(parte: number, total: number): number {
   return total > 0 ? (parte / total) * 100 : 0;
@@ -200,7 +201,7 @@ function Alertas({ painel }: { painel: DadosPainel | undefined }) {
 
 function Vencimentos({ painel }: { painel: DadosPainel | undefined }) {
   return (
-    <Secao id="vencimentos" titulo="Vencimentos" descricao="Atas e contratos por faixa de vigência restante (semáforo 30/60/90).">
+    <Secao id="vencimentos" titulo="Vencimentos" descricao="Atas e contratos por faixa de vigência restante (semáforo 30/60/90/120).">
       {painel ? (
         <BarrasHorizontais
           rotulo="Quantidade de instrumentos por faixa de vencimento"
@@ -210,6 +211,7 @@ function Vencimentos({ painel }: { painel: DadosPainel | undefined }) {
             { id: '30', rotulo: 'Até 30 dias', detalhe: 'crítico', valor: painel.vencimentos.em30, tom: 'critico' },
             { id: '60', rotulo: '31 a 60 dias', detalhe: 'atenção', valor: painel.vencimentos.em60, tom: 'aviso' },
             { id: '90', rotulo: '61 a 90 dias', detalhe: 'alerta', valor: painel.vencimentos.em90, tom: 'alerta' },
+            { id: '120', rotulo: '91 a 120 dias', detalhe: 'planejamento', valor: painel.vencimentos.em120, tom: 'info' },
           ]}
         />
       ) : (
@@ -298,6 +300,7 @@ export default function Painel() {
             <Vencimentos painel={painel} />
             <ProximosVencimentos painel={painel} />
           </div>
+          <LinhaTempoVencimentos uasg={uasg} />
         </>
       )}
 

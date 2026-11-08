@@ -4,11 +4,11 @@ import type { Executor } from '../banco/tipos.ts';
 
 /**
  * Situação do instrumento a partir do semáforo de vigência do domínio (RN-17):
- * vencido → encerrado; crítico/atenção/alerta (até 90 dias) → a vencer; regular → vigente.
+ * vencido → encerrado; crítico/atenção/alerta (até 90 dias) → a vencer; planejamento (91 a 120 dias, RN-31) e regular → vigente.
  */
 export function situacaoPorSemaforo(semaforo: Semaforo): SituacaoInstrumento {
   if (semaforo === 'vencido') return 'encerrado';
-  if (semaforo === 'regular') return 'vigente';
+  if (semaforo === 'regular' || semaforo === 'planejamento') return 'vigente';
   return 'a_vencer';
 }
 

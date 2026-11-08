@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "seed": "node src/cli/seed.ts",
-    "criar-admin": "node src/cli/criar-admin.ts"
+    "criar-admin": "node src/cli/criar-admin.ts",
+    "notificacoes": "node src/cli/notificacoes.ts"
   },
   "dependencies": {
     "@agora/contratos": "1.0.0",

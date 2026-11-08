@@ -97,7 +97,7 @@ export async function rotasPainel(app: FastifyInstance): Promise<void> {
         pendenciasAbertas: pendencias?.abertas ?? 0,
         pendenciasAltaPrioridade: pendencias?.alta ?? 0,
       },
-      vencimentos: { em30: contar('critico'), em60: contar('atencao'), em90: contar('alerta'), vencidos: contar('vencido') },
+      vencimentos: { em30: contar('critico'), em60: contar('atencao'), em90: contar('alerta'), vencidos: contar('vencido'), em120: contar('planejamento') },
       divulgacaoPncpPendente: divulgacaoPendente,
       queimaAcelerada,
       proximosVencimentos: instrumentos

@@ -43,6 +43,7 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/fornecedores', permissao: 'fornecedores:ler', pagina: lazy(() => import('../paginas/fornecedores/Fornecedores')) },
   { caminho: '/fornecedores/:id', permissao: 'fornecedores:ler', pagina: lazy(() => import('../paginas/fornecedores/FornecedorDetalhe')) },
   { caminho: '/sancoes', permissao: 'sancoes:ler', pagina: lazy(() => import('../paginas/sancoes/Sancoes')) },
+  { caminho: '/notificacoes', permissao: 'notificacoes:ler', pagina: lazy(() => import('../paginas/notificacoes/Notificacoes')) },
 
   // Ajustes: leitura para qualquer sessão; escrita só com ajustes:editar (a API decide).
   { caminho: '/ajustes/modelos', pagina: lazy(() => import('../paginas/ajustes/ModelosGestao')) },

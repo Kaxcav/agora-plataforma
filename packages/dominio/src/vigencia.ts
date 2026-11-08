@@ -1,19 +1,20 @@
 /**
- * Vigência de contratos e atas (semáforo 30/60/90) e projeção de queima de saldo.
+ * Vigência de contratos e atas (semáforo 30/60/90/120) e projeção de queima de saldo.
  */
 import { ErroDominio } from './erros.ts';
 import { type DataISO, formatarData } from './datas.ts';
 import { type Centavos, formatarMoeda, percentual } from './moeda.ts';
 import { escreverData, EPOCA_MAXIMA, exigirInteiro, formatarPercentualTexto, lerData } from './interno.ts';
 
-/** vencido: dias < 0; critico: 0..30; atencao: 31..60; alerta: 61..90; regular: > 90. */
-export type Semaforo = 'vencido' | 'critico' | 'atencao' | 'alerta' | 'regular';
+/** vencido: dias < 0; critico: 0..30; atencao: 31..60; alerta: 61..90; planejamento: 91..120 (RN-31); regular: > 120. */
+export type Semaforo = 'vencido' | 'critico' | 'atencao' | 'alerta' | 'planejamento' | 'regular';
 
 function semaforoPorDias(dias: number): Semaforo {
   if (dias < 0) return 'vencido';
   if (dias <= 30) return 'critico';
   if (dias <= 60) return 'atencao';
   if (dias <= 90) return 'alerta';
+  if (dias <= 120) return 'planejamento';
   return 'regular';
 }
 

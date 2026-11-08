@@ -48,7 +48,8 @@ const SEMAFORO: Record<ValorSemaforo, { tom: TomEtiqueta; rotulo: string; faixa:
   critico: { tom: 'critico', rotulo: 'Crítico', faixa: 'até 30 dias' },
   atencao: { tom: 'aviso', rotulo: 'Atenção', faixa: '31 a 60 dias' },
   alerta: { tom: 'alerta', rotulo: 'Alerta', faixa: '61 a 90 dias' },
-  regular: { tom: 'sucesso', rotulo: 'Regular', faixa: 'mais de 90 dias' },
+  planejamento: { tom: 'info', rotulo: 'Planejamento', faixa: '91 a 120 dias' },
+  regular: { tom: 'sucesso', rotulo: 'Regular', faixa: 'mais de 120 dias' },
 };
 
 export function rotuloSemaforo(valor: ValorSemaforo): string {
@@ -62,7 +63,7 @@ export interface PropsSemaforo {
   compacto?: boolean;
 }
 
-/** Semáforo de vigência 30/60/90 (RN-17). */
+/** Semáforo de vigência 30/60/90/120 (RN-17 e RN-31). */
 export function Semaforo({ valor, vigenciaFim, compacto }: PropsSemaforo) {
   const def = SEMAFORO[valor];
   const detalhe = vigenciaFim ? classificarVigencia(vigenciaFim, hojeISO(new Date())).rotulo : def.faixa;

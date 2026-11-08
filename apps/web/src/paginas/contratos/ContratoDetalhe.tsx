@@ -42,6 +42,7 @@ import { Historico } from '../compartilhado/Historico';
 import { PlanoGestao } from '../compartilhado/PlanoGestao';
 import { ORIGENS_CONTRATO, TIPOS_ADITIVO } from '../compartilhado/rotulos';
 import { SimuladorAditivo } from './SimuladorAditivo';
+import { BotaoNotificar } from '../notificacoes/DialogoNotificar';
 
 const DIVULGACAO: Record<DadosContrato['divulgacaoPncp']['situacao'], { rotulo: string; tom: TomEtiqueta }> = {
   divulgado_no_prazo: { rotulo: 'Divulgado no prazo', tom: 'sucesso' },
@@ -475,10 +476,25 @@ export default function ContratoDetalhe() {
         ) : null
       }
       acoes={
-        contrato?.linkPncp ? (
-          <LinkExterno href={contrato.linkPncp} comoBotao="secundario">
-            Abrir no PNCP
-          </LinkExterno>
+        contrato ? (
+          <>
+            <BotaoNotificar
+              instrumento={{
+                tipo: 'contrato',
+                id: contrato.id,
+                identificador: `Contrato ${contrato.numero}`,
+                gestor: contrato.gestor,
+                fiscal: contrato.fiscal,
+                contratada: contrato.fornecedor.razaoSocial,
+                temGarantia: contrato.garantia !== null,
+              }}
+            />
+            {contrato.linkPncp ? (
+              <LinkExterno href={contrato.linkPncp} comoBotao="secundario">
+                Abrir no PNCP
+              </LinkExterno>
+            ) : null}
+          </>
         ) : null
       }
     >

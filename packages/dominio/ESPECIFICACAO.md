@@ -110,8 +110,8 @@ export function formatarData(d: DataISO): string  // "08/11/2026"
 ## vigencia.ts
 
 ```ts
-export type Semaforo = 'vencido' | 'critico' | 'atencao' | 'alerta' | 'regular';
-// vencido: dias < 0; critico: 0..30; atencao: 31..60; alerta: 61..90; regular: > 90
+export type Semaforo = 'vencido' | 'critico' | 'atencao' | 'alerta' | 'planejamento' | 'regular';
+// vencido: dias < 0; critico: 0..30; atencao: 31..60; alerta: 61..90; planejamento: 91..120 (RN-31); regular: > 120
 export function classificarVigencia(fim: DataISO, hoje: DataISO): { diasRestantes: number; semaforo: Semaforo; rotulo: string }
 // rotulo pt-BR: "Vencido há 3 dias", "Vence hoje", "Vence em 1 dia", "Vence em 45 dias"
 export interface EntradaQueimaSaldo { valorTotal: Centavos; valorExecutado: Centavos; inicio: DataISO; fim: DataISO; hoje: DataISO }
@@ -379,3 +379,26 @@ Conteúdo mínimo do catálogo (escreva descrições completas em pt-BR):
 - RNF-06 IA nunca decide sanção, habilitação ou fraude; human-in-the-loop
 - RF para as telas de operação: painel, atas, contratos, itens, empenhos, pagamentos, vínculos, ajustes, administração, auditoria, transparência (um RF por tela, ids RF-01…)
 ```
+
+## notificacoes.ts — central de notificações (RF-26) e semáforo 30/60/90/120 (RN-31)
+
+Modelos de mensagem fixos em pt-BR (sem IA), faixas de aviso, avisos obrigatórios, entrega conforme a preferência e novas tentativas.
+
+```ts
+export type TipoNotificacao = 'vencimento' | 'reajuste' | 'garantia' | 'pendencia' | 'ocorrencia';
+export type CanalNotificacao = 'email' | 'sei' | 'govbr';
+export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel';
+export type FaixaVencimento = 30 | 60 | 90 | 120;
+export function faixaVencimento(diasRestantes: number): FaixaVencimento | null   // 0..30→30; ..60→60; ..90→90; ..120→120; senão null
+export function avaliarAvisoVencimento(vigenciaFim: DataISO, hoje: DataISO): { diasRestantes; faixa; obrigatorio; rotulo } | null
+export function avaliarAvisoReajuste(dataBase: DataISO, hoje: DataISO, antecedenciaDias = 30): { aniversario: DataISO; diasAte: number } | null
+export function avaliarAvisoGarantia(validaAte: DataISO, hoje: DataISO, antecedenciaDias = 30): { diasRestantes: number } | null
+export function avisoObrigatorio(tipo: TipoNotificacao, faixa: FaixaVencimento | null): boolean   // ocorrência; vencimento na faixa de 30
+export function baseLegalEnvio(papel: PapelDestinatario): string   // LGPD, art. 7º (e art. 23 para servidores)
+export function preferenciaPadrao(canal: CanalNotificacao): boolean   // e-mail e SEI ligados; gov.br desligado (adesão)
+export function decidirEntregaNotificacao(e: { canal; papel; obrigatoria; preferencia: boolean | null; destinatarioPessoaFisica }): { enviar: boolean; motivo: string | null }
+export function proximaTentativa(tentativasRealizadas: number, agora: string, maximo = 5): string | null   // +1, +5, +15, +60 min; null = falhou
+export function montarMensagemNotificacao(e: EntradaMensagemNotificacao): { assunto; corpo; fundamento; obrigatoria; faixa }
+```
+
+Erros: `DIAS_INVALIDOS`, `TENTATIVA_INVALIDA` e `NOTIFICACAO_INVALIDA` (tipo, canal ou papel desconhecido; relato de ocorrência com menos de 20 caracteres; data de referência ausente em reajuste e garantia; complemento acima de 2000 caracteres).

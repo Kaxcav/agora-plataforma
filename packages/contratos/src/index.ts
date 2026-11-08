@@ -42,7 +42,7 @@ export interface ParametrosLista {
   ordem?: 'asc' | 'desc';
 }
 
-export type Semaforo = 'vencido' | 'critico' | 'atencao' | 'alerta' | 'regular';
+export type Semaforo = 'vencido' | 'critico' | 'atencao' | 'alerta' | 'planejamento' | 'regular';
 
 /** Proveniência de um conjunto de dados (exibida junto de cada tabela). */
 export interface Proveniencia {
@@ -103,7 +103,10 @@ export type Permissao =
   | 'admin:usuarios'
   | 'auditoria:ler'
   | 'lgpd:revelar'
-  | 'lgpd:relatorio';
+  | 'lgpd:relatorio'
+  | 'notificacoes:ler'
+  | 'notificacoes:enviar'
+  | 'notificacoes:administrar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -185,7 +188,7 @@ export interface Painel {
     pendenciasAbertas: number;
     pendenciasAltaPrioridade: number;
   };
-  vencimentos: { em30: number; em60: number; em90: number; vencidos: number };
+  vencimentos: { em30: number; em60: number; em90: number; vencidos: number; em120: number }; // em120: 91 a 120 dias (RN-31)
   divulgacaoPncpPendente: number; // contratos com prazo do art. 94 vencido sem divulgação
   queimaAcelerada: number; // contratos com sinal 'acelerado' de projetarQueimaSaldo
   proximosVencimentos: InstrumentoVencimento[]; // até 8, ordenados por dias restantes
@@ -1017,3 +1020,134 @@ export interface EditalPublico {
 
 // ───────────────────────── Saúde ─────────────────────────
 // GET /saude/vivo → { situacao: 'ok' }   GET /saude/pronto → { situacao: 'ok' | 'indisponivel', banco: boolean, versao: string }
+
+// ───────────────────────── Notificações (RF-26) e vencimentos 30/60/90/120 (RN-31) ─────────────────────────
+
+export type TipoNotificacao = 'vencimento' | 'reajuste' | 'garantia' | 'pendencia' | 'ocorrencia';
+export type CanalNotificacao = 'email' | 'sei' | 'govbr';
+/** gestor, fiscal e responsável são servidores; a contratada é a parte externa do contrato. */
+export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel';
+export type SituacaoEnvio = 'pendente' | 'enviando' | 'enviado' | 'falhou' | 'suprimido';
+export type FaixaVencimento = 30 | 60 | 90 | 120;
+/** smtp = servidor de e-mail do órgão; simulado = driver de demonstração (nada sai do servidor). */
+export type ModoCanalNotificacao = 'simulado' | 'smtp' | 'desligado';
+
+export interface EnvioNotificacao {
+  id: Id;
+  canal: CanalNotificacao;
+  papel: PapelDestinatario;
+  destinatario: string; // nome do servidor ou razão social da contratada
+  endereco: string | null; // e-mail SEMPRE mascarado (canal email) ou número do processo SEI (canal sei); null no gov.br
+  situacao: SituacaoEnvio;
+  tentativas: number;
+  maxTentativas: number;
+  proximaTentativaEm: InstanteISO | null;
+  ultimaTentativaEm: InstanteISO | null;
+  enviadoEm: InstanteISO | null;
+  modo: ModoCanalNotificacao | null; // driver que processou o envio
+  protocolo: string | null; // Message-ID do e-mail, nº do documento SEI ou id da mensagem gov.br
+  ultimoErro: string | null;
+  motivoSupressao: string | null; // preferência do destinatário ou canal inaplicável
+  baseLegal: string; // LGPD: base legal do tratamento do contato
+  reenvioDe: Id | null;
+  criadoEm: InstanteISO;
+}
+
+export interface ContagemEnvios {
+  total: number;
+  enviados: number;
+  pendentes: number; // pendente ou enviando
+  falhas: number;
+  suprimidos: number;
+}
+
+export interface NotificacaoResumo {
+  id: Id;
+  tipo: TipoNotificacao;
+  origem: 'automatica' | 'manual';
+  instrumento: { tipo: 'ata' | 'contrato'; id: Id; identificador: string };
+  uasg: string;
+  faixa: FaixaVencimento | null;
+  obrigatoria: boolean; // aviso legal obrigatório: ignora a preferência do destinatário
+  assunto: string;
+  criadaEm: InstanteISO;
+  criadaPor: UsuarioResumo | null; // null = varredura automática
+  contagem: ContagemEnvios;
+}
+
+export interface NotificacaoDetalhe extends NotificacaoResumo {
+  corpo: string;
+  fundamento: string;
+  envios: EnvioNotificacao[];
+}
+
+export interface FiltroNotificacoes {
+  tipo?: TipoNotificacao;
+  origem?: 'automatica' | 'manual';
+  situacao?: SituacaoEnvio; // ao menos um envio na situação
+  faixa?: FaixaVencimento;
+  minhas?: boolean; // destinadas ao usuário da sessão
+  instrumentoTipo?: 'ata' | 'contrato';
+  instrumentoId?: Id;
+  busca?: string;
+  pagina?: number;
+  tamanhoPagina?: number;
+}
+// GET /notificacoes?FiltroNotificacoes → Pagina<NotificacaoResumo> (escopo de UASG) ; GET /notificacoes/:id → NotificacaoDetalhe
+
+/** Disparo manual em um clique a partir do contrato ou da ata. */
+export interface EntradaNotificacao {
+  instrumentoTipo: 'ata' | 'contrato';
+  instrumentoId: Id;
+  tipo: TipoNotificacao;
+  destinatarios: ('gestor' | 'fiscal' | 'contratada')[];
+  canais: CanalNotificacao[];
+  dataReferencia?: DataISO | null; // aniversário (reajuste), validade (garantia) ou prazo (pendência e ocorrência)
+  detalhe?: string | null; // motivo da pendência ou relato da ocorrência
+  complemento?: string | null; // até 2000 caracteres
+}
+// POST /notificacoes body EntradaNotificacao → 201 NotificacaoDetalhe (envios já processados uma vez)
+// POST /notificacoes/envios/:id/reenviar → 201 NotificacaoDetalhe (novo envio ligado ao original)
+
+export interface PreferenciaNotificacao {
+  tipo: TipoNotificacao;
+  canal: 'email' | 'govbr';
+  ativo: boolean;
+  padrao: boolean; // true = nunca alterada (vale o padrão: e-mail ligado, gov.br desligado)
+  obrigatorios: string | null; // avisos desse tipo que saem mesmo com a preferência desligada
+}
+export interface EntradaPreferenciasNotificacao {
+  preferencias: { tipo: TipoNotificacao; canal: 'email' | 'govbr'; ativo: boolean }[];
+}
+// GET /notificacoes/preferencias → PreferenciaNotificacao[] ; PUT /notificacoes/preferencias body EntradaPreferenciasNotificacao → PreferenciaNotificacao[]
+
+export interface EstadoCanalNotificacao {
+  canal: CanalNotificacao;
+  modo: ModoCanalNotificacao;
+  descricao: string;
+}
+export interface EstadoNotificacoes {
+  canais: EstadoCanalNotificacao[];
+  agendador: 'api' | 'externo';
+  fila: { pendentes: number; falhas: number; enviadosHoje: number };
+  ultimaVarredura: { data: DataISO; executadaEm: InstanteISO; notificacoesCriadas: number; enviosCriados: number } | null;
+}
+// GET /notificacoes/canais → EstadoNotificacoes
+
+export interface ResultadoVarreduraNotificacoes {
+  data: DataISO;
+  executadaEm: InstanteISO;
+  notificacoesCriadas: number;
+  enviosCriados: number;
+  enviosProcessados: number;
+}
+// POST /notificacoes/varredura → ResultadoVarreduraNotificacoes (idempotente: repetir no mesmo dia não duplica avisos)
+
+export interface VencimentoLinhaTempo extends InstrumentoVencimento {
+  faixa: FaixaVencimento;
+}
+export interface LinhaTempoVencimentos {
+  hoje: DataISO;
+  instrumentos: VencimentoLinhaTempo[]; // contratos e atas que vencem em 0 a 120 dias, por dias restantes
+}
+// GET /vencimentos?uasg → LinhaTempoVencimentos
