@@ -32,7 +32,7 @@ Quem falha não é contratado. A tabela resume cada roteiro em paráfrase.
 |---|---|---|---|
 | PoC-01 | Gerar minuta de ETP e TR a partir de um DFD, com um item de luxo | Pronto: o DFD sinaliza o luxo (RN-01), bloqueia o avanço e gera o ETP e o TR como rascunho | Impedir a geração da minuta enquanto houver item de luxo sem justificativa. Demonstrar com o LLM auto-hospedado ligado |
 | PoC-02 | Importar uma cesta de 8 cotações, com 1 sobrepreço e 1 inexequível; os dois devem sair do cálculo e a nota técnica deve ser gerada | A análise estatística aponta os dois valores e a nota técnica existe | **Importar a cesta por planilha (F15)** e aceitar todos os expurgos sugeridos de uma vez, com uma justificativa |
-| PoC-03 | Quatro licitantes, dois com vínculo societário ou de parentesco; atestado em PDF digitalizado com quantidades a extrair | Sócio em comum já é sinalizado (RIA-06) | **Upload e leitura do atestado por OCR (F13).** Para parentesco, **vínculos informados (F4)**: a Ágora não tem fonte para descobrir parentesco sozinha |
+| PoC-03 | Quatro licitantes, dois com vínculo societário ou de parentesco; atestado em PDF digitalizado com quantidades a extrair | Sócio em comum já é sinalizado (RIA-06) | **Sessão de lances simulada (F30)**, **upload e leitura do atestado por OCR (F13).** Para parentesco, **vínculos informados (F4)**: a Ágora não tem fonte para descobrir parentesco sozinha |
 | PoC-04 | Contratar empresa com sanção vigente; atraso de 15 dias na entrega | O bloqueio da contratação (RN-09) e a dosimetria da multa compensatória (art. 156) existem | **Multa moratória por dia de atraso (F16)**, calculada junto com a compensatória |
 | PoC-05 | Publicar edital e anexos no ambiente de testes (sandbox) da API do PNCP, com protocolo de retorno e link público sem login | A fila de publicação é simulada | **Publicação real no PNCP, começando pelo sandbox (F11)**, e **download público do edital e dos anexos (F17)** |
 
@@ -64,21 +64,26 @@ O tamanho é uma estimativa: **P** = até 2 dias, **M** = 3 a 5 dias, **G** = 1 
 | F12 | Integração real com o SEI e assinatura ICP-Brasil | art. 12, VI | 5 | G | Acesso ao SEI, providenciado pelo MJSP |
 | F19 | Catálogo CATMAT/CATSER: consulta ao catálogo oficial e sugestão do item | art. 19 | 2 | M | Dados abertos do catálogo |
 | F20 | Documentos da fase preparatória que faltam (portaria de designação, declaração orçamentária, despacho de autorização, nota técnica à CONJUR, anexos operacionais) e dotação estruturada | arts. 8º, 18, 53 e 150 | 2 | M | Não |
-| F21 | Políticas do órgão: exigências configuráveis (ex.: sustentabilidade obrigatória) | art. 11, IV, e art. 144 | 3 | P | Não |
+| F21 | Políticas do órgão: sustentabilidade e logística reversa obrigatórias em ETP e TR, ligadas por padrão, e outras exigências configuráveis | art. 5º e art. 11, IV | 2 | P | Não |
 | F22 | Execução contratual como ato: aditivos e prorrogação com travas, recebimentos, garantias, prazos de pagamento, reajuste, repactuação, extinção, fiscal requisitante, desconto de multa, alertas | arts. 92, 96, 104–107, 117, 124–125, 137–141 | 2 | G | Não |
 | F23 | Consulta automática de preços (Painel de Preços e contratações similares; Sinapi/Sicro) e projeções | art. 23 | 3 | M | Dados abertos de compras |
 | F24 | IA ancorada: modelos da AGU, RAG sobre a lei e os manuais, conferência de citações e conferência cruzada entre documentos | art. 19, IV, e art. 25, § 1º | 3 | G | LLM auto-hospedado do órgão |
 | F25 | Sigilo de segurança pública: classificação de sigilo, tarja do art. 13, contratos sigilosos, cofre de anexos, carimbo de tempo da trilha | art. 13 e art. 91, § 1º | 2 | M | Não |
-| F26 | Atos da seleção: recurso com prazos, adjudicação, homologação e divulgação após a homologação | arts. 54, § 3º, 71 e 165 | 2 | M | Não |
+| F26 | Atos da seleção: recurso em fase única (3 dias úteis para razões e contrarrazões), adjudicação, homologação e divulgação após a homologação | arts. 54, § 3º, 71 e 165 | 2 | M | Não |
 | F27 | Notificações externas a fiscais e contratadas | art. 117 | 3 | M | Servidor de e-mail do órgão |
 | F28 | Gestão compartilhada com a sociedade e catálogo de dados abertos | art. 174, § 3º, VI | 3 | M | Não |
-| F29 | Operação: autoescalonamento, teste de carga, medição de disponibilidade, tempo por etapa | — | antes da produção | M | Nuvem do órgão |
+| F29 | Operação: autoescalonamento, desligamento fora do expediente, teste de carga, medição de disponibilidade | — | antes da produção | M | Nuvem do órgão |
+| F30 | Sala de disputa: modos aberto e fechado, isolados ou combinados, desempate e técnica e preço; simulação (treino e PoC-03) e acompanhamento da sessão oficial do Compras.gov.br, com sinal de padrão de lances | arts. 36, 56 e 60 | 1 (PoC-03) | G | Dados da sessão oficial, para o acompanhamento |
+| F31 | Serviços e mensageria: integrações num serviço próprio, RabbitMQ auto-hospedado com novas tentativas, fila de erro e idempotência, manifest Kubernetes por serviço | art. 174, § 2º (barramento do PNCP) | 1 (com F11) | M | Não |
+| F32 | Painel das metas do ETP: tempo de instrução por etapa, erros formais barrados e economia (estimado × contratado, efeito dos expurgos da cesta), contra metas configuradas pelo órgão | art. 18, § 1º, IX | 2 | M | Não |
+| F33 | Paleta da bandeira com papéis acessíveis: azul-escuro no cabeçalho, amarelo só sobre ele, vermelho nos alertas, verde em marcadores e, em texto, no tom AA do gov.br | — (RNF-01) | 2 | P | Não |
+| F34 | Selos de desempenho Diamante, Ouro, Prata, Em observação e Crítico; "Impedido" só por sanção vigente | arts. 88, 156 e 158 | 2 | P | Não |
 
-As funções F18 a F29 vieram da auditoria da conversa do cliente; a origem de cada uma está em `docs/RASTREABILIDADE-REQUISITOS.md`.
+As funções F18 a F29 vieram da auditoria da conversa do cliente, e as F30 a F34 dos pontos confirmados nela em 8/11. A origem de cada uma está em `docs/RASTREABILIDADE-REQUISITOS.md`.
 
 **Ordem:**
 
-1. **Fase 1:** prova de conceito, cerca de 3 semanas.
+1. **Fase 1:** prova de conceito, cerca de 5 semanas com a sala de disputa (F30) e a mensageria (F31).
 2. **Fase 2:** regras sobre dados que já existem, cerca de 2 semanas.
 3. **Fase 3:** dados novos da execução, cerca de 3 semanas.
 4. **Fase 4:** rotas de contratação e Sicx, cerca de 2 semanas.
@@ -324,8 +329,8 @@ Na Fase 1 há um critério a mais: **um teste ponta a ponta por roteiro da prova
 |---|---|---|
 | IA desclassifica licitante ("Sentinela") | Desclassificação é ato do agente, com motivação | Sinal com evidências, decisão humana |
 | IA insere cláusulas no TR sozinha | IA não decide (regra 5 do projeto) | Sugestão que o agente aceita ou não (F6) |
-| Economia percentual "calculada pela IA" | Número sem base verificável | Quantidades somadas e preços da cesta (F5) |
-| Conluio por IP e lances sincronizados | Dados da plataforma de disputa, que a Ágora não recebe | Sócio em comum, vínculos informados e art. 160 (F4) |
+| Economia percentual "calculada pela IA" | Número sem base verificável | Economia medida (estimado × contratado) no painel de metas (F32), e quantidades e preços da cesta (F5) |
+| Conluio por IP e lances sincronizados | A Ágora não recebe o IP dos licitantes | Sinal de padrão de lances na sala de disputa (F30), sócio em comum, vínculos informados e art. 160 (F4), sempre como sinal |
 | Parentesco descoberto por cruzamento de dados | Sem fonte lícita (LGPD) | Vínculos informados por fonte lícita e declaração dos agentes (F4 e F14) |
 | Assinatura ICP-Brasil dentro da aplicação | Exigiria componente de terceiros no navegador | Assinatura no SEI, refletida na Ágora (F12) |
 | Fontes, ícones e estilos por CDN | Viola a regra de soberania | Tudo servido pela própria Ágora |
