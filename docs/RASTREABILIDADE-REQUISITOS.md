@@ -17,7 +17,7 @@ Data: 8 de novembro de 2026.
 |---|---|
 | ✅ Implementado | Existe, com evidência no código |
 | 🟡 Parcial | Existe em parte; a coluna diz o que falta |
-| 📋 Planejado | Não existe, mas está no plano (F1 a F17) |
+| 📋 Planejado | Não existe, mas está no plano (F1 a F34) |
 | ➕ Nova função | Não existe nem estava no plano; entra no plano como F18 a F34 (seção 12) |
 | ⛔ Contrário às regras | Como pedido, viola uma regra do projeto; a Ágora oferece alternativa |
 | 📄 Contratual | Obrigação da contratação ou da proposta comercial, não do software |
@@ -37,9 +37,11 @@ Data: 8 de novembro de 2026.
 **Consolidação das entregas das frentes de trabalho:**
 
 - **Prova de conceito (Fase 1):** todos os 5 roteiros (PoC-01 a PoC-05) estão implementados com testes, com a ressalva de que a chamada real a ambientes de produção depende das credenciais do órgão.
-- **Funções prontas entregues:** F1, F2, F3, F4, F6, F7, F8, F11 (PNCP e DOU), F12, F13, F14, F15, F16, F17, F18, F20, F21, F23, F24, F25, F26, F27, F28, F29, F30, F31, F32, F33 e F34.
-- **Execução contratual (F22 🟡):** parte 1 pronta (termos aditivos com trava do art. 125, prorrogação com limites dos arts. 105 a 114, apostilamento de reajuste e repactuação, reequilíbrio econômico-financeiro e processo de extinção com ampla defesa); parte 2 em andamento (Frente L: fiscalização, recebimentos, garantias e pagamentos).
-- **Frentes em andamento:** Frente L (F22 parte 2), Frente O (F5, F10 e F19: IRP, PCA e CATMAT/CATSER) e Frente S (F9: rotas de contratação, dispensa eletrônica, Sicx e cartão de pagamento).
+- **Funções prontas entregues:** F1 a F34, todas. Entraram nesta rodada F5, F9, F10, F19 e F22 (parte 2).
+- **Execução contratual (F22 ✅):** completa. Parte 1: termos aditivos com trava do art. 125, prorrogação com limites dos arts. 105 a 114, apostilamento de reajuste e repactuação, reequilíbrio econômico-financeiro e processo de extinção com ampla defesa. Parte 2 (Frente L): designação da fiscalização e livro de ocorrências (RF-28), termos de recebimento provisório e definitivo com PDF (RN-34), garantias, desconto de multa (RN-35), prazos de pagamento com atualização monetária e alteração justificada da ordem cronológica, ordem de serviço e reservas legais de cargos.
+- **Planejamento (Frente O: F5, F10 e F19):** plano de contratações anual consolidado, aprovado e publicado no PNCP pela fila (RF-31), conferência do DFD com o PCA publicado, sugestão do código CATMAT/CATSER com escolha do agente (RIA-13) e intenção de registro de preços aberta por 8 dias úteis (RN-38).
+- **Rotas de contratação (Frente S: F9):** licitação, dispensa eletrônica com aviso de 3 dias úteis (RN-41), inexigibilidade, adesão a ata, Sicx com vitrine simulada (RN-42) e cartão de pagamento com extrato (RF-34).
+- **Frentes em andamento:** nenhuma.
 
 **Situação da prova de conceito:**
 
@@ -70,14 +72,14 @@ Data: 8 de novembro de 2026.
 | Requisito | Linhas | Status | Evidência ou o que falta |
 |---|---|---|---|
 | Formulário do DFD | 40, 1775 | ✅ | `PUT /processos/:id/dfd`, `modeloDfd` |
-| DFD ligado ao catálogo CATMAT/CATSER, com sugestão do item | 44, 47, 1445, 1775 | 📋 F19 | Em andamento na Frente O |
-| DFD conferido com o PCA publicado | 40, 643, 1775 | 📋 F10 | Em andamento na Frente O |
-| PCA consolidado a partir dos DFDs e publicado | 1410 | 📋 F10 | Em andamento na Frente O |
+| DFD ligado ao catálogo CATMAT/CATSER, com sugestão do item | 44, 47, 1445, 1775 | ✅ | F19: RIA-13 sugestão determinística do código, com escolha do agente e proveniência; `GET /catalogo/sugestoes`, `PUT /processos/:id/dfd/itens/:indice/catalogo` |
+| DFD conferido com o PCA publicado | 40, 643, 1775 | ✅ | F10: RF-31 `conferirDfdComPca`, vínculo com o item do PCA e consulta ao PNCP pelo conector; `GET` e `PUT /processos/:id/pca` |
+| PCA consolidado a partir dos DFDs e publicado | 1410 | ✅ | F10: RF-31 `consolidarPca`, aprovação pela autoridade (quem consolidou não aprova) e publicação pela fila (`pncp.pca`); `/pca/*` |
 | Adequação orçamentária (dotação, LOA) | 44, 817–827, 2284 | ✅ | F20: dotação estruturada (RN-39), declaração orçamentária e checklist (RF-32); rotas GET/PUT `/processos/:id/dotacao` |
 | Lições aprendidas de contratos anteriores no DFD | 1120, 1776 | ✅ | F6: RIA-12, banco de lições sugeridas no DFD, ETP e TR; rotas `/processos/:id/licoes-aprendidas` |
 | Bloqueio de artigo de luxo (art. 20) | 43, 1778 | ✅ | RN-01 |
 | Justificativa para não usar o catálogo de padronização (art. 19, § 2º) | 1779 | ✅ | RN-02 |
-| Consolidação de demandas entre órgãos (IRP) | 1780 | 📋 F5 | Em andamento na Frente O |
+| Consolidação de demandas entre órgãos (IRP) | 1780 | ✅ | F5: RIA-01 sinal de registro compartilhado e RN-38 IRP aberta por pelo menos 8 dias úteis, com adesão e consolidação das quantidades; `/irps/*` |
 | Designação da equipe, com segregação de funções | 1785–1787 | ✅ | RN-03 `verificarSegregacao` |
 | Vínculo efetivo e capacitação dos agentes (arts. 7º e 8º) | 1785 | ✅ | F14: RN-28 verificação de vínculo efetivo e capacitação na equipe; `PUT /processos/:id/equipe` |
 | Declaração de ausência de parentesco dos designados | 1785 | ✅ | F14: RN-28 declaração formal de inexistência de impedimento; `POST /impedimentos/declaracoes` |
@@ -136,9 +138,9 @@ Data: 8 de novembro de 2026.
 | Requisito | Linhas | Status | Evidência ou o que falta |
 |---|---|---|---|
 | Sala de disputa com lances ao vivo (modos aberto e fechado, diálogo competitivo) | 58, 63, 658, 687, 1487–1489, 1817 | ✅ | F30: RF-22, RN-26 simulação com rito completo e acompanhamento Compras.gov.br; `/processos/:id/sessoes-disputa` |
-| Dispensa eletrônica com aviso de 3 dias úteis | 58, 702, 1817 | 🟡 | Em andamento na Frente S (F9) |
-| Sicx (Lei 15.266/2025) | 58, 1817 | 📋 F9 | Em andamento na Frente S |
-| Cartão de pagamento | 1496 | 📋 F9 | Em andamento na Frente S |
+| Dispensa eletrônica com aviso de 3 dias úteis | 58, 702, 1817 | ✅ | F9: RN-41 aviso publicado no PNCP pela fila, propostas adicionais, julgamento, autorização da autoridade e fracionamento por ramo; `/processos/:id/dispensa/*` |
+| Sicx (Lei 15.266/2025) | 58, 1817 | ✅ | F9: RN-42 ranqueamento, segregação, recebimento e pagamento em até 30 dias (Decreto 13.106/2026); `/sicx/*`. A vitrine é simulada até a API do Sicx existir |
+| Cartão de pagamento | 1496 | ✅ | F9: RN-41 compras com cartão dentro do limite, extrato mensal e sinal de fracionamento; `/cartao-pagamento/*` |
 | Desempate do art. 60 e LC 123 | 60, 880, 1820 | ✅ | RN-08 `aplicarDesempate` |
 | Desempenho anterior vindo do índice, não digitado | 1117, 1820 | ✅ | F3: RN-37 nota consolidada do registro cadastral para desempate do art. 60 e pontuação técnica |
 | Sinal de sócio em comum entre licitantes e com agentes | 63, 658 | ✅ | RIA-06 e RN-03 |
@@ -156,19 +158,19 @@ Data: 8 de novembro de 2026.
 | Faixa de 120 dias no semáforo | 1106 | ✅ | F27: RN-31 faixa de planejamento e alertas da central de notificações; `classificarVigencia` |
 | Bloqueio antes da assinatura (CEIS/CNEP e regularidade) | 69, 688, 1829 | ✅ | F18: RF-20 consulta real via API do Portal da Transparência e checklist completo de regularidade; `POST /fornecedores/:id/regularidade/consultar` |
 | **Aditivos e prorrogação como atos registrados, com travas** (art. 125, regularidade, risco da matriz) | 586, 638, 1358, 1829 | ✅ | F22 (parte 1): RN-32, RN-33, RF-27 atos formais com travas do art. 125, regularidade e publicação; `POST /contratos/:id/alteracoes` |
-| Recebimento provisório e definitivo (art. 140), com prazos | 67, 982, 1532 | 🟡 | Em andamento na Frente L (F22 parte 2) |
-| Garantias: alerta de vencimento pelo servidor, liberação, execução e renovação | 67, 1107 | 🟡 | Em andamento na Frente L (F22 parte 2) |
-| Prazos de liquidação e pagamento | 732, 958 | 🟡 | Em andamento na Frente L (F22 parte 2) |
-| Reajuste (índice e cálculo), repactuação e reequilíbrio, extinção, período antes da ordem de serviço | 942–1001, 1058 | ✅ | F22 (parte 1): RF-27 apostilamentos de reajuste/repactuação e processo de extinção com ampla defesa; `POST /contratos/:id/reajustes`, `/extincao` |
+| Recebimento provisório e definitivo (art. 140), com prazos | 67, 982, 1532 | ✅ | F22 (parte 2): RN-34 termos em PDF com hash, definitivo por quem não lavrou o provisório e atesto da nota no mesmo ato; `POST /contratos/:id/recebimentos`, `/recebimentos/:id/termos` |
+| Garantias: alerta de vencimento pelo servidor, liberação, execução e renovação | 67, 1107 | ✅ | F22 (parte 2): RN-35 exigência, apresentação, renovação, liberação, execução e alerta de 30 dias pela central de notificações; `/garantias/*` |
+| Prazos de liquidação e pagamento | 732, 958 | ✅ | F22 (parte 2): RN-34 e RF-28 tela Prazos de pagamento, atualização monetária estimada e alteração justificada da ordem cronológica; `GET /pagamentos/prazos` |
+| Reajuste (índice e cálculo), repactuação e reequilíbrio, extinção, período antes da ordem de serviço | 942–1001, 1058 | ✅ | F22 (parte 1): RF-27 apostilamentos de reajuste/repactuação e processo de extinção com ampla defesa; `POST /contratos/:id/reajustes`, `/extincao`. F22 (parte 2): período antecedente à ordem de serviço (art. 92, § 2º); `POST /contratos/:id/ordens-servico` |
 | Alerta de limite de prorrogação e de nova licitação | 1111 | ✅ | F22 (parte 1): RN-33 e F27: RN-31 alertas aos 120 dias indicando vigência máxima do contrato |
-| Papel de fiscal requisitante | 715–725 | 🟡 | Em andamento na Frente L (F22 parte 2) |
+| Papel de fiscal requisitante | 715–725 | ✅ | F22 (parte 2): RF-28 designação de gestor, fiscais técnico, administrativo e requisitante e comissão de recebimento, com segregação; `POST /contratos/:id/designacoes` |
 | IMR, medição mensal e conferência da nota fiscal | 734–790, 1140 | ✅ | F7: RN-36, RF-29 indicadores, medições mensais, glosa determinística e conferência de notas fiscais; `/contratos/:id/imr` |
-| Desconto da multa na garantia ou na fatura (com confirmação humana) | 1129 | 🟡 | Em andamento na Frente L (F22 parte 2) |
+| Desconto da multa na garantia ou na fatura (com confirmação humana) | 1129 | ✅ | F22 (parte 2): RN-35 plano de desconto (pagamentos devidos, depois garantia) por decisão registrada da autoridade, art. 156, § 8º; `POST /sancoes/:id/descontos`. Equivalente lícito, seção 14 |
 | Manter a habilitação durante a execução (antes do atesto e do pagamento) | 1041 | ✅ | F18: RN-23 recheque automático de CEIS/CNEP e certidões antes do atesto e do pagamento; `POST /pagamentos/:id/regularidade` |
 | Divulgação de aditivos no PNCP | 78 | ✅ | F22 (parte 1): RN-32 e F11: RF-19 envio de aditivos pela fila de integrações |
 | Notificações externas (e-mail, SEI) a fiscais e contratadas | 1108, 1532 | ✅ | F27: RF-26 central de notificações com envio por SMTP institucional, SEI e gov.br; `/notificacoes` |
 | Gestão compartilhada com a sociedade e relatório final (art. 174, § 3º, VI) | 1148, 1589, 1825 | ✅ | F28: RF-37 manifestações da sociedade moderadas, respostas e relatório final; `/sociedade/*` |
-| Percentuais do Decreto 11.430/2023 na execução | 1042 | 🟡 | Em andamento na Frente L (F22 parte 2) |
+| Percentuais do Decreto 11.430/2023 na execução | 1042 | ✅ | F22 (parte 2): RF-28 verificação mensal das reservas legais de cargos, só com quantidades; `POST /contratos/:id/reservas-cargos` |
 
 ## 9. Fornecedores, sanções e índice de desempenho
 
@@ -277,6 +279,9 @@ Para atender aos objetivos do cliente sem violar a legislação (Lei 14.133/2021
 16. **Frente T (Integração SEI e DOU, F12, F11 DOU):** instrução de processo no SEI via SeiWS oficial com assinatura refletida (o servidor assina no próprio SEI com certificado ICP-Brasil, sem instalar applets no navegador da Ágora); geração de matérias DOU no padrão da Seção 3 e protocolo no INCom.
 17. **Frente U (Sociedade e dados abertos, F28):** participação cidadã com autenticação gov.br, moderação prévia com justificativa, descarte de metadados de mídia (EXIF) e tarjamento de nomes (iniciais), com catálogo público de dados abertos em formato aberto sem exposição de dados pessoais.
 18. **Frente V (Operação e metas, F29, F32):** medição neutra de disponibilidade (IMR-01) com sonda isolada que desconta janelas de manutenção oficiais do PNCP, e painel de metas do ETP aferindo prazos, erros formais e economia real sem creditar economias fictícias a "algoritmos de IA".
+19. **Frente L (Execução contratual, F22 parte 2):** o desconto de multa na garantia ou na fatura não é automático: depende de decisão registrada da autoridade competente (art. 156, § 8º), e a Ágora só calcula o plano, na ordem da lei (pagamentos devidos, garantia e cobrança judicial). A Ágora não paga nem liquida, que é do SIAFI: o termo definitivo atesta a nota e os prazos e a atualização monetária são calculados para acompanhamento. As reservas de cargos (Decretos 11.430/2023 e 9.450/2018) guardam só quantidades e a comprovação conferida pelo fiscal, nunca nomes, porque a condição de vítima de violência doméstica ou de egresso é dado pessoal sensível (LGPD). O termo é gerado pela Ágora, com hash, e a assinatura formal fica no SEI.
+20. **Frente O (Planejamento, F5, F10, F19):** a "vinculação automática ao catálogo" e a "IA classificadora" viram sugestão determinística, por semelhança de texto, que só entra no DFD por escolha do agente, registrada na trilha. "Agrupar demandas entre órgãos" vira sinal mais intenção de registro de preços, o procedimento legal do art. 86, sem percentual de economia inventado. A "publicação direta no PNCP" do PCA sai do servidor, pela fila, depois da aprovação da autoridade (Decreto 10.947/2022, art. 12). Quem consolidou o plano não o aprova.
+21. **Frente S (Rotas de contratação, F9):** a "publicação automática do aviso" da dispensa vira publicação por ato do agente com o perfil de publicação, pela fila, com contagem automática do prazo. O fracionamento é sinal, não decisão: acima do limite no mesmo ramo, a dispensa exige a análise do agente por escrito. A integração com o Sicx é uma vitrine simulada até a plataforma e a API existirem, e as regras do Decreto 13.106/2026 já valem. O extrato do cartão de pagamento fica registrado na Ágora, e a divulgação no PNCP vai para a fila de erro no modo online, porque o PNCP não tem o serviço.
 
 ## 15. O que depende do órgão
 
@@ -290,6 +295,10 @@ Para funcionamento pleno em ambiente de produção fora do modo de demonstraçã
 6. **Autoridade de Carimbo do Tempo (ACT):** endereço do servidor de carimbo de tempo no padrão RFC 3161 credenciado na ICP-Brasil (ou autoridade interna do órgão) para ancoragem criptográfica periódica da cadeia de auditoria.
 7. **Espelho ou conector do QSA da Receita Federal:** carga periódica ou conector aos dados abertos do Cadastro Nacional de Pessoas Jurídicas e Quadro de Sócios e Administradores (QSA) para verificação societária.
 8. **Cluster Kubernetes e infraestrutura:** ambiente de nuvem governamental com cluster Kubernetes para implantação dos serviços (API, trabalhador assíncrono, worker de OCR, banco de dados PostgreSQL e RabbitMQ).
+9. **Credenciamento do PNCP para o PCA e a contratação direta:** o CNPJ do órgão entre os entes autorizados, as UASGs cadastradas como unidades e os códigos de amparo legal dos arts. 72, 74 e 75, que o PNCP só serve pelo portal (pncp.gov.br/app/entidades-dominio). Sem isso, o envio real do PCA e do aviso de dispensa não funciona, e a tarefa vai para a fila de erro.
+10. **Plataforma e API do Sicx:** a disponibilização pelo órgão central e as normas complementares da SGI (credenciamento, critérios de ranqueamento, reputação). A vitrine da Ágora é simulada até lá.
+11. **Liquidação e pagamento pelo SIAFI:** a data da liquidação das notas (`pagamentos.liquidado_em`) vem da integração. Na demonstração, vem da carga sintética.
+12. **Conferência humana do texto legal:** o texto oficial do Planalto bloqueou a leitura automática. A conferência final dos arts. 96, § 1º, IV, e 99 (garantias), do art. 75, §§ 3º e 4º, e do art. 86, §§ 4º, 5º e 8º, e do art. 9º do Decreto 11.462/2023 é do órgão.
 
 ## 16. Pontos para confirmar com o usuário
 
@@ -299,3 +308,10 @@ Com base nas entregas das frentes de trabalho, os seguintes pontos negociais e r
 2. **Prazo de defesa na extinção contratual (Frente K):** confirmar o prazo regulamentar do órgão concedido ao contratado para apresentação de defesa prévia na hipótese de rescisão/extinção unilateral do contrato com base no art. 137 (5 dias úteis ou 15 dias úteis).
 3. **Divulgação da nota técnica de preços após a homologação (Frentes R e A):** confirmar se a nota técnica com a pesquisa de preços e memórias de cálculo de estimativa deve ser disponibilizada publicamente sem restrições logo após o ato de homologação, ou se processos da área de segurança pública devem reter a nota técnica sob sigilo parcial por conter informações estratégicas ou táticas.
 4. **Peso do IMR no índice de desempenho (Frentes M e N):** confirmar a ponderação percentual atribuída ao cumprimento das metas do Instrumento de Medição de Resultado (IMR) na composição da nota final do Índice de Desempenho Contratual (IDC) do fornecedor.
+5. **Reservas legais de cargos (Frente L):** confirmar o arredondamento para cima das vagas e o percentual efetivo do Decreto 11.430/2023 (8% com 25 colaboradores ou mais, e o percentual menor admitido pelo Decreto 12.516/2025) e das faixas do Decreto 9.450/2018 (3% a 6%). Os valores foram conferidos em fontes secundárias, e o percentual efetivo vem do edital.
+6. **Livro de ocorrências e ocorrências da execução (Frentes L e N):** confirmar a unificação dos dois registros de ocorrências (`contratos_ocorrencias`, com notificação à contratada, e `ocorrencias_execucao`, base das lições aprendidas) e a ligação dos recebimentos ao desempenho (`derivadosDoPeriodo`).
+7. **Publicação mensal da ordem cronológica (Frente L):** confirmar se a página de transparência deve publicar a ordem cronológica e as justificativas (art. 141, § 3º). Os dados estão registrados, mas a página pública não foi alterada.
+8. **Esfera da ata e agências executivas (Frente S):** o cadastro de atas não guarda a esfera do gerenciador, e todas são tratadas como federais. Confirmar se haverá atas de outras esferas (art. 86, § 8º) e se alguma UASG é agência executiva (limite em dobro, art. 75, § 2º).
+9. **Limites da dispensa em 2027 (Frente S):** o decreto de atualização ainda não foi publicado. Ao sair, a linha entra em `LIMITES_DISPENSA`.
+10. **Alteração do PCA publicado (Frente O):** confirmar se o órgão quer a retificação e a exclusão de itens (Decreto 10.947/2022, arts. 15 e 16). Hoje a demanda fora do plano só gera o sinal de revisão.
+11. **Dispensa da IRP (Frente O):** a dispensa quando o gerenciador é o único contratante (Decreto 11.462/2023, art. 9º, § 1º) fica a critério do gerenciador. Confirmar se a Ágora deve avisar.

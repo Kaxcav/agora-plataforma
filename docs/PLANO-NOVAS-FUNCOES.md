@@ -54,18 +54,18 @@ O tamanho é uma estimativa: **P** = até 2 dias, **M** = 3 a 5 dias, **G** = 1 
 | F1 ✅ | Prova de conceito e amostra do primeiro colocado (RN-20) | art. 17, § 3º | 2 | P | Não |
 | F2 ✅ | Controle externo: cautelares, prazo de resposta e suspensão (RN-30, RF-24) | art. 171, §§ 1º e 2º | 2 | M | Não |
 | F3 ✅ | Avaliação de desempenho do contratado e uso na técnica e preço (RN-37, RF-30) | arts. 36, 37, III, e 88, §§ 3º e 4º | 2 e 3 | M | Envio ao cadastro de atesto: regulamento |
-| F5 | Sugestão de registro de preços compartilhado e prazo da IRP (em andamento) | art. 86 | 2 | P | Não |
+| F5 ✅ | Sinal de registro de preços compartilhado e intenção de registro de preços aberta por 8 dias úteis (RN-38, RF-31, RIA-01) | art. 86 | 2 | P | Divulgação no SRP digital do Compras.gov.br, sem API |
 | F8 ✅ | Painel das 3 linhas de defesa (RF-23, RN-29) | art. 169 | 2 | P | Não |
 | F14 ✅ | Declarações de impedimento dos agentes designados (RN-28) | art. 7º, III, e art. 9º | 2 | P | Não |
 | F6 ✅ | Lições aprendidas da execução, mostradas em novos DFDs (RIA-12) | arts. 11, 18 e 117 | 3 | M | Não |
 | F7 ✅ | Instrumento de medição de resultado (IMR) e conferência da nota fiscal (RN-36, RF-29) | art. 6º, XXIII, "g"; arts. 117 e 140 | 3 | G | Não |
-| F9 | Rotas de contratação e Sicx (comércio eletrônico) (em andamento) | art. 79, IV (Lei 15.266/2025) | 4 | G | Regulamento e API do Sicx |
-| F10 | Conferência do DFD com o PCA publicado (em andamento) | art. 12, VII | 5 | M | API de PCA do PNCP |
+| F9 ✅ | Rotas de contratação, dispensa eletrônica, Sicx (comércio eletrônico) e cartão de pagamento (RN-41, RN-42, RF-34) | arts. 72, 74, 75, 79, IV, e 86 (Lei 15.266/2025; Decreto 13.106/2026) | 4 | G | Plataforma e API do Sicx (a vitrine é simulada) |
+| F10 ✅ | Plano de contratações anual: consolidação, publicação no PNCP e conferência do DFD com o PCA publicado (RF-31) | art. 12, VII, e Decreto 10.947/2022 | 5 | M | Credenciais do PNCP, para o envio real |
 | F12 ✅ | Integração real com o SEI e assinatura ICP-Brasil (RF-35) | art. 12, VI | 5 | G | Acesso ao SEI, providenciado pelo MJSP |
-| F19 | Catálogo CATMAT/CATSER: consulta ao catálogo oficial e sugestão do item (em andamento) | art. 19 | 2 | M | Dados abertos do catálogo |
+| F19 ✅ | Catálogo CATMAT/CATSER: consulta ao catálogo oficial e sugestão do item (RIA-13) | art. 19 | 2 | M | Dados abertos do catálogo |
 | F20 ✅ | Documentos da fase preparatória e dotação orçamentária estruturada (RN-39, RF-32) | arts. 8º, 18, 53 e 150 | 2 | M | Não |
 | F21 ✅ | Políticas do órgão: sustentabilidade e logística reversa obrigatórias em ETP e TR (RN-21) | art. 5º e art. 11, IV | 2 | P | Não |
-| F22 🟡 | Execução contratual como ato: parte 1 pronta (aditivos, prorrogação, reajuste, repactuação, reequilíbrio e extinção — RN-32, RN-33, RF-27); parte 2 em andamento (fiscalização, recebimentos, garantias, pagamentos) | arts. 92, 96, 104–107, 117, 124–125, 137–141 | 2 | G | Não |
+| F22 ✅ | Execução contratual como ato, completa: parte 1 (aditivos, prorrogação, reajuste, repactuação, reequilíbrio e extinção — RN-32, RN-33, RF-27) e parte 2 (fiscalização, recebimentos, garantias, prazos de pagamento — RN-34, RN-35, RF-28) | arts. 92, 96–102, 104–107, 117, 124–125, 137–141 | 2 | G | Liquidação e pagamento no SIAFI |
 | F23 ✅ | Consulta automática de preços e projeções de câmbio e inflação (RF-25, RIA-11) | art. 23 | 3 | M | Dados abertos de compras |
 | F24 ✅ | IA ancorada: modelos da AGU, RAG soberano, conferência de citações e conferência cruzada (RIA-14, RIA-15, RNF-08) | art. 19, IV, e art. 25, § 1º | 3 | G | LLM auto-hospedado do órgão |
 | F25 ✅ | Sigilo de segurança pública: classificação, contratos sigilosos, cofre e carimbo de tempo (RN-40, RF-33, RNF-09) | art. 13 e art. 91, § 1º | 2 | M | Não |
@@ -91,68 +91,70 @@ As funções F18 a F29 vieram da auditoria da conversa do cliente, e as F30 a F3
 
 ## 3. Novas regras no catálogo
 
-Os códigos são atribuídos **na ordem de implementação**, para o Caderno de regras não ter lacunas. Os já atribuídos estão marcados com "✓". Os demais seguem a numeração, na ordem em que forem entregues.
+Os códigos foram atribuídos **na ordem de implementação**, e o Caderno de regras não tem lacunas. A tabela traz todos os códigos a partir de RN-19, RF-16, RIA-08 e RNF-07, com o título do catálogo (`packages/dominio/src/catalogo-regras.ts`) e a função que o originou.
 
 | Código | Regra | Função |
 |---|---|---|
-| RN-19 ✓ | Multa moratória = percentual diário do contrato × dias de atraso sobre a parcela, até o limite do contrato | F16 |
-| RN-20 | Prova de conceito ou amostra do licitante provisoriamente vencedor em sessão pública gravada | F1 |
-| RN-21 | Critérios de sustentabilidade ambiental e logística reversa obrigatórios no ETP e no TR | F21 |
-| RN-22 | Fase recursal única (3 dias úteis para razões e contrarrazões) e prazos dos atos da seleção | F26 |
-| RN-23 | Recheque da regularidade fiscal e trabalhista e CEIS/CNEP antes do atesto e do pagamento | F18 |
-| RN-24 | Registro da sanção aplicada no CEIS/CNEP em até 15 dias úteis com controle de prazos | F18 |
-| RN-25 | Parcelas de maior relevância (≥ 4%), quantitativos mínimos (≤ 50%) e balanço de até 2 exercícios | F13 |
-| RN-26 | Rito da sessão de disputa: modos aberto e fechado, intervalos mínimos, prorrogação e julgamento | F30 |
-| RN-27 | Extensão dos efeitos da sanção a administradores e sucessores com contraditório e análise jurídica | F4 |
-| RN-28 | Declaração de inexistência de impedimento, vínculo efetivo e capacitação dos agentes designados | F14 |
-| RN-29 | Revisão trimestral obrigatória da matriz de riscos do contrato pelas linhas de defesa | F8 |
-| RN-30 | Cautelar suspensiva do controle externo impede avançar etapa e contratar; prazo de resposta de 10 dias úteis | F2 |
-| RN-31 | Semáforo de vigência de 30, 60, 90 e 120 dias com avisos automáticos e linha do tempo | F27 |
-| RN-32 | Termo aditivo como ato registrado, com controle dos limites do art. 125 (25% e 50%) e parecer prévio | F22 (parte 1) |
-| RN-33 | Prorrogação com verificação dos limites legais de vigência (arts. 105 a 114) e regularidade | F22 (parte 1) |
-| RN-34 | Recebimento provisório e definitivo com prazos legais e comissão de recebimento (em andamento) | F22 (parte 2) |
-| RN-35 | Garantia da execução contratual: modalidades, prazos de renovação, execução e liberação (em andamento) | F22 (parte 2) |
-| RN-36 | Conferência da nota fiscal com valor devido e ajuste do IMR antes do atesto; divergência exige justificativa | F7 |
-| RN-37 | Avaliação de desempenho do contratado por indicadores objetivos e registro cadastral de atestos | F3 |
-| RN-38 | Intenção de registro de preços aberta por pelo menos 8 dias úteis (em andamento) | F5 |
-| RN-39 | Dotação orçamentária declarada e aprovada pela autoridade competente antes do edital | F20 |
-| RN-40 | Sigilo de segurança pública: classificação formal (LAI), credenciamento, cofre e orçamento sigiloso | F25 |
-| RF-16 ✓ | Importação da cesta de preços por planilha, com prévia validada no servidor | F15 |
-| RF-17 ✓ | Editais publicados com inteiro teor em PDF sem cadastro nem login | F17 |
-| RF-18 | Adjudicação, homologação e divulgação dos documentos preparatórios após a homologação | F26 |
-| RF-19 | Publicação no PNCP de edital, anexos e contratos pela fila de integrações com idempotência | F11 |
-| RF-20 | Consulta ao CEIS e ao CNEP via API do Portal da Transparência e checklist de regularidade | F18 |
-| RF-21 | Armazenamento seguro de documentos do processo e habilitação fora do banco com hash SHA-256 | F13 |
-| RF-22 | Sala de disputa: simulação de lances (treino e PoC) e acompanhamento da sessão oficial Compras.gov.br | F30 |
-| RF-23 | Painel segregado das três linhas de defesa (1ª gestão, 2ª controle interno/jurídico, 3ª CGU/TCU) | F8 |
-| RF-24 | Controle externo: registro de medidas de controle, cautelares, prazos de resposta e recursos | F2 |
-| RF-25 | Consulta automática e combinada de preços em fontes oficiais e bases públicas | F23 |
-| RF-26 | Central de notificações automatizadas com canais institucionais, fila durável e preferências | F27 |
-| RF-27 | Alterações do contrato: termos aditivos, apostilas de reajuste e repactuação, reequilíbrio e extinção | F22 (parte 1) |
-| RF-28 | Fiscalização, recebimentos, garantias e pagamentos da execução contratual (em andamento) | F22 (parte 2) |
-| RF-29 | Instrumento de medição de resultado (IMR), indicadores com faixas de glosa e medições periódicas | F7 |
-| RF-30 | Avaliação de desempenho do contratado, emissão de documento em PDF e certificado com autenticidade | F3 |
-| RF-31 | Rotas de contratação, dispensa eletrônica e integração Sicx (em andamento) | F9 |
-| RF-32 | Documentos complementares da fase preparatória e checklist de completude do processo | F20 |
-| RF-33 | Sigilo do processo: classificação, credenciamento, cofre de anexos cifrado e registro de acessos | F25 |
-| RF-34 | Catálogo unificado CATMAT/CATSER e intenção de registro de preços (em andamento) | F5, F10 e F19 |
-| RF-35 | Integração com o SEI (SeiWS), envio de documentos da árvore e consulta de assinaturas ICP-Brasil | F12 |
-| RF-36 | Publicação de matérias no Diário Oficial da União (Seção 3) e registro de jornal | F11 (DOU) |
-| RF-37 | Gestão compartilhada com a sociedade: manifestações moderadas, respostas e relatório final | F28 |
-| RF-38 | Catálogo de dados abertos em CSV e JSON com dicionário de dados e sem dados pessoais | F28 |
-| RF-39 | Painel das metas do ETP: tempo de instrução, erros formais mitigados e economia real | F32 |
-| RIA-08 | Leitura assistida de atestados de capacidade técnica por OCR em contêiner isolado | F13 |
-| RIA-09 | Sinal de padrão de lances suspeito na sessão de disputa com evidências para o pregoeiro | F30 |
-| RIA-10 | Sinal de vínculos societários (QSA do CNPJ), vínculos declarados e possível sucessão empresarial | F4 |
-| RIA-11 | Projeção de variação cambial e inflacionária do valor estimado com índices oficiais | F23 |
-| RIA-12 | Lições aprendidas da execução sugeridas como cláusulas informativas no DFD, ETP e TR | F6 |
-| RIA-13 | Sugestão de item do catálogo CATMAT/CATSER e alerta de IRP aberta (em andamento) | F5 e F19 |
-| RIA-14 | Conferência de citações legais e precisão normativa sobre a base compilada (IMR-02) | F24 |
-| RIA-15 | Conferência cruzada entre documentos preparatórios e auditor contínuo para 2ª linha | F24 |
-| RNF-07 | Fila de integrações assíncrona com RabbitMQ, novas tentativas com backoff e fila de erro | F31 |
-| RNF-08 | Base normativa soberana da Lei 14.133/2021 no repositório e busca por BM25 sem API externa | F24 |
-| RNF-09 | Cofre de anexos sigilosos cifrado com AES-256-GCM e carimbo de tempo RFC 3161 na trilha | F25 |
-| RNF-10 | Operação sustentável (TI verde), desligamento fora do expediente e medição de disponibilidade (IMR-01) | F29 |
+| RN-19 | Multa moratória por atraso injustificado | F16 |
+| RN-20 | Prova de conceito ou amostra do licitante provisoriamente vencedor | F1 |
+| RN-21 | Critérios de sustentabilidade e logística reversa obrigatórios | F21 |
+| RN-22 | Fase recursal única e prazos dos atos da seleção | F26 |
+| RN-23 | Recheque da regularidade antes do atesto e do pagamento | F18 |
+| RN-24 | Registro da sanção aplicada no CEIS/CNEP em até 15 dias úteis | F18 |
+| RN-25 | Parcelas de maior relevância, quantitativos mínimos e exercícios do balanço | F13 |
+| RN-26 | Rito da sessão de disputa: modos, lances, prorrogação, encerramento e julgamento | F30 |
+| RN-27 | Extensão dos efeitos da sanção (desconsideração da personalidade jurídica) | F4 |
+| RN-28 | Declaração de inexistência de impedimento dos agentes designados | F14 |
+| RN-29 | Revisão trimestral da matriz de riscos do contrato | F8 |
+| RN-30 | Cautelar suspensiva do controle externo impede avançar e contratar | F2 |
+| RN-31 | Semáforo de vencimentos de 30, 60, 90 e 120 dias com avisos automáticos | F27 |
+| RN-32 | Termo aditivo como ato, com a trava do art. 125 | F22 (parte 1) |
+| RN-33 | Prorrogação com os limites dos arts. 105 a 114 | F22 (parte 1) |
+| RN-34 | Recebimento provisório e definitivo, liquidação e prazo de pagamento | F22 (parte 2) |
+| RN-35 | Garantias contratuais: exigência, validade, liberação, execução e desconto de multa | F22 (parte 2) |
+| RN-36 | Conferência da nota fiscal com o valor devido e o ajuste do IMR | F7 |
+| RN-37 | Avaliação de desempenho do contratado e registro cadastral de atestos | F3 |
+| RN-38 | Intenção de registro de preços aberta por pelo menos 8 dias úteis | F5 |
+| RN-39 | Dotação orçamentária declarada antes do edital | F20 |
+| RN-40 | Sigilo de segurança pública: classificação, acesso restrito e divulgação | F25 |
+| RN-41 | Dispensa eletrônica: aviso de 3 dias úteis, propostas adicionais, limites e fracionamento | F9 |
+| RN-42 | Comércio eletrônico pelo Sicx: ranqueamento, segregação, recebimento e pagamento em até 30 dias | F9 |
+| RF-16 | Importação da cesta de preços por planilha | F15 |
+| RF-17 | Editais publicados com inteiro teor sem login | F17 |
+| RF-18 | Adjudicação, homologação e divulgação dos documentos preparatórios | F26 |
+| RF-19 | Publicação no PNCP pela fila de integrações | F11 |
+| RF-20 | Consulta ao CEIS e ao CNEP e checklist de regularidade | F18 |
+| RF-21 | Documentos do processo e de habilitação | F13 |
+| RF-22 | Sala de disputa: simulação e acompanhamento da sessão oficial | F30 |
+| RF-23 | Painel das três linhas de defesa | F8 |
+| RF-24 | Controle externo: medidas de controle e cautelares | F2 |
+| RF-25 | Consulta automática e combinada de preços | F23 |
+| RF-26 | Central de notificações automatizadas | F27 |
+| RF-27 | Alterações do contrato: aditivos, apostilas, reajustes e extinção | F22 (parte 1) |
+| RF-28 | Execução do contrato: fiscalização, recebimentos, garantias e prazos de pagamento | F22 (parte 2) |
+| RF-29 | Instrumento de medição de resultado (IMR) do contrato e medições periódicas | F7 |
+| RF-30 | Avaliação de desempenho, histórico do fornecedor e certificado | F3 |
+| RF-31 | Plano de contratações anual, conferência do DFD e intenções de registro de preços | F10 e F5 |
+| RF-32 | Documentos complementares da fase preparatória e checklist do processo | F20 |
+| RF-33 | Sigilo do processo: classificação, credenciamento e registro de acessos | F25 |
+| RF-34 | Rotas de contratação: licitação, dispensa, inexigibilidade, adesão a ata e Sicx | F9 |
+| RF-35 | Integração com o SEI e assinatura refletida | F12 |
+| RF-36 | Publicação no Diário Oficial da União | F11 (DOU) |
+| RF-37 | Gestão compartilhada com a sociedade | F28 |
+| RF-38 | Catálogo de dados abertos | F28 |
+| RF-39 | Painel das metas do ETP (resultados pretendidos) | F32 |
+| RIA-08 | Leitura assistida de atestados de capacidade técnica | F13 |
+| RIA-09 | Sinal de padrão de lances na sessão de disputa | F30 |
+| RIA-10 | Sinal de vínculo impeditivo e de possível sucessão de empresa sancionada | F4 |
+| RIA-11 | Projeção de variação cambial e inflacionária do valor estimado | F23 |
+| RIA-12 | Lições aprendidas da execução no DFD, no ETP e no TR | F6 |
+| RIA-13 | Sugestão do código do catálogo CATMAT/CATSER | F19 |
+| RIA-14 | Conferência das citações legais e precisão normativa (IMR-02) | F24 |
+| RIA-15 | Conferência cruzada dos documentos e auditor contínuo | F24 |
+| RNF-07 | Fila de integrações com novas tentativas e fila de erro | F31 |
+| RNF-08 | Base normativa soberana e busca na lei | F24 |
+| RNF-09 | Cofre de anexos sigilosos e carimbo de tempo da trilha de auditoria | F25 |
+| RNF-10 | Operação sustentável e medição de disponibilidade (IMR-01) | F29 |
 
 ## 4. As funções em detalhe
 
@@ -240,7 +242,7 @@ Cada função segue o mesmo caminho e só é dada como pronta quando passa nos c
 
 #### F1. Prova de conceito e amostra nos processos do órgão (art. 17, § 3º) — P
 
-- **Domínio:** `lei14133/prova-conceito.ts`. Quando o edital exige a prova, a etapa 6 só avança com o resultado registrado do provisoriamente vencedor (RN-19). Se o resultado for "reprovado", a função indica o próximo colocado. A desclassificação é ato do agente.
+- **Domínio:** `lei14133/prova-conceito.ts`. Quando o edital exige a prova, a etapa 6 só avança com o resultado registrado do provisoriamente vencedor (RN-20). Se o resultado for "reprovado", a função indica o próximo colocado. A desclassificação é ato do agente.
 - **Contrato e banco:** `ParametrosEdital.provaConceito` (tipo, prazo em dias úteis, critérios) e tabela `processos_provas_conceito`.
 - **Interface:**
   - na etapa 4, opção "Exigir prova de conceito ou amostra";
@@ -258,7 +260,7 @@ Cada função segue o mesmo caminho e só é dada como pronta quando passa nos c
   - ciência, prazo e prorrogação;
   - se suspende o processo;
   - situação e resposta.
-- **Regra RN-20:** com cautelar suspensiva ativa, "Avançar etapa" e "Contratar" são bloqueados, com o número da decisão no aviso.
+- **Regra RN-30:** com cautelar suspensiva ativa, "Avançar etapa" e "Contratar" são bloqueados, com o número da decisão no aviso.
 - **Perfis:** segue as linhas de defesa descritas pelo cliente.
   - Um **novo perfil "Controle interno"** (unidade de controle interno do órgão) registra as medidas e as respostas.
   - O jurídico acompanha.
@@ -280,7 +282,7 @@ Cada função segue o mesmo caminho e só é dada como pronta quando passa nos c
 
 - **Domínio:**
   - `consolidarDemandas` agrupa itens com o mesmo código CATMAT/CATSER pedidos por órgãos diferentes no mesmo exercício;
-  - `prazoMinimoIrp` conta 8 dias úteis (RN-21).
+  - `prazoMinimoIrp` conta 8 dias úteis (RN-38).
 - **Interface:**
   - na etapa 1, o sinal "Demanda semelhante em outros órgãos", com quantidades e órgãos;
   - o botão "Propor intenção de registro de preços" registra a decisão do agente.
@@ -296,7 +298,7 @@ Cada função segue o mesmo caminho e só é dada como pronta quando passa nos c
 #### F14. Declarações de impedimento dos agentes (art. 7º, III, e art. 9º) — P
 
 - Na designação da equipe (etapa 2), cada agente assina a declaração de que não tem os impedimentos legais. A declaração é renovada quando os licitantes são conhecidos, na etapa 6.
-- **Regra RN-24:** agente sem declaração não pode ser responsável por etapa.
+- **Regra RN-28:** agente sem declaração não pode ser responsável por etapa.
 - **Por que assim:** é a forma lícita de atender ao que o protótipo faz cruzando dados de parentesco, que não existem.
 
 ### Fase 3 — dados novos da execução
@@ -330,12 +332,13 @@ Cada função segue o mesmo caminho e só é dada como pronta quando passa nos c
 - **Rotas de contratação:** decisão de arquitetura (ADR) com a "rota" escolhida na etapa 1.
   - Rotas: licitação, dispensa, inexigibilidade, adesão a ata e comércio eletrônico (Sicx).
   - Cada rota define quais etapas e regras se aplicam.
-- **Sicx:** a vitrine e a integração entram quando houver regulamento e API. A regra RN-22 (fora da soma do fracionamento) só entra no catálogo depois de confirmada no texto da lei e no regulamento.
+- **Sicx:** a vitrine simulada e as regras do regulamento estão prontas. A integração real entra quando a API for publicada. A compra pelo Sicx fica fora da soma do fracionamento (RN-41) e segue o regulamento do Sicx (RN-42), o Decreto 13.106/2026.
 - **Na proposta:** dizer que as rotas estão prontas e que o Sicx é integrado assim que a API for publicada.
+- **Entregue (F9 ✅):** as cinco rotas, a dispensa eletrônica com aviso de 3 dias úteis, a adesão a ata, a vitrine simulada do Sicx e o cartão de pagamento. O detalhe está em `docs/entregas/frente-s-rotas-contratacao.md`.
 
 ### Fase 5 — integrações restantes
 
-- **F10. PCA (art. 12, VII), tamanho M:** leitura do PCA pela API de consulta do PNCP, no servidor. Cada item do DFD é ligado ao item do PCA, com sinal de item fora do plano ou de valor acima do planejado.
+- **F10. PCA (art. 12, VII), tamanho M — entregue (F10 ✅):** leitura do PCA pela API de consulta do PNCP, no servidor, e consolidação, aprovação e publicação do plano pela fila. Cada item do DFD é ligado ao item do PCA, com sinal de item fora do plano ou de valor acima do planejado. O detalhe está em `docs/entregas/frente-o-planejamento.md`.
 - **F11, DOU, tamanho M:** envio pelo sistema da Imprensa Nacional.
 - **F12. SEI e ICP-Brasil, tamanho G:** WebServices do SEI do órgão para gerar processos, incluir documentos e consultar assinaturas. A assinatura acontece no próprio SEI, com o certificado do servidor, e a Ágora reflete a situação. Assinar dentro da Ágora exigiria componente de terceiros no navegador.
 
