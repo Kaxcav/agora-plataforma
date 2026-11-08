@@ -47,6 +47,12 @@ async function contratoCom(page: Page, criterio: (e: Execucao) => boolean, ignor
   return null;
 }
 
+/** Contrato com IMR exige a conferência da nota antes do atesto (RN-36, frente M). */
+async function semImr(page: Page, id: string): Promise<boolean> {
+  const imr = (await (await page.request.get(`/api/v1/contratos/${id}/imr`)).json()) as { indicadores: unknown[] };
+  return imr.indicadores.length === 0;
+}
+
 async function trocarUsuario(page: Page, perfil: string): Promise<void> {
   await page.context().clearCookies();
   await entrar(page, perfil);
@@ -57,7 +63,14 @@ const usados: string[] = [];
 test('recebimento provisório pelo fiscal e definitivo pela comissão, com termo em PDF e atesto da nota', async ({ page }) => {
   const erros = monitorarErros(page);
   await entrar(page, 'gestor');
-  const contrato = await contratoCom(page, (e) => e.parametros !== null && e.recebimentos.length === 0 && e.notasDisponiveis.length > 0);
+  let contrato: ContratoLista | null = null;
+  const descartados: string[] = [];
+  while (!contrato) {
+    const candidato = await contratoCom(page, (e) => e.parametros !== null && e.recebimentos.length === 0 && e.notasDisponiveis.length > 0, descartados);
+    if (!candidato) break;
+    if (await semImr(page, candidato.id)) contrato = candidato;
+    else descartados.push(candidato.id);
+  }
   test.skip(!contrato, 'nenhum contrato vigente com nota prevista e sem entregas');
   if (!contrato) return;
   usados.push(contrato.id);
@@ -67,7 +80,7 @@ test('recebimento provisório pelo fiscal e definitivo pela comissão, com termo
   await esperarPaginaOk(page);
   await expect(page.getByRole('heading', { name: 'Gestão e fiscalização' })).toBeVisible();
   for (const [papel, servidor] of [
-    ['Fiscal técnico', 'Tiago Arantes Fontoura'],
+    ['Fiscal técnico', 'Tiago Rangel Assunção'],
     ['Comissão de recebimento definitivo', 'Rafael Antunes Veloso'],
   ] as const) {
     await page.getByRole('button', { name: 'Designar', exact: true }).click();
@@ -80,7 +93,7 @@ test('recebimento provisório pelo fiscal e definitivo pela comissão, com termo
     await esperarAviso(page, 'Designação registrada');
   }
   const equipe = page.getByRole('table', { name: /Equipe designada/ });
-  await expect(equipe.getByRole('row').filter({ hasText: 'Tiago Arantes Fontoura' })).toContainText('Fiscal técnico');
+  await expect(equipe.getByRole('row').filter({ hasText: 'Tiago Rangel Assunção' })).toContainText('Fiscal técnico');
   await verificarAcessibilidade(page, 'aba Fiscalização do contrato');
 
   // Recebimentos: o gestor registra a entrega ligada à nota fiscal prevista.

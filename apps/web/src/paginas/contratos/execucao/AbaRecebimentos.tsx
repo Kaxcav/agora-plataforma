@@ -251,6 +251,7 @@ function DialogoTermo({ alvo, aoFechar }: { alvo: { recebimento: RecebimentoCont
             r.atesto ? `Nota fiscal ${r.atesto.notaFiscal} atestada${r.atesto.regular ? '' : ' com ressalva de regularidade'}.` : null,
             r.limitePagamento ? `Pagamento até ${formatarData(r.limitePagamento)}.` : null,
             r.notificacaoId ? 'A contratada foi notificada do prazo de correção.' : null,
+            ...r.avisos,
           ].filter(Boolean);
           avisar({ tipo: resultado === 'aceito' ? 'sucesso' : 'aviso', titulo: `${titulo} registrado`, mensagem: partes.join(' ') || 'O termo em PDF está disponível na lista de entregas.' });
           fechar();

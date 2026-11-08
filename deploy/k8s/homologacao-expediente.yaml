@@ -1,0 +1,195 @@
+# Homologação desligada fora do expediente (RNF-10, TI verde): à noite e no fim de semana a API, o trabalhador, o
+# OCR e a fila da homologação vão a zero réplica; no início do expediente voltam ao número que tinham.
+#
+# - A homologação roda na namespace `agora-homologacao`, com os mesmos manifestos da produção aplicados nela
+#   (ex.: `kubectl kustomize` ou `sed 's/namespace: agora$/namespace: agora-homologacao/'`) e AGORA_AMBIENTE=homologacao.
+# - Horário configurável: edite `schedule` dos dois CronJobs (formato cron, no fuso de `timeZone`). O padrão desliga
+#   às 20h de segunda a sexta e religa às 7h de segunda a sexta (sexta à noite só volta na segunda).
+# - Quais cargas desligar: ConfigMap `agora-expediente`, chave ALVOS (deployments e statefulsets da namespace).
+# - Ao desligar, o número de réplicas de cada alvo fica guardado na anotação agora.gov.br/replicas-expediente e é
+#   restaurado ao religar. Com réplicas em zero, o HPA (autoescalonamento.yaml) fica inativo e não religa nada; ao
+#   voltar, ele retoma o controle.
+# - Imagem do kubectl: use a cópia do registro do órgão (ex.: espelho de bitnami/kubectl na mesma versão do cluster);
+#   ela precisa de `sh`. Nada é baixado de fora em tempo de execução.
+# - A produção NÃO usa este arquivo.
+#
+# Aplicação:  kubectl apply -f deploy/k8s/homologacao-expediente.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agora-expediente
+  namespace: agora-homologacao
+data:
+  # Ordem de religamento: a fila primeiro, depois quem a usa.
+  ALVOS: "statefulset/agora-fila deployment/agora deployment/agora-trabalhador deployment/agora-ocr"
+  ANOTACAO: "agora.gov.br/replicas-expediente"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agora-expediente-scripts
+  namespace: agora-homologacao
+data:
+  desligar.sh: |
+    set -eu
+    for alvo in $ALVOS; do
+      atual=$(kubectl get "$alvo" -o jsonpath='{.spec.replicas}')
+      if [ "${atual:-0}" != "0" ]; then
+        kubectl annotate --overwrite "$alvo" "$ANOTACAO=$atual"
+        kubectl scale "$alvo" --replicas=0
+        echo "desligado: $alvo (tinha $atual réplica(s))"
+      else
+        echo "já desligado: $alvo"
+      fi
+    done
+  religar.sh: |
+    set -eu
+    for alvo in $ALVOS; do
+      chave=$(printf '%s' "$ANOTACAO" | sed 's/\./\\./g')
+      guardado=$(kubectl get "$alvo" -o jsonpath="{.metadata.annotations.$chave}")
+      kubectl scale "$alvo" --replicas="${guardado:-1}"
+      echo "religado: $alvo com ${guardado:-1} réplica(s)"
+    done
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agora-expediente
+  namespace: agora-homologacao
+automountServiceAccountToken: true
+---
+# Só o necessário: ler e escalar os deployments e statefulsets da própria namespace e anotá-los.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agora-expediente
+  namespace: agora-homologacao
+rules:
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [get, list, patch]
+  - apiGroups: [apps]
+    resources: [deployments/scale, statefulsets/scale]
+    verbs: [get, patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agora-expediente
+  namespace: agora-homologacao
+subjects:
+  - kind: ServiceAccount
+    name: agora-expediente
+    namespace: agora-homologacao
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: agora-expediente
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: agora-homologacao-desligar
+  namespace: agora-homologacao
+spec:
+  schedule: "0 20 * * 1-5"
+  timeZone: America/Sao_Paulo
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          serviceAccountName: agora-expediente
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: desligar
+              image: registro.orgao.gov.br/kubectl:1.31
+              imagePullPolicy: IfNotPresent
+              command: ["sh", "/scripts/desligar.sh"]
+              env:
+                # O kubectl guarda cache em $HOME: aponta para o volume temporário (sistema de arquivos só leitura).
+                - { name: HOME, value: /tmp }
+              envFrom:
+                - configMapRef: { name: agora-expediente }
+              resources:
+                requests: { cpu: 10m, memory: 32Mi }
+                limits: { cpu: 100m, memory: 128Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: [ALL] }
+              volumeMounts:
+                - { name: scripts, mountPath: /scripts, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 64Mi }
+            - name: scripts
+              configMap:
+                name: agora-expediente-scripts
+                items:
+                  - { key: desligar.sh, path: desligar.sh }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: agora-homologacao-religar
+  namespace: agora-homologacao
+spec:
+  schedule: "0 7 * * 1-5"
+  timeZone: America/Sao_Paulo
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          serviceAccountName: agora-expediente
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: religar
+              image: registro.orgao.gov.br/kubectl:1.31
+              imagePullPolicy: IfNotPresent
+              command: ["sh", "/scripts/religar.sh"]
+              env:
+                # O kubectl guarda cache em $HOME: aponta para o volume temporário (sistema de arquivos só leitura).
+                - { name: HOME, value: /tmp }
+              envFrom:
+                - configMapRef: { name: agora-expediente }
+              resources:
+                requests: { cpu: 10m, memory: 32Mi }
+                limits: { cpu: 100m, memory: 128Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: [ALL] }
+              volumeMounts:
+                - { name: scripts, mountPath: /scripts, readOnly: true }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: tmp
+              emptyDir: { sizeLimit: 64Mi }
+            - name: scripts
+              configMap:
+                name: agora-expediente-scripts
+                items:
+                  - { key: religar.sh, path: religar.sh }

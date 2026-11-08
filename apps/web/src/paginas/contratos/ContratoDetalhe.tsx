@@ -48,6 +48,7 @@ import { AbaRiscosContrato } from '../controle/AbaRiscosContrato';
 import { AbaFiscalizacao } from './execucao/AbaFiscalizacao';
 import { AbaGarantias } from './execucao/AbaGarantias';
 import { AbaRecebimentos } from './execucao/AbaRecebimentos';
+import { AbaImrContrato } from './AbaImrContrato';
 
 const DIVULGACAO: Record<DadosContrato['divulgacaoPncp']['situacao'], { rotulo: string; tom: TomEtiqueta }> = {
   divulgado_no_prazo: { rotulo: 'Divulgado no prazo', tom: 'sucesso' },
@@ -457,6 +458,7 @@ function ConteudoContrato({ contrato }: { contrato: DadosContrato }) {
           { id: 'fiscalizacao', rotulo: 'Fiscalização', conteudo: () => <AbaFiscalizacao contrato={contrato} /> },
           { id: 'recebimentos', rotulo: 'Recebimentos', conteudo: () => <AbaRecebimentos contrato={contrato} /> },
           { id: 'garantias', rotulo: 'Garantias', conteudo: () => <AbaGarantias contrato={contrato} /> },
+          { id: 'imr', rotulo: 'IMR e medições', conteudo: () => <AbaImrContrato contrato={contrato} /> },
         ]}
       />
     </>

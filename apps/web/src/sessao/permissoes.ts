@@ -79,6 +79,13 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'garantias:registrar': 'Registrar a exigência, a apresentação, a renovação e a liberação de garantias',
   'garantias:executar': 'Registrar a execução da garantia e o desconto de multa (decisão da autoridade)',
   'pagamentos:ordem_cronologica': 'Registrar a alteração justificada da ordem cronológica de pagamentos',
+  'operacao:ler': 'Consultar a disponibilidade e a operação da plataforma',
+  'operacao:administrar': 'Pedir sondagem e registrar janelas de manutenção do PNCP',
+  'metas:ler': 'Consultar o painel das metas do ETP',
+  'metas:configurar': 'Configurar as metas do ETP',
+  'imr:configurar': 'Configurar o IMR dos contratos (indicadores, metas e faixas de glosa)',
+  'imr:medir': 'Registrar as medições do IMR, com evidência',
+  'pagamentos:conferir': 'Conferir a nota fiscal e justificar divergências',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

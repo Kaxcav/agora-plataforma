@@ -1,21 +1,17 @@
 /**
- * Carga sintética da execução contratual (frente L): conta de demonstração de fiscal técnico, prazos de execução de
- * cada contrato, designação do gestor e do fiscal técnico já cadastrados, garantias registradas a partir das colunas
- * do contrato, data da liquidação das notas liquidadas e pagas, algumas entregas aguardando o recebimento provisório
- * e ocorrências no livro. PRNG próprio, para não alterar a sequência dos dados das etapas anteriores. Valores,
- * números de portaria e textos são inventados.
+ * Carga sintética da execução contratual (frente L): prazos de execução de cada contrato, designação do gestor e do
+ * fiscal técnico já cadastrados, garantias registradas a partir das colunas do contrato, data da liquidação das notas
+ * liquidadas e pagas, algumas entregas aguardando o recebimento provisório e ocorrências no livro. PRNG próprio, para
+ * não alterar a sequência dos dados das etapas anteriores. Valores, números de portaria e textos são inventados. A conta
+ * de demonstração do fiscal técnico (fiscal.tecnico@agora.demo) é criada pela carga do IMR (frente M).
  */
 import { adicionarDias, adicionarDiasUteis, hojeISO, type ModalidadeGarantia } from '@agora/dominio';
 import { inserirEmLote } from '../banco/lote.ts';
-import { normalizarBusca } from '../compartilhado/texto.ts';
 import { instanteEm, type ContextoSeed, type EventoSeed } from './contexto.ts';
-import { gerarCpf } from './documentos.ts';
 import { Prng } from './prng.ts';
-import { USUARIOS_DEMONSTRACAO_ADICIONAIS } from './usuarios-demonstracao.ts';
 
 /** Semente própria desta etapa (Lei 14.133, art. 140). */
 const SEMENTE_EXECUCAO_CONTRATUAL = 14_133_140;
-const CONTAS_DESTA_ETAPA = new Set(['fiscal.tecnico@agora.demo']);
 
 const MODALIDADE_POR_ROTULO: Record<string, ModalidadeGarantia> = {
   'Seguro-garantia': 'seguro_garantia',
@@ -44,20 +40,6 @@ export async function gerarExecucaoContratual(ctx: ContextoSeed): Promise<void> 
   const eventos: EventoSeed[] = [];
   const carga = { carga: 'demonstracao' };
   const instante = agora.toISOString();
-
-  // ───────── conta de demonstração do fiscal técnico ─────────
-  for (const u of USUARIOS_DEMONSTRACAO_ADICIONAIS.filter((x) => CONTAS_DESTA_ETAPA.has(x.email))) {
-    const id = prng.uuid();
-    const uasgs = u.escopo === 'todas' ? 'todas' : dados.uasgs.slice(0, u.escopo);
-    await tx.executar(
-      `INSERT INTO usuarios (id, nome, email, cpf, senha_hash, ativo, unidade_interna_id, todas_uasgs, ultimo_acesso_em, busca_normalizada)
-       VALUES ($1, $2, $3, $4, $5, true, $6, $7, NULL, $8)`,
-      [id, u.nome, u.email, gerarCpf(prng), ctx.senhaHashDemonstracao, null, uasgs === 'todas', normalizarBusca(u.nome, u.email)],
-    );
-    await tx.executar('INSERT INTO usuarios_perfis (usuario_id, perfil) VALUES ($1, $2)', [id, u.perfil]);
-    if (uasgs !== 'todas') for (const codigo of uasgs) await tx.executar('INSERT INTO usuarios_uasgs (usuario_id, uasg) VALUES ($1, $2)', [id, codigo]);
-    dados.usuarios.set(u.email, { id, email: u.email, nome: u.nome, perfis: [u.perfil], uasgs });
-  }
 
   // ───────── prazos de execução e designações de cada contrato ─────────
   const parametros: (string | number)[][] = [];

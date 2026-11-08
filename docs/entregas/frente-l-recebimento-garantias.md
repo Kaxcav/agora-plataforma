@@ -135,7 +135,7 @@ Além da permissão, o servidor exige a **designação no contrato** para regist
 
 **Migração:** `021_execucao_recebimento_garantias.sql` — `contratos_parametros_execucao`, `contratos_designacoes`, `contratos_ocorrencias`, `contratos_recebimentos`, `recebimentos_termos`, `contratos_garantias`, `garantias_movimentos`, `multas_descontos`, `alteracoes_ordem_cronologica`, `alteracoes_ordem_comunicacoes` e a coluna `pagamentos.liquidado_em`.
 
-**Carga sintética** (`apps/api/src/seed/execucao-contratual.ts`, PRNG próprio): conta **fiscal.tecnico@agora.demo**, prazos de todos os contratos, designação do gestor e do fiscal cadastrados, garantias registradas a partir das colunas do contrato, data de liquidação das notas liquidadas e pagas, três entregas aguardando o provisório e duas ocorrências.
+**Carga sintética** (`apps/api/src/seed/execucao-contratual.ts`, PRNG próprio): prazos de todos os contratos, designação do gestor e do fiscal cadastrados, garantias registradas a partir das colunas do contrato, data de liquidação das notas liquidadas e pagas, três entregas aguardando o provisório e duas ocorrências. A conta **fiscal.tecnico@agora.demo**, usada no e2e, é criada pela carga da frente M.
 
 **Ajustes em arquivos de outras frentes:** `notificacoes/servico.ts` (exporta `resolverDestinatarios` e `Destinatario`), `controle/paineis.ts` (achado e exceção da ordem cronológica), `controle/LinhasDefesa.tsx` (texto da seção de exceções) e `componentes/Dialogo.tsx` (a legenda de tabela deixa de receber o foco de refúgio, o que quebrava a estrutura ARIA da tabela).
 
@@ -208,4 +208,4 @@ Nenhuma nova. Os avisos usam a configuração da central de notificações (fren
 ### Pontos de ligação com as frentes K e M (não tratados aqui)
 
 - **K (aditivos, prorrogação, reajuste e extinção):** a prorrogação deve chamar a renovação da garantia (`POST /garantias/:id/renovacao`) e a extinção, a liberação (`POST /garantias/:id/liberacao` com `extincaoCulpaAdministracao`) ou a execução. O acréscimo ou a supressão devem atualizar a garantia na mesma proporção, e o reajuste pode reaproveitar `corrigirPorIndice`.
-- **M (IMR e conferência da nota fiscal):** a conferência da nota e as glosas do IMR entram antes do termo definitivo, que é quem chama `registrarAtesto` (`apps/api/src/modulos/financeiro/atesto.ts`). Glosas podem usar a mesma retenção por nota de `multas_descontos`, ou uma tabela própria somada em `pagamentosDevidos`.
+- **M (IMR e conferência da nota fiscal):** já ligada na integração. O fluxo único de atesto (`registrarAtesto`, `apps/api/src/modulos/financeiro/atesto.ts`) aplica a trava da conferência (RN-36) e o valor a liquidar, tanto na tela Pagamentos quanto no termo definitivo. Sem a conferência liberada, o definitivo é registrado, a nota fica prevista e o aviso orienta a atestá-la depois da conferência. As glosas do IMR podem entrar no cálculo de `pagamentosDevidos` (desconto de multa) quando forem retenções da nota.

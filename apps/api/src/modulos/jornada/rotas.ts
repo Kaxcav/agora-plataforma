@@ -66,6 +66,7 @@ import {
 import type { CestaArmazenada, CotacaoArmazenada, LinhaProcesso, ParametrosEdital, TipoDocumento } from './tipos.ts';
 import type { LinhaTarefa } from '../../fila/tipos.ts';
 import { solicitarPublicacaoEdital } from '../publicacao-pncp/servico.ts';
+import { alvoDoProcesso, comTrava, travaAplicada } from '../../compartilhado/travas.ts';
 
 // ───────────────────────── esquemas ─────────────────────────
 
@@ -598,13 +599,14 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     if (!linha) throw naoEncontrado('Processo não encontrado.');
     exigirEtapaDocumento(linha, entrada.tipo);
     const carga = await carregarProcesso(ctx.banco, linha);
+    await comTrava(alvoDoProcesso(linha, 'documento_gerar'), () => exigirSemArtigoLuxoPendente(linha));
     // Redação fora da transação: a IA pode levar até 60 s e não deve travar o processo.
     const preparado = await prepararDocumento(carga, entrada.tipo, provedorIa, c);
     if (preparado.falhaIa) request.log.warn({ tipo: entrada.tipo, falha: preparado.falhaIa }, 'redação por IA falhou; usado o modelo de texto');
     return alterar(request, async (tx, atual) => {
       exigirEtapaDocumento(atual, entrada.tipo);
       // O DFD pode ter mudado durante a redação: a trava do artigo de luxo (RN-01) vale também para o que se grava.
-      exigirSemArtigoLuxoPendente(atual);
+      await comTrava(alvoDoProcesso(atual, 'documento_gerar'), () => exigirSemArtigoLuxoPendente(atual));
       const doc = await inserirDocumento(tx, atual.id, preparado, { id: randomUUID(), geradoEm: c.agora.toISOString(), usuarioId: sessaoDe(request).usuario.id });
       return {
         acao: 'documento.gerar',
@@ -631,7 +633,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       exigirPermissaoNoHandler(request, permissaoDocumento(doc.tipo));
       if (geradoComParametrosAnteriores(doc.tipo, doc.hash_parametros, linha.edital)) {
         const mensagem = `O documento "${doc.titulo}" (versão ${doc.versao}) foi gerado com parâmetros anteriores — gere novamente e aprove.`;
-        throw regraNegocio(mensagem, [{ campo: 'RN-06', mensagem }]);
+        throw travaAplicada(alvoDoProcesso(linha, 'documento_aprovar'), regraNegocio(mensagem, [{ campo: 'RN-06', mensagem }]));
       }
       // RN-21: com a política do órgão ligada, o ETP e o TR só se concluem com os critérios de sustentabilidade.
       if (doc.tipo === 'etp' || doc.tipo === 'tr') {
@@ -641,9 +643,9 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
           pendencias.push(`A versão ${doc.versao} de "${doc.titulo}" foi gerada sem os critérios de sustentabilidade e de logística reversa: gere nova versão.`);
         }
         if (pendencias.length > 0) {
-          throw regraNegocio(`"${doc.titulo}" não pode ser aprovado sem os critérios de sustentabilidade exigidos pela política do órgão (RN-21).`, [
+          throw travaAplicada(alvoDoProcesso(linha, 'documento_aprovar'), regraNegocio(`"${doc.titulo}" não pode ser aprovado sem os critérios de sustentabilidade exigidos pela política do órgão (RN-21).`, [
             ...pendencias.map((mensagem) => ({ campo: 'RN-21', mensagem })),
-          ]);
+          ]));
         }
       }
       const aprovado = await aprovarDocumento(tx, linha.id, doc, { id: sessao.usuario.id, nome: sessao.usuario.nome }, c.agora, c.hoje, randomUUID());
@@ -742,7 +744,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
         if (linha.publicacao.pncp === 'publicado') throw regraNegocio('O edital já foi publicado no PNCP.');
         const conclusao = linha.parecer.conclusao;
         if (conclusao !== 'favoravel' && conclusao !== 'favoravel_com_ressalvas') {
-          throw regraNegocio('O edital só pode ser publicado após o parecer jurídico favorável (art. 53).', [{ campo: 'RF-15', mensagem: 'Parecer jurídico favorável pendente' }]);
+          throw travaAplicada(alvoDoProcesso(linha, 'publicacao'), regraNegocio('O edital só pode ser publicado após o parecer jurídico favorável (art. 53).', [{ campo: 'RF-15', mensagem: 'Parecer jurídico favorável pendente' }]));
         }
         const pedido = await solicitarPublicacaoEdital(tx, app.fila, linha, sessao.usuario.id, ctx.config.integracoes, c.agora);
         if (!pedido.nova && !pedido.reaberta) throw regraNegocio('O edital já está na fila de publicação do PNCP.');
@@ -808,10 +810,10 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       const carga = await carregarProcesso(tx, linha);
       const avaliacao = await avaliarProcesso(tx, carga, c.hoje, c.calendario, c.agora);
       if (avaliacao.bloqueios.length > 0) {
-        throw regraNegocio(
+        throw travaAplicada(alvoDoProcesso(linha, 'avanco_etapa'), regraNegocio(
           `A etapa ${linha.etapa_atual} (${TITULOS_ETAPA[linha.etapa_atual]}) tem ${avaliacao.bloqueios.length} bloqueio(s) que impedem o avanço.`,
           avaliacao.bloqueios.map((b) => ({ campo: b.regra, mensagem: b.mensagem })),
-        );
+        ));
       }
       const proxima = (linha.etapa_atual + 1) as EtapaJornada;
       await avancarEtapa(tx, linha.id, proxima, c.agora);
@@ -831,12 +833,12 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       previa && vencedorPrevio
         ? await verificarRegularidade(ctx, request, { fornecedorId: vencedorPrevio, momento: 'assinatura', instrumento: { tipo: 'processo', id: previa.id } })
         : null;
-    if (verificacao) exigirRegularidade(verificacao, 'O vencedor não atende à verificação prévia à assinatura (RN-09, art. 91, § 4º).');
+    if (previa && verificacao) await comTrava(alvoDoProcesso(previa, 'assinatura'), () => exigirRegularidade(verificacao, 'O vencedor não atende à verificação prévia à assinatura (RN-09, art. 91, § 4º).'));
     return alterar(request, async (tx, linha, c) => {
       exigirEtapa(linha, 7, 'A geração do contrato');
       if (linha.contrato_id !== null) throw regraNegocio(`O processo já gerou o contrato ${linha.contrato_numero ?? ''}.`.trim());
       // RN-30 (art. 171, §§ 1º e 2º): cautelar suspensiva ativa impede gerar e assinar o contrato.
-      await exigirSemCautelarSuspensiva(tx, { processoId: linha.id }, c.hoje);
+      await comTrava(alvoDoProcesso(linha, 'assinatura'), () => exigirSemCautelarSuspensiva(tx, { processoId: linha.id }, c.hoje));
       // O contrato é celebrado com o adjudicatário, depois da homologação (art. 71, IV; RF-18).
       const vencedor = vencedorDoProcesso(linha);
       if (!vencedor) {
@@ -848,10 +850,10 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
       // Reavaliação na transação, com a consulta recém-registrada (sanção ou certidão alterada no intervalo).
       const regularidade = await avaliarRegularidade(tx, vencedor, c.hoje, c.agora);
       if (!regularidade.regular) {
-        throw regraNegocio(
+        throw travaAplicada(alvoDoProcesso(linha, 'assinatura'), regraNegocio(
           'O vencedor não atende à verificação prévia à assinatura (RN-09, art. 91, § 4º).',
           regularidade.motivos.map((m) => ({ campo: 'RN-09', mensagem: m })),
-        );
+        ));
       }
       const carga = await carregarProcesso(tx, linha);
       const contrato = await criarContratoDoProcesso(tx, carga, c, randomUUID);

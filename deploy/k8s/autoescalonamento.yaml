@@ -1,0 +1,101 @@
+# Autoescalonamento (RNF-10, TI verde): a API, o trabalhador da fila e o OCR ganham réplicas na carga e as devolvem
+# quando ela passa, em vez de ficarem dimensionados para o pico o tempo todo.
+#
+# Pré-requisitos:
+#   - metrics-server do cluster do órgão (as métricas de CPU e memória vêm dele);
+#   - pedidos e limites de recursos nos contêineres. Já estão em agora.yaml (API: pede 250m/256Mi, limite 1/768Mi),
+#     fila-trabalhador.yaml (trabalhador: 100m/192Mi, limite 500m/512Mi) e documentos-ocr.yaml (OCR: 500m/512Mi,
+#     limite 2/2Gi). O HPA calcula a utilização sobre o PEDIDO: sem pedido, ele não escala.
+#
+# Aplicação:  kubectl apply -f deploy/k8s/agora.yaml -f deploy/k8s/fila-trabalhador.yaml -f deploy/k8s/documentos-ocr.yaml \
+#               -f deploy/k8s/autoescalonamento.yaml
+# Com o HPA ligado, quem decide o número de réplicas é ele: um novo `kubectl apply` dos Deployments volta por instantes
+# ao `replicas` do arquivo, e o HPA corrige na avaliação seguinte (15 s). Os mínimos abaixo respeitam os
+# PodDisruptionBudgets (minAvailable: 1) e mantêm duas réplicas da API e do trabalhador para a alta disponibilidade.
+# Ajuste os máximos à cota da namespace no cluster do órgão.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agora
+  namespace: agora
+  labels: { app: agora }
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agora
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+    - type: Resource
+      resource:
+        name: memory
+        target: { type: Utilization, averageUtilization: 80 }
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - { type: Pods, value: 2, periodSeconds: 60 }
+    scaleDown:
+      # Devolve as réplicas devagar: evita subir e descer a cada oscilação de carga.
+      stabilizationWindowSeconds: 300
+      policies:
+        - { type: Pods, value: 1, periodSeconds: 120 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agora-trabalhador
+  namespace: agora
+  labels: { app: agora-trabalhador }
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agora-trabalhador
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+  behavior:
+    scaleDown:
+      # O trabalhador termina as tarefas em execução antes de sair (terminationGracePeriodSeconds: 45).
+      stabilizationWindowSeconds: 600
+      policies:
+        - { type: Pods, value: 1, periodSeconds: 300 }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agora-ocr
+  namespace: agora
+  labels: { app: agora-ocr }
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agora-ocr
+  # Um OCR basta fora dos picos de habilitação; cada réplica lê um PDF por vez (OCR_SIMULTANEOS=1).
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 65 }
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - { type: Pods, value: 2, periodSeconds: 60 }
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - { type: Pods, value: 1, periodSeconds: 120 }

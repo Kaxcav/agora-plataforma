@@ -17,6 +17,7 @@ import type {
   RespostaTermoRecebimento,
 } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
+import { situacaoAtestoConferencia } from '../src/modulos/imr/servico.ts';
 import { chamar, criarAppTeste, entrar, obterJson, type Credenciais } from './apoio.ts';
 
 const PARAMETROS = {
@@ -51,6 +52,7 @@ describe('execução contratual: fiscalização, recebimentos, garantias e prazo
         WHERE c.vigencia_fim > $1::date + 60 AND c.vigencia_inicio < $1::date - 30 AND p.situacao = 'previsto'
           AND c.garantia_valor IS NULL
           AND NOT EXISTS (SELECT 1 FROM sancoes s WHERE s.contrato_id = c.id)
+          AND NOT EXISTS (SELECT 1 FROM imr_indicadores i WHERE i.contrato_id = c.id)
         ORDER BY c.numero, p.vencimento LIMIT 1`,
       [hoje],
     );
@@ -217,6 +219,45 @@ describe('execução contratual: fiscalização, recebimentos, garantias e prazo
     assert.equal(prazo?.origemMarco, 'recebimento_definitivo');
     assert.equal(prazo?.limitePagamento, resposta.limitePagamento);
     assert.ok(prazo?.situacao === 'no_prazo');
+  });
+
+  test('contrato com IMR: o definitivo é lavrado, mas a nota só é atestada depois da conferência (RN-36, frente M)', async () => {
+    const candidatos = await app.agora.banco.consultar<{ contrato_id: string; pagamento_id: string; competencia: string }>(
+      `SELECT p.contrato_id, p.id AS pagamento_id, p.competencia
+         FROM pagamentos p
+        WHERE p.situacao = 'previsto'
+          AND EXISTS (SELECT 1 FROM imr_indicadores i WHERE i.contrato_id = p.contrato_id)
+          AND NOT EXISTS (SELECT 1 FROM conferencias_nota_fiscal cf WHERE cf.pagamento_id = p.id)
+        ORDER BY p.vencimento, p.id`,
+    );
+    let alvo: (typeof candidatos)[number] | undefined;
+    for (const c of candidatos) {
+      if (!(await situacaoAtestoConferencia(app.agora.banco, { id: c.pagamento_id, contrato_id: c.contrato_id, competencia: c.competencia })).liberado) {
+        alvo = c;
+        break;
+      }
+    }
+    assert.ok(alvo, 'nota de contrato com IMR à espera da conferência');
+    const contrato = alvo.contrato_id;
+    for (const [papel, usuarioId] of [
+      ['fiscal_tecnico', fiscalTecnico.sessao.usuario.id],
+      ['comissao_recebimento', gestor.sessao.usuario.id],
+    ] as const) {
+      const d = await chamar(app, gestor, 'POST', `/api/v1/contratos/${contrato}/designacoes`, { papel, usuarioId, ato: 'Portaria nº 90/2026', inicio: hoje });
+      assert.equal(d.statusCode, 201, d.body);
+    }
+    const entrega = await chamar(app, gestor, 'POST', `/api/v1/contratos/${contrato}/recebimentos`, { descricao: 'Parcela medida pelo IMR', valor: 10_000, entregueEm: hoje, pagamentoId: alvo.pagamento_id });
+    assert.equal(entrega.statusCode, 201, entrega.body);
+    const id = entrega.json<RecebimentoContrato>().id;
+    assert.equal((await chamar(app, fiscalTecnico, 'POST', `/api/v1/recebimentos/${id}/termos`, { tipo: 'provisorio', resultado: 'aceito', data: hoje, observacoes: null })).statusCode, 201);
+    const definitivo = await chamar(app, gestor, 'POST', `/api/v1/recebimentos/${id}/termos`, { tipo: 'definitivo', resultado: 'aceito', data: hoje, observacoes: null });
+    assert.equal(definitivo.statusCode, 201, definitivo.body);
+    const r = definitivo.json<RespostaTermoRecebimento>();
+    assert.equal(r.recebimento.situacao, 'recebido');
+    assert.equal(r.atesto, null);
+    assert.ok(r.avisos.some((a) => /RN-36/.test(a)));
+    const [nota] = await app.agora.banco.consultar<{ situacao: string }>('SELECT situacao FROM pagamentos WHERE id = $1', [alvo.pagamento_id]);
+    assert.equal(nota?.situacao, 'previsto');
   });
 
   test('ressalva exige descrição, abre prazo de correção, registra ocorrência e notifica; quem lavrou o provisório não lavra o definitivo', async () => {

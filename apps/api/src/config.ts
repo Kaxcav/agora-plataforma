@@ -51,6 +51,22 @@ export interface Config {
   };
   /** Publicação no PNCP (RF-19): API de manutenção e login do sistema credenciado. */
   pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
+  /** Operação (RNF-10, IMR-01): sonda de disponibilidade e meta configurada pelo órgão. */
+  operacao: ConfigOperacao;
+}
+
+export interface ConfigOperacao {
+  /** Intervalo da sonda, em segundos; 0 desliga a sonda periódica. */
+  sondaSegundos: number;
+  /** Tarefa pronta na fila há mais que isso, sem trabalhador que a pegue, deixa a fila indisponível. */
+  filaAtrasoMaximoMinutos: number;
+  /**
+   * Última sincronização bem-sucedida do PNCP mais antiga que isso deixa a sincronização indisponível; null = só a
+   * situação da última execução conta (falhou = indisponível).
+   */
+  sincronizacaoAtrasoMaximoHoras: number | null;
+  /** Meta de disponibilidade (%) configurada pelo órgão; null = sem meta. */
+  metaDisponibilidade: number | null;
 }
 
 export interface ConfigSmtp {
@@ -161,6 +177,10 @@ const esquemaAmbiente = z.object({
   AGORA_PNCP_PUBLICACAO_URL: textoOpcional,
   AGORA_PNCP_USUARIO: textoOpcional,
   AGORA_PNCP_SENHA: textoOpcional,
+  AGORA_OPERACAO_SONDA_SEGUNDOS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(0).max(3600).default(60)),
+  AGORA_OPERACAO_FILA_ATRASO_MINUTOS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1).max(1440).default(15)),
+  AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(0).max(720).default(0)),
+  AGORA_OPERACAO_META_DISPONIBILIDADE: z.preprocess(vazioComoAusente, z.coerce.number().gt(0).max(100).optional()),
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -348,6 +368,12 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       url: (e.AGORA_PNCP_PUBLICACAO_URL ?? (producao ? 'https://pncp.gov.br/api/pncp' : 'https://treina.pncp.gov.br/api/pncp')).replace(/\/+$/, ''),
       usuario: e.AGORA_PNCP_USUARIO,
       senha: e.AGORA_PNCP_SENHA,
+    },
+    operacao: {
+      sondaSegundos: e.AGORA_OPERACAO_SONDA_SEGUNDOS,
+      filaAtrasoMaximoMinutos: e.AGORA_OPERACAO_FILA_ATRASO_MINUTOS,
+      sincronizacaoAtrasoMaximoHoras: e.AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS === 0 ? null : e.AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS,
+      metaDisponibilidade: e.AGORA_OPERACAO_META_DISPONIBILIDADE ?? null,
     },
   };
 }

@@ -7,6 +7,7 @@ import { booleanoQuery, camposPaginacao, codigoUasg, deslocamento, idDaRota, pag
 import { carregarProveniencias, provenienciaDe } from '../../integracoes/servico.ts';
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
 import { verificarRegularidade } from '../regularidade/servico.ts';
+import { exigirConferenciaLiberada, situacaoAtestoConferencia } from '../imr/servico.ts';
 import { exigirRecebimentoDefinitivo, pagamentoParaAtesto, registrarAtesto } from './atesto.ts';
 import { listarEmpenhos, listarPagamentos, obterPagamento } from './repositorio.ts';
 
@@ -87,6 +88,8 @@ export async function rotasFinanceiro(app: FastifyInstance): Promise<void> {
     if (!previo) throw naoEncontrado('Pagamento não encontrado.');
     if (previo.situacao !== 'previsto') throw conflito('Somente pagamentos na situação "previsto" podem ser atestados.');
     await exigirRecebimentoDefinitivo(ctx.banco, id);
+    // RN-36: conferência da nota divergente sem justificativa (ou ausente, em contrato com IMR) bloqueia o atesto.
+    exigirConferenciaLiberada(await situacaoAtestoConferencia(ctx.banco, { id, contrato_id: previo.contrato_id, competencia: previo.competencia }));
     const verificacao = await verificarRegularidade(ctx, request, {
       fornecedorId: previo.fornecedor_id,
       momento: 'atesto',

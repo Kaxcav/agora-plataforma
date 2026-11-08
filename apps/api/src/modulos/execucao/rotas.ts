@@ -51,6 +51,7 @@ import { auditar } from '../../http/auditar.ts';
 import { conflito, naoEncontrado, regraNegocio } from '../../http/erros.ts';
 import { centavos, dataIso, idDaRota, uuid } from '../../http/validacao.ts';
 import { registrarAtesto } from '../financeiro/atesto.ts';
+import { situacaoAtestoConferencia } from '../imr/servico.ts';
 import { processarFila } from '../notificacoes/servico.ts';
 import { verificarRegularidade } from '../regularidade/servico.ts';
 import { avisarVencimentoGarantia, espelharDesignacoesNoContrato, espelharGarantiaNoContrato, notificarContratada, registrarDesempenho } from './avisos.ts';
@@ -577,8 +578,9 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
         provisorio_aceito_por: string | null;
         pagamento_id: string | null;
         pagamento_situacao: string | null;
+        pagamento_competencia: string | null;
       }>(
-        `SELECT r.situacao, r.etapa_correcao, r.entregue_em, r.prazo_atual, r.provisorio_aceito_por, r.pagamento_id, p.situacao AS pagamento_situacao
+        `SELECT r.situacao, r.etapa_correcao, r.entregue_em, r.prazo_atual, r.provisorio_aceito_por, r.pagamento_id, p.situacao AS pagamento_situacao, p.competencia AS pagamento_competencia
            FROM contratos_recebimentos r LEFT JOIN pagamentos p ON p.id = r.pagamento_id
           WHERE r.id = $1 ${bloquear ? 'FOR UPDATE OF r' : ''}`,
         [id],
@@ -605,7 +607,16 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
       throw regraNegocio('Só servidores designados no contrato lavram termos de recebimento (art. 140): peça a designação ao gestor.');
     }
     const previa = await avaliar(ctx.banco, false);
-    const atestar = previa.resultado.liberaLiquidacao && previa.r.pagamento_id !== null && previa.r.pagamento_situacao === 'previsto';
+    let atestar = previa.resultado.liberaLiquidacao && previa.r.pagamento_id !== null && previa.r.pagamento_situacao === 'previsto';
+    // RN-36 (frente M): sem a conferência da nota liberada, o definitivo é registrado e a nota fica para atesto depois.
+    const avisosAtesto: string[] = [];
+    if (atestar && previa.r.pagamento_id && previa.r.pagamento_competencia) {
+      const conferencia = await situacaoAtestoConferencia(ctx.banco, { id: previa.r.pagamento_id, contrato_id: contratoPrevio.id, competencia: previa.r.pagamento_competencia });
+      if (!conferencia.liberado) {
+        atestar = false;
+        avisosAtesto.push(`${conferencia.motivo ?? 'A conferência da nota fiscal não libera o atesto (RN-36).'} Depois da conferência, atesta-se a nota na tela Pagamentos.`);
+      }
+    }
     let verificacao: VerificacaoRegularidade | null = null;
     if (atestar && previa.r.pagamento_id) {
       const [outras] = await ctx.banco.consultar<{ total: number }>(
@@ -740,7 +751,7 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
           fundamento: resultado.fundamento,
         },
       });
-      return { termoId: termo.id, avisos: resultado.avisos, atesto, limitePagamento, contratoId: contrato.id };
+      return { termoId: termo.id, avisos: [...resultado.avisos, ...avisosAtesto], atesto, limitePagamento, contratoId: contrato.id };
     });
     if (notificacaoId) await processarFila(ctx, { notificacaoId });
     const [recebimento] = await carregarRecebimentos(ctx.banco, resposta.contratoId, hoje, parametros.garantiaObjetoMeses, id);

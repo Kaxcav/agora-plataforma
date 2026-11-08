@@ -1,0 +1,63 @@
+/* IMR do contrato e conferência da nota fiscal (F7). Tokens do tema da Ágora. */
+
+.imr-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.imr-lista li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--esp-1) var(--esp-3);
+  padding: var(--esp-3) 0;
+  border-bottom: 1px solid var(--cor-divisoria);
+}
+
+.imr-lista li:last-child {
+  border-bottom: 0;
+}
+
+.imr-lista__titulo {
+  font-weight: var(--peso-semi);
+  min-width: 0;
+}
+
+.imr-lista__descricao {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.imr-item-nota {
+  border: 1px solid var(--cor-divisoria);
+  border-radius: var(--raio-cartao);
+  padding: var(--esp-3) var(--esp-4);
+}
+
+.imr-item-nota legend,
+.imr-faixa legend {
+  font-weight: var(--peso-semi);
+  padding: 0 var(--esp-1);
+}
+
+.imr-faixa {
+  border: 1px solid var(--cor-divisoria);
+  border-radius: var(--raio-cartao);
+  padding: var(--esp-3) var(--esp-4);
+}
+
+.imr-acima-contratado {
+  color: var(--vermelho-60);
+  font-weight: var(--peso-semi);
+}
+
+.imr-memoria summary {
+  cursor: pointer;
+  font-weight: var(--peso-semi);
+}
+
+.imr-memoria ol {
+  margin: var(--esp-2) 0 0;
+  padding-left: var(--esp-5);
+}

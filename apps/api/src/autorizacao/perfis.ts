@@ -54,6 +54,13 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'garantias:registrar',
   'garantias:executar',
   'pagamentos:ordem_cronologica',
+  'operacao:ler',
+  'operacao:administrar',
+  'metas:ler',
+  'metas:configurar',
+  'imr:configurar',
+  'imr:medir',
+  'pagamentos:conferir',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -106,6 +113,10 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'garantias:registrar',
       'garantias:executar',
       'pagamentos:ordem_cronologica',
+      'metas:ler',
+      'imr:configurar',
+      'imr:medir',
+      'pagamentos:conferir',
     ],
   },
   {
@@ -134,6 +145,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'agentes:declarar',
       'fiscalizacao:registrar',
       'recebimentos:registrar',
+      'imr:medir',
+      'pagamentos:conferir',
     ],
   },
   {
@@ -156,13 +169,14 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'regularidade:consultar',
       'agentes:declarar',
       'garantias:registrar',
+      'pagamentos:conferir',
     ],
   },
   {
     codigo: 'planejamento',
     nome: 'Planejamento',
     descricao: 'Conduz a fase preparatória da contratação (DFD, ETP, riscos e preços).',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar', 'agentes:declarar'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar', 'agentes:declarar', 'metas:ler'],
   },
   {
     codigo: 'agente_contratacao',
@@ -229,6 +243,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'controle_externo:ler',
       'controle_externo:registrar',
       'riscos:revisar',
+      'metas:ler',
     ],
   },
 ];

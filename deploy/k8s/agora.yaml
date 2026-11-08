@@ -41,6 +41,9 @@ data:
   AGORA_OCR_URL: "http://agora-ocr:8080"
   # A API só publica as tarefas na fila; o serviço trabalhador (fila-trabalhador.yaml) as executa (RNF-07).
   AGORA_TRABALHADOR: "separado"
+  # Operação (RNF-10, IMR-01): sonda de disponibilidade a cada minuto. A meta é a do contrato da plataforma,
+  # informada pelo órgão em AGORA_OPERACAO_META_DISPONIBILIDADE (percentual). Autoescalonamento: autoescalonamento.yaml.
+  AGORA_OPERACAO_SONDA_SEGUNDOS: "60"
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -131,7 +131,14 @@ export type Permissao =
   | 'recebimentos:registrar'
   | 'garantias:registrar'
   | 'garantias:executar'
-  | 'pagamentos:ordem_cronologica';
+  | 'pagamentos:ordem_cronologica'
+  | 'operacao:ler'
+  | 'operacao:administrar'
+  | 'metas:ler'
+  | 'metas:configurar'
+  | 'imr:configurar'
+  | 'imr:medir'
+  | 'pagamentos:conferir';
 
 export interface UsuarioSessao {
   id: Id;
@@ -2973,3 +2980,402 @@ export interface EntradaComunicacaoAlteracao {
 // GET /pagamentos/prazos → PaginaPrazosPagamento (pagamentos:ler); GET /alteracoes-ordem → AlteracaoOrdemCronologica[] (pagamentos:ler)
 // POST /pagamentos/:id/alteracoes-ordem → AlteracaoOrdemCronologica (pagamentos:ordem_cronologica)
 // POST /alteracoes-ordem/:id/comunicacoes → AlteracaoOrdemCronologica (pagamentos:ordem_cronologica)
+// ───────────────────────── Operação: disponibilidade e janelas do PNCP (RNF-10, IMR-01) ─────────────────────────
+
+export type ComponenteOperacao = 'api' | 'banco' | 'fila' | 'sincronizacao';
+/** 'atingida'/'nao_atingida' com meta e medição; 'sem_meta' sem meta configurada; 'sem_dados' sem medição. */
+export type SituacaoMetaIndicador = 'atingida' | 'nao_atingida' | 'sem_meta' | 'sem_dados';
+
+export interface SituacaoComponenteOperacao {
+  componente: ComponenteOperacao;
+  nome: string;
+  disponivel: boolean;
+  /** Explicação curta do resultado (latência do banco, tarefas atrasadas, hora da última sincronização...). */
+  detalhe: string;
+}
+
+export interface SituacaoOperacao {
+  /** Última sondagem registrada (de qualquer réplica); null se a sonda nunca rodou. */
+  verificadaEm: InstanteISO | null;
+  /** A última sondagem ainda vale (não passou da validade). */
+  atual: boolean;
+  componentes: SituacaoComponenteOperacao[];
+  /** Tarefas do PNCP aguardando nova tentativa por indisponibilidade do portal. */
+  pncpEmManutencao: boolean;
+  sonda: { ligada: boolean; intervaloSegundos: number; validadeSegundos: number };
+  ambiente: 'demonstracao' | 'homologacao' | 'producao';
+  versao: string;
+  integracoes: 'offline' | 'online';
+  fila: { transporte: 'rabbitmq' | 'postgres'; trabalhador: 'embutido' | 'separado' };
+  /** Meta de disponibilidade configurada pelo órgão (AGORA_OPERACAO_META_DISPONIBILIDADE), ou null. */
+  metaDisponibilidade: number | null;
+}
+
+export interface OcorrenciaIndisponibilidade {
+  inicio: InstanteISO;
+  fim: InstanteISO;
+  minutos: number;
+  causas: (ComponenteOperacao | 'sem_medicao')[];
+}
+
+export interface JanelaManutencaoPncp {
+  /** Janela registrada pelo órgão (id) ou detectada pela fila (null). */
+  id: Id | null;
+  origem: 'registrada' | 'detectada';
+  inicio: InstanteISO;
+  fim: InstanteISO;
+  minutos: number;
+  descricao: string | null;
+  /** Tarefas do PNCP criadas antes do fim da janela e concluídas depois dela: absorvidas pela fila. */
+  tarefasAbsorvidas: number;
+  /** Tarefas do PNCP daquela janela que estão na fila de erro (precisam de reprocessamento). */
+  tarefasNaFilaDeErro: number;
+}
+
+export interface RelatorioDisponibilidade {
+  /** Mês de referência 'AAAA-MM'. */
+  mes: string;
+  periodo: { inicio: InstanteISO; fim: InstanteISO };
+  inicioMedicao: InstanteISO | null;
+  minutosConsiderados: number;
+  minutosDisponiveis: number;
+  minutosIndisponiveis: number;
+  minutosSemMedicao: number;
+  percentual: number | null;
+  metaPercentual: number | null;
+  situacao: SituacaoMetaIndicador;
+  componentes: { componente: ComponenteOperacao; nome: string; minutosIndisponiveis: number; percentual: number | null }[];
+  ocorrencias: OcorrenciaIndisponibilidade[];
+  janelasPncp: JanelaManutencaoPncp[];
+  premissas: string[];
+  fontes: string[];
+  geradoEm: InstanteISO;
+}
+
+export interface EntradaJanelaManutencao {
+  inicio: InstanteISO;
+  fim: InstanteISO;
+  descricao: string;
+}
+// GET /operacao/situacao → SituacaoOperacao (operacao:ler)
+// POST /operacao/sondar → SituacaoOperacao (operacao:administrar; auditado)
+// GET /operacao/disponibilidade?mes=AAAA-MM → RelatorioDisponibilidade (operacao:ler)
+// GET /operacao/disponibilidade.csv?mes=AAAA-MM → CSV (operacao:ler; a exportação fica na trilha)
+// POST /operacao/janelas → JanelaManutencaoPncp (operacao:administrar; auditado)
+
+// ───────────────────────── Painel das metas do ETP (RF-39) ─────────────────────────
+
+export interface ConfiguracaoMetasEtp {
+  tempoInstrucao: {
+    /** Redução pretendida do tempo de instrução sobre a linha de base (%). */
+    reducaoPercentual: number | null;
+    /** Linha de base de cada etapa da instrução (1 a 4), em dias corridos. */
+    linhaBaseDias: Record<'1' | '2' | '3' | '4', number | null>;
+  };
+  errosFormais: { mitigacaoPercentual: number | null };
+  economia: { economiaPercentual: number | null };
+  /** Quem configurou por último (null = nunca configuradas). */
+  atualizadaEm: InstanteISO | null;
+  atualizadaPor: UsuarioResumo | null;
+}
+export type EntradaMetasEtp = Pick<ConfiguracaoMetasEtp, 'tempoInstrucao' | 'errosFormais' | 'economia'>;
+
+export interface MedicaoTempoInstrucao {
+  processosMedidos: number;
+  mediaDias: number | null;
+  medianaDias: number | null;
+  linhaBaseDias: number | null;
+  alvoDias: number | null;
+  reducaoObtidaPercentual: number | null;
+  situacao: SituacaoMetaIndicador;
+}
+
+export interface ExplicacaoIndicador {
+  /** O que o número mede, em linguagem simples. */
+  mede: string;
+  /** O que ele não mede (e não deve ser lido como se medisse). */
+  naoMede: string;
+}
+
+export interface EconomiaProcessoPainel {
+  processo: ReferenciaControle;
+  titulo: string;
+  uasg: string;
+  origem: 'contrato' | 'homologacao';
+  /** Data do contrato ou da homologação. */
+  data: DataISO;
+  valorEstimado: Centavos;
+  valorContratado: Centavos;
+  economia: Centavos;
+  economiaPercentual: number | null;
+  expurgos: {
+    cotacoes: number;
+    descartadas: number;
+    mediaComDescartadas: Centavos | null;
+    mediaSemDescartadas: Centavos | null;
+    efeitoNoEstimado: Centavos;
+  };
+}
+
+export interface PainelMetasEtp {
+  filtro: { uasg: string | null; de: DataISO; ate: DataISO };
+  tempoInstrucao: {
+    metaReducaoPercentual: number | null;
+    etapas: (MedicaoTempoInstrucao & { etapa: number; titulo: string })[];
+    fase: MedicaoTempoInstrucao;
+    explicacao: ExplicacaoIndicador;
+  };
+  errosFormais: {
+    bloqueios: number;
+    processosAfetados: number;
+    ocorrenciasNaoBarradas: number;
+    mitigacaoPercentual: number | null;
+    metaPercentual: number | null;
+    situacao: SituacaoMetaIndicador;
+    porRegra: { regra: string; titulo: string; bloqueios: number }[];
+    porTrava: { trava: string; rotulo: string; bloqueios: number }[];
+    explicacao: ExplicacaoIndicador;
+  };
+  economia: {
+    processos: EconomiaProcessoPainel[];
+    totalEstimado: Centavos;
+    totalContratado: Centavos;
+    economia: Centavos;
+    economiaPercentual: number | null;
+    metaPercentual: number | null;
+    situacao: SituacaoMetaIndicador;
+    expurgos: { processosComExpurgo: number; cotacoesDescartadas: number; efeitoNoEstimado: Centavos };
+    explicacao: ExplicacaoIndicador;
+  };
+  metasConfiguradas: boolean;
+  premissas: string[];
+  fontes: string[];
+  geradoEm: InstanteISO;
+}
+// GET /metas-etp?uasg&de&ate → PainelMetasEtp (metas:ler; escopo de UASG)
+// GET /metas-etp/exportar.csv?uasg&de&ate → CSV (metas:ler; a exportação fica na trilha)
+// GET /metas-etp/configuracao → ConfiguracaoMetasEtp (metas:ler)
+// PUT /metas-etp/configuracao ← EntradaMetasEtp → ConfiguracaoMetasEtp (metas:configurar; auditado)
+// Cada bloqueio aplicado por uma trava (RN-04, RN-01, RN-09, RN-30, RN-06, RN-21, RF-15 e as travas de avanço) vira o evento `trava.bloqueio` na trilha.
+// ───────────────────────── IMR e conferência da nota fiscal (F7: RF-29 e RN-36) ─────────────────────────
+
+/** `percentual_razao`: numerador ÷ denominador × 100. `valor_medido`: o valor aferido (horas, ocorrências...). */
+export type FormaCalculoImr = 'percentual_razao' | 'valor_medido';
+/** `maior_igual`: meta atingida com resultado ≥ meta. `menor_igual`: resultado ≤ meta. */
+export type SentidoMetaImr = 'maior_igual' | 'menor_igual';
+export type PeriodicidadeImr = 'mensal' | 'bimestral' | 'trimestral' | 'semestral';
+
+/** Faixa de ajuste do pagamento: vale quando o resultado passa do `limite` para o lado de fora da meta. */
+export interface FaixaAjusteImr {
+  limite: number;
+  /** Glosa fixa, em % da base do indicador. */
+  percentualGlosa: number;
+  /** Glosa adicional por unidade além do limite, em % da base (0 = não há). */
+  percentualPorUnidade: number;
+  /** Encaminha para avaliar a abertura de processo sancionatório (decisão humana). */
+  encaminharSancionatorio: boolean;
+}
+
+export interface IndicadorImrContrato {
+  id: Id;
+  codigo: string;
+  nome: string;
+  formaCalculo: FormaCalculoImr;
+  /** Mecanismo de cálculo descrito em palavras. */
+  descricaoCalculo: string;
+  rotuloNumerador: string | null;
+  rotuloDenominador: string | null;
+  unidade: string;
+  sentidoMeta: SentidoMetaImr;
+  meta: number;
+  periodicidade: PeriodicidadeImr;
+  /** Primeira competência medida (AAAA-MM). */
+  inicioCompetencia: string;
+  fonteMedicao: string;
+  /** Itens do contrato que formam a base da glosa; vazio = todos os itens da nota. */
+  itensAlcancados: { id: Id; numero: number; descricao: string }[];
+  /** Em ordem de severidade (1 = mais branda). */
+  faixas: FaixaAjusteImr[];
+  tetoPercentual: number | null;
+  situacao: 'ativo' | 'encerrado';
+  /** Última competência medida, quando encerrado. */
+  encerradoApos: string | null;
+  justificativaEncerramento: string | null;
+  /** Com medições registradas, o indicador não é mais editado (só encerrado). */
+  temMedicoes: boolean;
+  criadoPor: UsuarioResumo | null;
+  criadoEm: InstanteISO;
+}
+
+export interface MedicaoImr {
+  id: Id;
+  indicador: { id: Id; codigo: string; nome: string; unidade: string };
+  competencia: string;
+  numerador: number | null;
+  denominador: number | null;
+  valorInformado: number | null;
+  resultado: number;
+  atingiuMeta: boolean;
+  /** Faixa aplicada (1 = mais branda); null sem glosa. */
+  faixa: number | null;
+  percentualGlosa: number;
+  encaminharSancionatorio: boolean;
+  memoriaCalculo: string[];
+  evidencia: string;
+  referenciaEvidencia: string | null;
+  observacao: string | null;
+  /** Pendência aberta para o gestor avaliar o encaminhamento sancionatório. */
+  pendenciaId: Id | null;
+  registradaPor: UsuarioResumo | null;
+  registradaEm: InstanteISO;
+}
+
+export interface CompetenciaImr {
+  competencia: string;
+  /** Indicadores com medição devida na competência e ainda sem registro. */
+  pendentes: { id: Id; codigo: string; nome: string }[];
+  medicoes: number;
+  /** Soma dos percentuais de glosa dos indicadores medidos (cada um incide sobre a sua base). */
+  percentualGlosaSomado: number;
+  pagamento: { id: Id; notaFiscal: string; situacao: SituacaoPagamento; valor: Centavos } | null;
+  conferencia: { situacao: SituacaoConferenciaNota; valorDevido: Centavos; glosaImr: Centavos } | null;
+}
+
+export interface ImrContrato {
+  contrato: { id: Id; numero: string };
+  indicadores: IndicadorImrContrato[];
+  /** Mais recentes primeiro. */
+  medicoes: MedicaoImr[];
+  /** Competências encerradas com medição devida, mais recentes primeiro. */
+  competencias: CompetenciaImr[];
+  itensContrato: { id: Id; numero: number; descricao: string; unidade: string }[];
+  resumo: { medicoes: number; naMeta: number; comGlosa: number; percentualNaMeta: number | null };
+  fundamento: string;
+  aviso: string;
+}
+
+export interface EntradaIndicadorImr {
+  codigo: string;
+  nome: string;
+  formaCalculo: FormaCalculoImr;
+  descricaoCalculo: string;
+  rotuloNumerador: string | null;
+  rotuloDenominador: string | null;
+  unidade: string;
+  sentidoMeta: SentidoMetaImr;
+  meta: number;
+  periodicidade: PeriodicidadeImr;
+  inicioCompetencia: string;
+  fonteMedicao: string;
+  itensAlcancados: Id[];
+  faixas: FaixaAjusteImr[];
+  tetoPercentual: number | null;
+}
+export interface EntradaEncerrarIndicadorImr {
+  /** Última competência em que o indicador vale (AAAA-MM). */
+  ultimaCompetencia: string;
+  justificativa: string;
+}
+export interface EntradaMedicaoImr {
+  indicadorId: Id;
+  competencia: string;
+  numerador?: number | null;
+  denominador?: number | null;
+  valor?: number | null;
+  /** Evidência da medição: relatório, sistema ou documento de onde vêm os números. */
+  evidencia: string;
+  /** Referência do documento da evidência (ex.: número SEI). */
+  referenciaEvidencia?: string | null;
+  observacao?: string | null;
+}
+export interface RespostaMedicaoImr {
+  medicao: MedicaoImr;
+  /** true quando a faixa previa encaminhamento sancionatório e a pendência do gestor foi aberta. */
+  pendenciaAberta: boolean;
+  /** Conferências de nota da competência ainda não atestadas e recalculadas com a nova glosa. */
+  conferenciasRecalculadas: number;
+}
+// GET /contratos/:id/imr (contratos:ler) → ImrContrato
+// POST /contratos/:id/imr/indicadores (imr:configurar) → ImrContrato (201)
+// PUT /contratos/:id/imr/indicadores/:indicadorId (imr:configurar; só sem medições) → ImrContrato
+// POST /contratos/:id/imr/indicadores/:indicadorId/encerrar (imr:configurar) → ImrContrato
+// POST /contratos/:id/imr/medicoes (imr:medir; competência já encerrada) → RespostaMedicaoImr (201)
+
+export type SituacaoConferenciaNota = 'conforme' | 'divergente' | 'justificada';
+export type TipoDivergenciaNota =
+  | 'preco_acima_contratado'
+  | 'quantidade_faturada_maior_que_recebida'
+  | 'quantidade_acima_do_saldo'
+  | 'soma_itens_diferente_do_total'
+  | 'medicao_imr_pendente'
+  | 'valor_nota_diferente_do_devido';
+
+export interface ItemConferenciaNota {
+  itemContratoId: Id;
+  numero: number;
+  descricao: string;
+  quantidadeRecebida: number;
+  quantidadeFaturada: number;
+  valorUnitarioContratado: Centavos;
+  valorUnitarioFaturado: Centavos;
+  /** Preço contratado × quantidade recebida. */
+  valorDevido: Centavos;
+  /** Preço cobrado × quantidade cobrada. */
+  valorFaturado: Centavos;
+}
+
+export interface ConferenciaNotaFiscal {
+  id: Id;
+  pagamentoId: Id;
+  competencia: string;
+  numeroNota: string;
+  emitidaEm: DataISO;
+  valorNota: Centavos;
+  itens: ItemConferenciaNota[];
+  valorBruto: Centavos;
+  glosas: { codigo: string; nome: string; percentual: number; base: Centavos; valor: Centavos }[];
+  glosaImr: Centavos;
+  valorDevido: Centavos;
+  /** Valor da nota menos o valor devido. */
+  diferenca: Centavos;
+  /** O menor entre o valor da nota e o valor devido. */
+  valorALiquidar: Centavos;
+  divergencias: { tipo: TipoDivergenciaNota; mensagem: string; itemContratoId: Id | null }[];
+  situacao: SituacaoConferenciaNota;
+  justificativa: string | null;
+  justificadaPor: UsuarioResumo | null;
+  justificadaEm: InstanteISO | null;
+  memoriaCalculo: string[];
+  fundamento: string;
+  aviso: string;
+  /** Cada novo registro (correção da nota) ou recálculo pela medição aumenta a versão. */
+  versao: number;
+  conferidaPor: UsuarioResumo | null;
+  conferidaEm: InstanteISO;
+}
+
+export interface ContextoConferenciaNota {
+  pagamento: Pagamento;
+  contrato: { id: Id; numero: string; objeto: string; temImr: boolean };
+  itensContrato: { id: Id; numero: number; descricao: string; unidade: string; quantidade: number; valorUnitario: Centavos; saldoQuantidade: number }[];
+  /** Glosas e medições pendentes do IMR na competência do pagamento. */
+  imr: { competencia: string; glosas: { codigo: string; nome: string; percentual: number; itensAlcancados: Id[] }[]; pendentes: { codigo: string; nome: string }[] };
+  conferencia: ConferenciaNotaFiscal | null;
+  /** Situação do atesto quanto à conferência (RN-36); a regularidade do contratado (RN-23) é verificada no próprio atesto. */
+  atesto: { liberado: boolean; motivo: string | null; /** A parcela ainda não foi atestada: a nota pode ser conferida, corrigida ou justificada. */ parcelaEmAberto: boolean };
+  /** O registro do recebimento definitivo (art. 140) entra aqui quando o módulo de recebimentos estiver disponível; hoje, a quantidade recebida é informada na conferência. */
+  recebimentoDefinitivo: null;
+}
+export interface EntradaConferenciaNota {
+  numeroNota: string;
+  emitidaEm: DataISO;
+  valorNota: Centavos;
+  itens: { itemContratoId: Id; quantidadeRecebida: number; quantidadeFaturada: number; valorUnitarioFaturado: Centavos }[];
+}
+export interface EntradaJustificativaConferencia {
+  justificativa: string;
+}
+// GET /pagamentos/:id/conferencia (pagamentos:ler) → ContextoConferenciaNota
+// POST /pagamentos/:id/conferencia (pagamentos:conferir; só pagamento previsto) → ContextoConferenciaNota: registra ou corrige a nota
+// POST /pagamentos/:id/conferencia/justificativa (pagamentos:conferir; só conferência divergente) → ContextoConferenciaNota
+// POST /pagamentos/:id/atestar: 422 enquanto a conferência estiver divergente sem justificativa ou, em contrato com IMR, sem conferência.

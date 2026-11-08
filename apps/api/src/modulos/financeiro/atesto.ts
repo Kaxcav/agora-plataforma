@@ -6,6 +6,8 @@
  *   pendência para notificar o contratado (art. 92, XVI).
  * - Nota ligada a uma entrega da contratada só é atestada depois do recebimento definitivo da entrega (art. 140):
  *   o definitivo é o ato que libera a liquidação (Lei 4.320/1964, art. 63).
+ * - Conferência da nota (RN-36, frente M): divergente sem justificativa, ou ausente em contrato com IMR, bloqueia o
+ *   atesto; conferida, a parcela segue para liquidação pelo valor a liquidar.
  */
 import type { VerificacaoRegularidade } from '@agora/contratos';
 import type { FastifyRequest } from 'fastify';
@@ -13,6 +15,7 @@ import type { Executor, Transacao } from '../../banco/tipos.ts';
 import { auditar } from '../../http/auditar.ts';
 import type { ContextoApp } from '../../http/contexto.ts';
 import { conflito, naoEncontrado } from '../../http/erros.ts';
+import { exigirConferenciaLiberada, situacaoAtestoConferencia } from '../imr/servico.ts';
 import { abrirPendenciaRegularidade } from '../regularidade/servico.ts';
 
 export interface PagamentoParaAtesto {
@@ -20,12 +23,13 @@ export interface PagamentoParaAtesto {
   contrato_id: string;
   fornecedor_id: string;
   nota_fiscal: string;
+  competencia: string;
 }
 
 /** Pagamento no escopo de UASG, com o fornecedor do contrato (null = fora do escopo ou inexistente). */
 export async function pagamentoParaAtesto(executor: Executor, id: string, escopo: string[] | null): Promise<PagamentoParaAtesto | null> {
   const [linha] = await executor.consultar<PagamentoParaAtesto>(
-    `SELECT p.situacao, p.contrato_id, c.fornecedor_id, p.nota_fiscal
+    `SELECT p.situacao, p.contrato_id, c.fornecedor_id, p.nota_fiscal, p.competencia
        FROM pagamentos p JOIN contratos c ON c.id = p.contrato_id
       WHERE p.id = $1 AND ($2::text[] IS NULL OR c.uasg = ANY($2::text[]))`,
     [id, escopo],
@@ -56,8 +60,8 @@ export async function registrarAtesto(
   request: FastifyRequest,
   e: { pagamentoId: string; escopo: string[] | null; verificacao: VerificacaoRegularidade; usuarioId: string; recebimentoId?: string | null },
 ): Promise<{ pendenciaId: string | null; notaFiscal: string; contratoId: string }> {
-  const [alvo] = await tx.consultar<{ situacao: string; contrato_id: string; nota_fiscal: string }>(
-    `SELECT p.situacao, p.contrato_id, p.nota_fiscal
+  const [alvo] = await tx.consultar<{ situacao: string; contrato_id: string; nota_fiscal: string; competencia: string; valor: number }>(
+    `SELECT p.situacao, p.contrato_id, p.nota_fiscal, p.competencia, p.valor
        FROM pagamentos p
        JOIN contratos c ON c.id = p.contrato_id
       WHERE p.id = $1 AND ($2::text[] IS NULL OR c.uasg = ANY($2::text[]))
@@ -67,11 +71,20 @@ export async function registrarAtesto(
   if (!alvo) throw naoEncontrado('Pagamento não encontrado.');
   if (alvo.situacao !== 'previsto') throw conflito('Somente pagamentos na situação "previsto" podem ser atestados.');
   await exigirRecebimentoDefinitivo(tx, e.pagamentoId);
+  const conferencia = await situacaoAtestoConferencia(tx, { id: e.pagamentoId, contrato_id: alvo.contrato_id, competencia: alvo.competencia });
+  exigirConferenciaLiberada(conferencia);
   await tx.executar(`UPDATE pagamentos SET situacao = 'atestado', atestado_por = $2, atestado_em = $3 WHERE id = $1`, [
     e.pagamentoId,
     e.usuarioId,
     ctx.relogio().toISOString(),
   ]);
+  // RN-36: com a nota conferida, a parcela segue para liquidação pelo valor a liquidar (o menor entre a nota e o devido).
+  const conferenciaNota = conferencia.conferencia
+    ? { ...conferencia.conferencia, valor: { de: alvo.valor, para: conferencia.conferencia.valorALiquidar } }
+    : null;
+  if (conferenciaNota && conferenciaNota.valorALiquidar !== alvo.valor) {
+    await tx.executar('UPDATE pagamentos SET valor = $2 WHERE id = $1', [e.pagamentoId, conferenciaNota.valorALiquidar]);
+  }
   const v = e.verificacao;
   const pendenciaId = v.regular
     ? null
@@ -89,6 +102,7 @@ export async function registrarAtesto(
       instrumentoId: alvo.contrato_id,
       situacao: { de: 'previsto', para: 'atestado' },
       regularidade: { verificacaoId: v.id, regular: v.regular, motivos: v.motivos, pendenciaId },
+      ...(conferenciaNota ? { conferenciaNota } : {}),
       ...(e.recebimentoId ? { recebimentoId: e.recebimentoId } : {}),
     },
   });
