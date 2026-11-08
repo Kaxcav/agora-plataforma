@@ -73,6 +73,11 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'impedimentos:parecer': 'Emitir a análise jurídica da extensão de sanção',
   'impedimentos:decidir': 'Decidir a extensão de sanção (autoridade competente)',
   'agentes:declarar': 'Assinar a própria declaração de inexistência de impedimento',
+  'pca:ler': 'Consultar o plano de contratações anual e as intenções de registro de preços',
+  'pca:editar': 'Registrar demandas e consolidar o plano de contratações anual',
+  'pca:aprovar': 'Aprovar o plano de contratações anual (autoridade competente) e publicá-lo no PNCP',
+  'irp:gerenciar': 'Abrir e consolidar intenções de registro de preços',
+  'irp:aderir': 'Registrar a adesão da unidade a intenções de registro de preços',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

@@ -13,6 +13,7 @@ import { opcoesDe } from '../../compartilhado/rotulos';
 import { calcular, EntradaMoeda, ErroOperacao, mesmoConteudo, Requisitos, textoOuNulo, type Requisito } from '../comum';
 import { DocumentosEtapa } from '../Documentos';
 import { ehTipoObjeto, TIPOS_OBJETO } from '../rotulos';
+import PlanejamentoDfd from './PlanejamentoDfd';
 import { MINIMO_TEXTO, textoSuficiente, type PropsEtapa } from './tipos';
 
 const SINAL_FRACIONAMENTO: Record<'sem_risco' | 'atencao' | 'risco', { rotulo: string; tom: TomEtiqueta; leitura: string }> = {
@@ -501,6 +502,8 @@ export default function Etapa1Demanda({ processo, editavel }: PropsEtapa) {
           {anuncio}
         </p>
       </form>
+
+      <PlanejamentoDfd processo={processo} editavel={editavel} formularioAlterado={alterado} aoAtualizarDfd={definirDfd} />
 
       <DocumentosEtapa
         processo={processo}

@@ -9,7 +9,7 @@
  * Respostas: 2xx sucesso; 401 refaz o login uma vez; 408/425/429/5xx e falhas de rede são transitórias (nova
  * tentativa); os demais 4xx são definitivos e vão para a fila de erro (`classificarRespostaHttp`).
  */
-import { classificarRespostaHttp, interpretarLocalizacaoPncp, type LocalizacaoPncp } from '@agora/dominio';
+import { classificarRespostaHttp, interpretarLocalizacaoPncp, type ItemPlanoPncp, type LocalizacaoPncp } from '@agora/dominio';
 import { FalhaTarefa } from '../fila/tipos.ts';
 import type { FuncaoFetch } from '../http/contexto.ts';
 
@@ -83,6 +83,13 @@ export interface AtaPncp {
   dataVigenciaFim: string;
 }
 
+/** Plano de contratações anual de uma unidade (seção 6.7.1 do manual: `POST /v1/orgaos/{cnpj}/pca`). */
+export interface PlanoPncp {
+  codigoUnidade: string;
+  anoPca: number;
+  itensPlano: ItemPlanoPncp[];
+}
+
 export interface RespostaInclusao {
   /** Endereço do registro criado, devolvido no `location` (protocolo do PNCP). */
   localizacao: string;
@@ -146,6 +153,8 @@ export interface ClientePncp {
   incluirArquivoCompra(cnpj: string, ano: number, sequencial: number, arquivo: ArquivoPncp): Promise<RespostaInclusao>;
   incluirContrato(cnpj: string, contrato: ContratoPncp): Promise<RespostaInclusao>;
   incluirAta(cnpj: string, anoCompra: number, sequencialCompra: number, ata: AtaPncp): Promise<RespostaInclusao>;
+  /** PCA aprovado da unidade (art. 12, § 1º; Decreto 10.947/2022, art. 12, § 2º). */
+  incluirPca(cnpj: string, plano: PlanoPncp): Promise<RespostaInclusao>;
 }
 
 export function criarClientePncp(o: OpcoesClientePncp): ClientePncp {
@@ -280,6 +289,9 @@ export function criarClientePncp(o: OpcoesClientePncp): ClientePncp {
     },
     incluirAta(cnpj, anoCompra, sequencialCompra, ata) {
       return incluir('a inclusão da ata', `/v1/orgaos/${cnpj}/compras/${anoCompra}/${sequencialCompra}/atas`, json(ata));
+    },
+    incluirPca(cnpj, plano) {
+      return incluir('a inclusão do plano de contratações anual', `/v1/orgaos/${cnpj}/pca`, json(plano));
     },
   };
 }

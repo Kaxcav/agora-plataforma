@@ -24,6 +24,7 @@ import { padraoContem } from '../../compartilhado/texto.ts';
 import { avaliarRegularidade, rotuloSancao, sancaoVigente } from '../fornecedores/repositorio.ts';
 import { bloqueiosControleExterno } from '../../compartilhado/controle-externo.ts';
 import { sinaisVinculosDaDisputa } from '../impedimentos/jornada.ts';
+import { regrasPlanejamentoEtapa1 } from '../planejamento/dfd.ts';
 import { ITENS_PARECER, PAPEIS_PROCESSO, TIPOS_DOCUMENTO } from './constantes.ts';
 import {
   analisarCesta,
@@ -312,9 +313,14 @@ export async function avaliarProcesso(
   const selecao = avaliarSelecaoProcesso(linha, hoje, calendario);
   let resultado: ResultadoRegras;
   switch (linha.etapa_atual) {
-    case 1:
+    case 1: {
       resultado = regrasEtapa1({ dfd: linha.dfd, valorEstimado, outrasContratacoes: await valoresMesmaNatureza(executor, linha, hoje), hoje });
+      // PCA (RF-31), catálogo (RN-02, RIA-13) e registro de preços compartilhado (RIA-01): módulo de planejamento.
+      const planejamento = await regrasPlanejamentoEtapa1(executor, linha, hoje);
+      resultado.bloqueios.push(...planejamento.bloqueios);
+      resultado.sinais.push(...planejamento.sinais);
       break;
+    }
     case 2:
       resultado = regrasEtapa2({
         equipe: carga.equipe,

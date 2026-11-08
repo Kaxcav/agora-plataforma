@@ -51,6 +51,8 @@ export interface Config {
   };
   /** Publicação no PNCP (RF-19): API de manutenção e login do sistema credenciado. */
   pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
+  /** Planejamento (frente O): consulta do PCA publicado no PNCP e validade do cache do catálogo CATMAT/CATSER. */
+  planejamento: { pncpConsultaUrl: string; catalogoCacheHoras: number };
 }
 
 export interface ConfigSmtp {
@@ -161,6 +163,8 @@ const esquemaAmbiente = z.object({
   AGORA_PNCP_PUBLICACAO_URL: textoOpcional,
   AGORA_PNCP_USUARIO: textoOpcional,
   AGORA_PNCP_SENHA: textoOpcional,
+  AGORA_PNCP_CONSULTA_URL: z.string().trim().min(1).default('https://pncp.gov.br/api/consulta'),
+  AGORA_CATALOGO_CACHE_HORAS: z.coerce.number().int().min(0).max(8760).default(168),
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -281,6 +285,7 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if ((e.AGORA_PNCP_USUARIO === null) !== (e.AGORA_PNCP_SENHA === null)) {
     problemas.push('AGORA_PNCP_USUARIO e AGORA_PNCP_SENHA: defina os dois juntos (ou nenhum)');
   }
+  if (!urlValida(e.AGORA_PNCP_CONSULTA_URL)) problemas.push('AGORA_PNCP_CONSULTA_URL: URL inválida (ex.: https://pncp.gov.br/api/consulta)');
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -348,6 +353,10 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       url: (e.AGORA_PNCP_PUBLICACAO_URL ?? (producao ? 'https://pncp.gov.br/api/pncp' : 'https://treina.pncp.gov.br/api/pncp')).replace(/\/+$/, ''),
       usuario: e.AGORA_PNCP_USUARIO,
       senha: e.AGORA_PNCP_SENHA,
+    },
+    planejamento: {
+      pncpConsultaUrl: e.AGORA_PNCP_CONSULTA_URL.replace(/\/+$/, ''),
+      catalogoCacheHoras: e.AGORA_CATALOGO_CACHE_HORAS,
     },
   };
 }
