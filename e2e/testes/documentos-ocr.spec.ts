@@ -11,12 +11,18 @@ import { entrar, esperarAviso, esperarPaginaOk, monitorarErros, verificarAcessib
 interface ProcessoLista {
   id: string;
   etapaAtual: number;
+  titulo: string;
 }
 
-async function processoNaEtapa(page: Page, etapa: number): Promise<ProcessoLista | undefined> {
-  const resposta = await page.request.get('/api/v1/processos?tamanhoPagina=100');
+/**
+ * Processo dos coletes balísticos na etapa 6: o edital exige 50% de 1.200 coletes como parcela de maior relevância.
+ * Busca pelo título, porque outros testes da suíte (sala de disputa, PoC-04) levam o processo dos rádios à etapa 6
+ * e além, e os seus itens são outros.
+ */
+async function processoDosColetes(page: Page): Promise<ProcessoLista | undefined> {
+  const resposta = await page.request.get('/api/v1/processos?busca=coletes&tamanhoPagina=10');
   const corpo = (await resposta.json()) as { itens: ProcessoLista[] };
-  return corpo.itens.find((p) => p.etapaAtual === etapa);
+  return corpo.itens.find((p) => /coletes balísticos/i.test(p.titulo) && p.etapaAtual === 6);
 }
 
 function atestado(orgao: string, linha: string): Buffer {
@@ -44,8 +50,8 @@ async function enviarAtestado(page: Page, arquivo: { nome: string; conteudo: Buf
 test('PoC-03 — atestados sintéticos em PDF: quantitativos extraídos, com página e linha, e somados por licitante', async ({ page }) => {
   const erros = monitorarErros(page);
   await entrar(page, 'agente');
-  const processo = await processoNaEtapa(page, 6);
-  test.skip(!processo, 'nenhum processo na etapa 6 nos dados sintéticos');
+  const processo = await processoDosColetes(page);
+  test.skip(!processo, 'processo dos coletes fora da etapa 6 nos dados sintéticos');
   await page.goto(`/jornada/${processo?.id ?? ''}`);
   await esperarPaginaOk(page);
   await page.getByRole('link', { name: 'Documentos e habilitação', exact: true }).click();
