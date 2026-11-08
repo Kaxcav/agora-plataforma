@@ -30,6 +30,7 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'notificacoes:ler',
   'notificacoes:enviar',
   'notificacoes:administrar',
+  'disputa:conduzir',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -123,6 +124,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'jornada:ler',
       'jornada:editar',
       'jornada:publicar',
+      'disputa:conduzir',
     ],
   },
   {

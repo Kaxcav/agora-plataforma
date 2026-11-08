@@ -116,6 +116,8 @@ describe('autorização: RBAC por perfil e escopo por UASG', () => {
     assert.equal(perfis.length, 9);
     const porCodigo = new Map(perfis.map((p) => [p.codigo, p]));
     assert.equal(porCodigo.get('administrador')?.permissoes.length, TODAS_PERMISSOES.length);
+    assert.ok(porCodigo.get('agente_contratacao')?.permissoes.includes('disputa:conduzir'));
+    assert.ok(!porCodigo.get('planejamento')?.permissoes.includes('disputa:conduzir'), 'segregação: quem planeja não conduz a sessão');
     assert.ok(porCodigo.get('auditor')?.permissoes.includes('lgpd:revelar'));
     assert.ok(!porCodigo.get('auditor')?.permissoes.includes('pendencias:resolver'));
     assert.ok(porCodigo.get('fiscal')?.permissoes.includes('pagamentos:atestar'));

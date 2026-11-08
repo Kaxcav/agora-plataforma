@@ -1,0 +1,9 @@
+{
+  "allow": [
+    {
+      "rule": "db_uri",
+      "paths": ["apps/api/src/config.ts"],
+      "reason": "Mensagem de validação de AGORA_BANCO_URL com o formato de exemplo (postgres://usuario:senha@host:5432/banco); não há credencial real."
+    }
+  ]
+}

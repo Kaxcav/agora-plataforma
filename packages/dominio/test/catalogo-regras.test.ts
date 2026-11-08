@@ -145,3 +145,24 @@ describe('regrasPorEtapa', () => {
     for (const etapa of [0, 8, 1.5, Number.NaN]) assert.throws(() => regrasPorEtapa(etapa), comCodigo('ETAPA_INVALIDA'), String(etapa));
   });
 });
+
+describe('CATALOGO_REGRAS — sala de disputa (RF-22, RN-26 e RIA-09)', () => {
+  it('as três regras ficam na etapa 6 e na tela da sala', () => {
+    for (const id of ['RF-22', 'RN-26', 'RIA-09']) {
+      const r = regra(id);
+      assert.equal(r.etapa, 6, id);
+      assert.ok(r.telas.includes('jornada.disputa'), id);
+    }
+    assert.deepEqual(regrasPorTela('jornada.disputa').map((r) => r.id).sort(), ['RF-22', 'RIA-09', 'RN-26']);
+  });
+
+  it('RN-26 cita os arts. 56, 57 e 61 e a IN SEGES/ME 73/2022; RIA-09 só sinaliza', () => {
+    assert.match(regra('RN-26').fundamento, /56, 57, 59, 60 e 61/);
+    assert.match(regra('RN-26').fundamento, /IN SEGES\/ME 73\/2022/);
+    assert.ok(regra('RN-26').implementacao.includes('calcularEstadoSessao'));
+    assert.match(regra('RIA-09').descricao, /requer revisão humana/);
+    assert.match(regra('RIA-09').descricao, /não desclassifica/);
+    assert.ok(regra('RIA-09').implementacao.includes('detectarPadroesLances'));
+    assert.ok(regra('RF-22').implementacao.includes('redigirAtaSessaoDisputa'));
+  });
+});

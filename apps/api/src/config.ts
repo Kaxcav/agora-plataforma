@@ -30,6 +30,8 @@ export interface Config {
   };
   /** Central de notificações (RF-26): canais, agendador da varredura diária e SMTP do órgão. */
   notificacoes: ConfigNotificacoes;
+  /** Dados abertos do Compras.gov.br (acompanhamento da sessão oficial na sala de disputa; só no modo online). */
+  comprasGov: { url: string };
 }
 
 export interface ConfigSmtp {
@@ -122,6 +124,7 @@ const esquemaAmbiente = z.object({
   AGORA_SMTP_SENHA: textoOpcional,
   AGORA_SMTP_REMETENTE: textoOpcional,
   AGORA_SMTP_TIMEOUT_MS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1000).max(120_000).default(15_000)),
+  AGORA_COMPRAS_GOV_URL: z.string().trim().min(1).default('https://dadosabertos.compras.gov.br'),
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -220,6 +223,7 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       };
     }
   }
+  if (!urlValida(e.AGORA_COMPRAS_GOV_URL)) problemas.push('AGORA_COMPRAS_GOV_URL: URL inválida (use https://)');
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -260,5 +264,6 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       govbr: e.AGORA_NOTIFICACOES_GOVBR,
       smtp,
     },
+    comprasGov: { url: e.AGORA_COMPRAS_GOV_URL.replace(/\/+$/, '') },
   };
 }

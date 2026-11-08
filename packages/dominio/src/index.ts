@@ -20,3 +20,7 @@ export * from './lei14133/score.ts';
 export * from './catalogo-regras.ts';
 export * from './lei14133/pesquisa-precos.ts';
 export * from './notificacoes.ts';
+export * from './lei14133/disputa.ts';
+export * from './lei14133/simulador-disputa.ts';
+export * from './lei14133/padroes-lances.ts';
+export * from './lei14133/ata-disputa.ts';

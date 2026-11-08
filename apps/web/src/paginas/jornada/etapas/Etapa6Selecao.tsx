@@ -4,12 +4,12 @@
  * (RN-08, `aplicarDesempate`) e sinal de vínculo societário entre licitantes (RIA-06).
  */
 import { useId, useRef, useState, type FormEvent } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ListOrdered, Plus, RotateCcw, Save, Trash2, Trophy } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Gavel, ListOrdered, Plus, RotateCcw, Save, Trash2, Trophy } from 'lucide-react';
 import type { EntradaLicitanteDisputa, FornecedorResumo, LicitanteDisputa } from '@agora/contratos';
 import { aplicarDesempate, formatarMoeda, type Licitante } from '@agora/dominio';
 import { useFornecedores } from '../../../api/fornecedores';
 import { ehResultadoDesempate, useSalvarDisputa, type ResultadoDesempate } from '../../../api/jornada';
-import { Alerta, Botao, CampoBusca, CampoMoeda, Etiqueta, Selecao, useAvisos } from '../../../componentes';
+import { Alerta, Botao, CampoBusca, CampoMoeda, Etiqueta, LinkBotao, Selecao, useAvisos } from '../../../componentes';
 import { PORTES } from '../../compartilhado/rotulos';
 import { calcular, EntradaMoeda, ErroOperacao, mesmoConteudo, Requisitos, type Requisito } from '../comum';
 import type { PropsEtapa } from './tipos';
@@ -378,6 +378,12 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
 
   return (
     <div className="pilha pilha--ampla">
+      <div className="linha">
+        <LinkBotao to={`/jornada/${processo.id}/disputa`} icone={Gavel}>
+          Abrir sala de disputa
+        </LinkBotao>
+        <span className="texto-pequeno texto-secundario">Simule a sessão de lances ou acompanhe a sessão oficial do Compras.gov.br (RF-22).</span>
+      </div>
       <form className="secao jornada-subsecao" onSubmit={enviar} noValidate aria-labelledby={`${base}-titulo`}>
         <div className="secao__cabecalho">
           <div>

@@ -20,6 +20,7 @@ import { rotasTarefas } from './tarefas/rotas.ts';
 import { rotasVinculos } from './vinculos/rotas.ts';
 import { rotasPesquisaPrecos } from './precos/rotas.ts';
 import { rotasNotificacoes } from './notificacoes/rotas.ts';
+import { rotasDisputa } from './disputa/rotas.ts';
 
 export type ModuloRotas = (api: FastifyInstance) => Promise<void>;
 
@@ -46,4 +47,5 @@ export const MODULOS_API: readonly ModuloRotas[] = [
   rotasPublico,
   rotasPesquisaPrecos,
   rotasNotificacoes,
+  rotasDisputa,
 ];
