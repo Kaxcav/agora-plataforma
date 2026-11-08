@@ -88,7 +88,7 @@
 - **RN-35** — Garantias contratuais e desconto de multa (`baseCalculoGarantia`, `avaliarPercentualGarantia`, `validarApresentacaoGarantia`, `situacaoGarantia`, `avaliarLiberacaoGarantia`, `atualizarCaucaoDinheiro`, `avaliarExecucaoGarantia`, `planejarDescontoMulta`, `validarDecisaoAutoridade`).
 - **RF-28** — Execução do contrato: fiscalização, recebimentos, garantias e prazos de pagamento (`verificarDesignacoesContrato`, `validarOcorrencia`, `validarAlteracaoOrdemCronologica`, `classificarPreteridosComAlteracoes`). Telas `contratos.detalhe` e `pagamentos.prazos`.
 
-Domínio: `packages/dominio/src/lei14133/execucao-contratual.ts` e `garantias.ts` (44 testes novos).
+Domínio: `packages/dominio/src/lei14133/execucao-contratual.ts` e `garantias.ts` (44 testes novos, mais 4 no catálogo). API: `apps/api/test/execucao-contratual.test.ts` (10 testes). E2e: `e2e/testes/execucao-recebimento-garantias.spec.ts` (4 cenários, com verificação axe).
 
 ## 5. Rotas novas (`/api/v1`)
 
