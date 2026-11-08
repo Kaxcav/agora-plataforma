@@ -8,6 +8,11 @@ import { caminhoRetornoSeguro, useSessao } from '../../sessao/ContextoSessao';
 import { NOMES_PERFIS } from '../../sessao/permissoes';
 
 const SENHA_DEMONSTRACAO = 'Agora@Demo2026';
+
+/** Cidadão (perfil sem acesso interno) sem destino pedido vai para as próprias manifestações, não para o painel. */
+function destinoAposEntrar(perfis: readonly string[], retorno: string): string {
+  return retorno === '/' && perfis.length === 1 && perfis[0] === 'cidadao' ? '/sociedade/minhas-manifestacoes' : retorno;
+}
 const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ErrosCampos {
@@ -50,7 +55,7 @@ export default function Entrar() {
   const config = configuracao.data;
   const contasDemo = config?.ambiente === 'demonstracao' ? (config.usuariosDemonstracao ?? []) : [];
 
-  if (sessao) return <Navigate to={retorno} replace />;
+  if (sessao) return <Navigate to={destinoAposEntrar(sessao.usuario.perfis, retorno)} replace />;
 
   const enviar = async (evento: FormEvent) => {
     evento.preventDefault();
@@ -69,8 +74,8 @@ export default function Entrar() {
       return;
     }
     try {
-      await entrar({ email: email.trim(), senha });
-      void navegar(retorno, { replace: true });
+      const nova = await entrar({ email: email.trim(), senha });
+      void navegar(destinoAposEntrar(nova.usuario.perfis, retorno), { replace: true });
     } catch (erro) {
       definirErroEnvio(erro);
       definirSenha('');

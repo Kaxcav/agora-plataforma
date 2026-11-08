@@ -84,6 +84,11 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/metas-etp', permissao: 'metas:ler', pagina: lazy(() => import('../paginas/metas/PainelMetas')) },
   // IMR e conferência da nota fiscal (F7: RF-29 e RN-36)
   { caminho: '/financeiro/pagamentos/:id/conferencia', permissao: 'pagamentos:ler', pagina: lazy(() => import('../paginas/financeiro/ConferenciaNota')) },
+  // Gestão compartilhada com a sociedade (RF-37) e dados abertos (RF-38)
+  { caminho: '/dados-abertos', publica: true, pagina: lazy(() => import('../paginas/publicas/DadosAbertos')) },
+  { caminho: '/sociedade', permissao: 'sociedade:ler', pagina: lazy(() => import('../paginas/sociedade/GestaoCompartilhada')) },
+  { caminho: '/sociedade/contratos/:id', permissao: 'sociedade:ler', pagina: lazy(() => import('../paginas/sociedade/ContratoSociedade')) },
+  { caminho: '/sociedade/minhas-manifestacoes', permissao: 'sociedade:manifestar', pagina: lazy(() => import('../paginas/sociedade/MinhasManifestacoes')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

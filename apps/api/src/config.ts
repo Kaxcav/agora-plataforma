@@ -53,6 +53,8 @@ export interface Config {
   pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
   /** Operação (RNF-10, IMR-01): sonda de disponibilidade e meta configurada pelo órgão. */
   operacao: ConfigOperacao;
+  /** Catálogo de dados abertos (RF-38): limite de requisições por minuto e por IP nas rotas públicas do catálogo. */
+  dadosAbertos: { limitePorMinuto: number };
 }
 
 export interface ConfigOperacao {
@@ -181,6 +183,7 @@ const esquemaAmbiente = z.object({
   AGORA_OPERACAO_FILA_ATRASO_MINUTOS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1).max(1440).default(15)),
   AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(0).max(720).default(0)),
   AGORA_OPERACAO_META_DISPONIBILIDADE: z.preprocess(vazioComoAusente, z.coerce.number().gt(0).max(100).optional()),
+  AGORA_DADOS_ABERTOS_LIMITE_MINUTO: z.coerce.number().int().min(1).max(100_000).default(60),
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -375,5 +378,6 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       sincronizacaoAtrasoMaximoHoras: e.AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS === 0 ? null : e.AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS,
       metaDisponibilidade: e.AGORA_OPERACAO_META_DISPONIBILIDADE ?? null,
     },
+    dadosAbertos: { limitePorMinuto: e.AGORA_DADOS_ABERTOS_LIMITE_MINUTO },
   };
 }

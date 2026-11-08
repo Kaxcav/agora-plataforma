@@ -40,3 +40,6 @@ export * from './operacao/disponibilidade.ts';
 export * from './operacao/carga.ts';
 export * from './lei14133/imr.ts';
 export * from './lei14133/fase-preparatoria.ts';
+export * from './privacidade.ts';
+export * from './lei14133/gestao-compartilhada.ts';
+export * from './dados-abertos.ts';

@@ -936,8 +936,31 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'gerarQuesitosControleLegalidade, montarCasosTesteProvaConceito, montarChecklistPecas; api: POST /processos/:id/documentos/gerar; GET /processos/:id/checklist-documentos; GET /processos/:id/documentos/:docId/pdf',
   },
+  {
+    id: 'RF-37',
+    tipo: 'RF',
+    titulo: 'Gestão compartilhada com a sociedade',
+    descricao:
+      'O cidadão identificado pelo Login Único gov.br, num perfil sem acesso interno, envia mensagem de texto ou imagem sobre um contrato. Nada vai a público sem a decisão de um moderador, sempre com motivo, e o autor aparece só com o primeiro nome e as iniciais. A imagem tem o tipo conferido pelo conteúdo e perde os metadados de localização antes de ser guardada. O fiscal publica fotos e vídeos do acompanhamento da obra ou do serviço, e o registro marcado como sigiloso fica guardado sem publicação. Administração e contratado respondem de forma identificada, com prazo de 30 dias prorrogável uma vez. Ao fim da vigência, o gestor publica o relatório final sobre a consecução dos objetivos da contratação. Cada passo fica na trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, art. 174, § 3º, VI, alíneas "a" a "d", e art. 19, III; Lei 13.460/2017, art. 16; Lei 13.709/2018 (LGPD)',
+    etapa: 7,
+    telas: ['sociedade', 'sociedade.contrato', 'sociedade.minhas'],
+    implementacao:
+      'validarManifestacao, validarDecisaoModeracao, validarResposta, prazoRespostaManifestacao, situacaoPrazoResposta, avaliarPublicacaoRegistroExecucao, validarRelatorioFinal, nomePublicoCidadao, tarjarDadosPessoaisLivres; api: POST /sociedade/contratos/:id/manifestacoes; POST /sociedade/manifestacoes/:id/moderacao; POST /sociedade/manifestacoes/:id/respostas; POST /sociedade/contratos/:id/registros; POST /sociedade/contratos/:id/relatorio-final; GET /publico/contratos/:id/gestao-compartilhada',
+  },
+  {
+    id: 'RF-38',
+    tipo: 'RF',
+    titulo: 'Catálogo de dados abertos',
+    descricao:
+      'A página pública Dados abertos lista, sem login, os conjuntos de editais publicados, contratos, atas de registro de preços, termos aditivos, pagamentos na ordem cronológica por fonte de recursos e sanções aplicadas, em CSV e JSON. Cada conjunto traz dicionário de dados, licença aberta, data da última atualização, periodicidade e o SHA-256 de cada arquivo. Nenhum dado pessoal sai no catálogo: o CPF de fornecedor pessoa física fica de fora, o nome sai mascarado e toda célula de texto passa pela tarja de CPF, e-mail e telefone. As rotas têm limite de requisições por endereço.',
+    fundamento: 'Decreto 8.777/2016; Lei 12.527/2011, art. 8º, § 1º, IV, e § 3º; Lei 14.133/2021, art. 174, § 4º, e art. 141, § 3º; Lei 13.709/2018 (LGPD)',
+    etapa: null,
+    telas: ['dados-abertos'],
+    implementacao:
+      'gerarCsvDadosAbertos, prepararLinhasDadosAbertos, centavosParaDecimal, contemDadoPessoal; api: GET /publico/dados-abertos; GET /publico/dados-abertos/:conjunto; GET /publico/dados-abertos/:conjunto/csv; GET /publico/dados-abertos/:conjunto/json',
+  },
 ]);
-
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
 export function regrasPorTela(tela: string): RegraCatalogo[] {
   if (typeof tela !== 'string' || tela.length === 0) throw new ErroDominio('TELA_INVALIDA', 'Informe o id da tela.');
