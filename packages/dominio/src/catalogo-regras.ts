@@ -518,8 +518,8 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     tipo: 'RF',
     titulo: 'Fornecedores e índice de desempenho',
     descricao:
-      'Lista os fornecedores com o índice de desempenho contratual (IDC) e as sanções. O detalhe mostra os componentes do IDC, a metodologia e o aviso de que o índice não constitui sanção, além de sanções, contratos e regularidade; o documento de pessoa física aparece mascarado, com opção de revelar quando permitido e registrado.',
-    fundamento: 'Lei 14.133/2021, art. 88, §§ 3º e 4º',
+      'Lista os fornecedores com ranking ordenável pelo Índice de Desempenho Contratual (IDC, de 0 a 100) e os selos Diamante (≥ 90), Ouro (≥ 75), Prata (≥ 60), Em observação (≥ 50), Crítico (< 50) e Sem histórico (sem penalizar a falta de dados). O selo Impedido decorre exclusivamente de sanção vigente de impedimento de licitar ou declaração de inidoneidade (arts. 156 e 158 da Lei 14.133/2021) e aparece ao lado do selo do IDC mantendo a nota visível. O detalhe exibe componentes, metodologia auditável, sanções, contratos e regularidade com mascaramento LGPD.',
+    fundamento: 'Lei 14.133/2021, art. 88, §§ 3º e 4º, e arts. 156 e 158',
     etapa: null,
     telas: ['fornecedores'],
     implementacao: 'calcularIdc; api: GET /fornecedores; GET /fornecedores/:id',

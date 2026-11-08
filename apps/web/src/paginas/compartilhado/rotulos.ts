@@ -84,11 +84,12 @@ export const SITUACOES_SANCAO: Record<Sancao['situacao'], RotuloTom> = {
 };
 
 export const FAIXAS_IDC: Record<FaixaIdc, RotuloTom> = {
-  excelente: { rotulo: 'Excelente', tom: 'sucesso' },
-  bom: { rotulo: 'Bom', tom: 'sucesso' },
-  regular: { rotulo: 'Regular', tom: 'alerta' },
-  insuficiente: { rotulo: 'Insuficiente', tom: 'aviso' },
+  diamante: { rotulo: 'Diamante', tom: 'sucesso' },
+  ouro: { rotulo: 'Ouro', tom: 'sucesso' },
+  prata: { rotulo: 'Prata', tom: 'info' },
+  em_observacao: { rotulo: 'Em observação', tom: 'aviso' },
   critico: { rotulo: 'Crítico', tom: 'erro' },
+  sem_historico: { rotulo: 'Sem histórico', tom: 'neutro' },
 };
 
 export const TIPOS_ADITIVO: Record<Aditivo['tipo'], string> = {
