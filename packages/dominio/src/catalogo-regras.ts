@@ -865,6 +865,42 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'interpretarLocalizacaoPncp, numeroControlePncp, codigosContratacaoPncp, tituloDocumentoPncp, prazoDivulgacaoContratoPncp; api: POST /processos/:id/publicar; GET /processos/:id/publicacao-pncp; POST /processos/:id/contrato/publicar-pncp',
   },
+  {
+    id: 'RN-32',
+    tipo: 'RN',
+    titulo: 'Termo aditivo como ato, com a trava do art. 125',
+    descricao:
+      'O termo aditivo (acréscimo ou supressão quantitativa, alteração qualitativa, prazo ou reequilíbrio) é um ato registrado: proposta com justificativa, parecer jurídico prévio, assinatura pela autoridade competente depois do checklist de regularidade do contratado e divulgação no PNCP pela fila de integrações, no prazo do art. 94. Acréscimos e supressões, inclusive o reflexo de alteração qualitativa, somam-se separadamente sobre o valor inicial atualizado; acima de 25% (ou de 50% para acréscimos em reforma de edifício ou de equipamento) a API recusa a alteração, na proposta e de novo na assinatura. O termo assinado gera PDF para juntar ao processo.',
+    fundamento: 'Lei 14.133/2021, arts. 53, § 4º, 91, § 4º, 94, 124 e 125',
+    etapa: 7,
+    telas: ['contratos.detalhe'],
+    implementacao:
+      'avaliarTermoAditivo, avaliarAditivo, numeroTermoContratual, situacaoDivulgacaoTermoPncp, tipoTermoContratoPncp; api: POST /contratos/:id/alteracoes; POST /contratos/:id/alteracoes/:alteracaoId/parecer; POST /contratos/:id/alteracoes/:alteracaoId/assinar; GET /contratos/:id/alteracoes/:alteracaoId/termo.pdf',
+  },
+  {
+    id: 'RN-33',
+    tipo: 'RN',
+    titulo: 'Prorrogação com os limites dos arts. 105 a 114',
+    descricao:
+      'A prorrogação da vigência só é registrada dentro da vigência máxima da natureza do contrato: serviços e fornecimentos contínuos até 10 anos, com previsão no edital, vantajosidade atestada pela autoridade e preço compatível com o mercado; sistemas estruturantes de TI até 15 anos; contratos que geram receita até 10 ou 35 anos. No contrato por escopo, a vigência se prorroga automaticamente quando o objeto não é concluído sem culpa do contratado; com culpa, só depois de constituída a mora. Exige crédito orçamentário e o checklist de regularidade (RN-09). A partir de 120 dias do fim da vigência, os avisos da central de notificações dizem se cabe prorrogar, até quando, ou se é preciso nova licitação.',
+    fundamento: 'Lei 14.133/2021, arts. 105 a 107, 110, 111 e 114',
+    etapa: 7,
+    telas: ['contratos.detalhe', 'notificacoes'],
+    implementacao:
+      'avaliarProrrogacao, avaliarAlertaProrrogacao, situacaoProrrogacao, vigenciaMaximaAnos; api: POST /contratos/:id/prorrogacoes; POST /contratos/:id/alteracoes (tipo prazo); varredura diária de notificações',
+  },
+  {
+    id: 'RF-27',
+    tipo: 'RF',
+    titulo: 'Alterações do contrato: aditivos, apostilas, reajustes e extinção',
+    descricao:
+      'A aba Alterações do contrato reúne o histórico de termos aditivos, apostilamentos (reajuste e repactuação), reequilíbrios e extinção, com a situação de cada ato, o parecer, a assinatura, a divulgação no PNCP e o termo em PDF, e mostra o percentual acumulado de acréscimos e supressões frente ao limite do art. 125. O reajuste é apostilado só depois de 12 meses da data do orçamento estimado, pelo índice do contrato; a repactuação exige demonstração analítica por componente; o reequilíbrio passa por instrução e decisão, respeitada a matriz de riscos; e a extinção é motivada, com contraditório quando unilateral e os efeitos do art. 139 decididos pela autoridade.',
+    fundamento: 'Lei 14.133/2021, arts. 25, § 7º, 92, § 3º, 124, II, "d", 135, 136 e 137 a 139',
+    etapa: 7,
+    telas: ['contratos.detalhe'],
+    implementacao:
+      'avaliarReajuste, avaliarRepactuacao, avaliarReequilibrio, avaliarInstauracaoExtincao, avaliarDecisaoExtincao, avaliarLimiteAditivos; api: GET /contratos/:id/alteracoes; POST /contratos/:id/reajustes; POST /contratos/:id/repactuacoes; POST /contratos/:id/extincao; POST /contratos/:id/alteracoes/:alteracaoId/defesa; POST /contratos/:id/alteracoes/:alteracaoId/decidir-extincao',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

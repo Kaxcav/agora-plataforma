@@ -1,4 +1,4 @@
-import { formatarData, formatarMoeda, situacaoRegistroCeisCnep, validarCertidao } from '@agora/dominio';
+import { formatarData, situacaoRegistroCeisCnep, validarCertidao } from '@agora/dominio';
 import type {
   Aditivo,
   CertidaoRegistrada,
@@ -26,6 +26,9 @@ import {
 } from './repositorio.ts';
 import { abrirPendenciaRegularidade, exigirRegularidade, verificarRegularidade } from './servico.ts';
 import { listarRegistrosCeisCnep } from './ceis-cnep.ts';
+import { camposTravasProrrogacao, conferirTravasProrrogacao } from '../alteracoes/prorrogacao.ts';
+import { mapearAlteracao, obterContratoAlteracao, obterLinhaAlteracao } from '../alteracoes/repositorio.ts';
+import { efetivarProrrogacao } from '../alteracoes/servico.ts';
 
 const MOMENTOS = ['assinatura', 'prorrogacao', 'atesto', 'pagamento'] as const;
 const esquemaMomento = z.object({ momento: z.enum(MOMENTOS).default('assinatura') });
@@ -52,6 +55,8 @@ const esquemaProrrogacao = z.object({
   novaVigenciaFim: dataIso,
   valor: centavos.default(0),
   justificativa: z.string().trim().min(20).max(5000),
+  // RN-33 (frente K): travas dos arts. 105 a 114, conforme a natureza do contrato.
+  ...camposTravasProrrogacao,
 });
 
 const esquemaEnvio = z.object({
@@ -233,6 +238,10 @@ export async function rotasRegularidade(app: FastifyInstance): Promise<void> {
         { campo: 'novaVigenciaFim', mensagem: 'Informe uma data posterior ao fim da vigência atual.' },
       ]);
     }
+    // RN-33 (frente K): limites dos arts. 105 a 114 antes da consulta de regularidade.
+    const dadosContrato = await obterContratoAlteracao(ctx.banco, contrato.id, null);
+    if (!dadosContrato) throw naoEncontrado('Contrato não encontrado.');
+    const travas = conferirTravasProrrogacao(dadosContrato, entrada, ctx.hoje());
     const verificacao = await verificarRegularidade(ctx, request, {
       fornecedorId: contrato.fornecedor_id,
       momento: 'prorrogacao',
@@ -241,55 +250,33 @@ export async function rotasRegularidade(app: FastifyInstance): Promise<void> {
     exigirRegularidade(verificacao, 'O contratado não atende à verificação prévia à prorrogação (RN-09, art. 91, § 4º).');
 
     const hoje = ctx.hoje();
-    const aditivo = await ctx.banco.transacao(async (tx) => {
-      const [atual] = await tx.consultar<{ id: string; numero: string; vigencia_fim: string }>(
-        'SELECT id, numero, vigencia_fim FROM contratos WHERE id = $1 FOR UPDATE',
-        [contrato.id],
-      );
-      if (!atual) throw naoEncontrado('Contrato não encontrado.');
-      if (entrada.novaVigenciaFim <= atual.vigencia_fim) throw conflito('A vigência do contrato mudou durante a operação. Recarregue e tente de novo.');
-      const [contagem] = await tx.consultar<{ total: number }>('SELECT COUNT(*)::integer AS total FROM aditivos WHERE contrato_id = $1', [atual.id]);
-      const numero = `${(contagem?.total ?? 0) + 1}º Termo Aditivo`;
-      const [criado] = await tx.consultar<{ id: string }>(
-        `INSERT INTO aditivos (contrato_id, numero, tipo, valor, nova_vigencia_fim, assinado_em, justificativa)
-         VALUES ($1, $2, 'prorrogacao', $3, $4, $5, $6) RETURNING id`,
-        [atual.id, numero, entrada.valor, entrada.novaVigenciaFim, hoje, entrada.justificativa],
-      );
-      if (!criado) throw new Error('Aditivo não registrado');
-      await tx.executar(
-        `UPDATE contratos
-            SET vigencia_fim = $2,
-                campos_editados = CASE WHEN 'vigencia_fim' = ANY(campos_editados) THEN campos_editados ELSE array_append(campos_editados, 'vigencia_fim') END,
-                atualizado_em = $3
-          WHERE id = $1`,
-        [atual.id, entrada.novaVigenciaFim, ctx.relogio().toISOString()],
-      );
-      await auditar(tx, request, {
-        acao: 'contrato.prorrogar',
-        recurso: 'contrato',
-        recursoId: atual.id,
-        resumo: `Registrou o ${numero} (prorrogação) do contrato ${atual.numero}: vigência até ${formatarData(entrada.novaVigenciaFim)}${entrada.valor > 0 ? `, ${formatarMoeda(entrada.valor)}` : ''}`,
-        dados: {
-          aditivoId: criado.id,
-          vigenciaFim: { de: atual.vigencia_fim, para: entrada.novaVigenciaFim },
-          valor: entrada.valor,
-          verificacaoId: verificacao.id,
-          consultaCeisCnep: verificacao.consulta ? { fonte: verificacao.consulta.fonte, consultadoEm: verificacao.consulta.consultadoEm } : null,
-        },
-      });
-      return { id: criado.id, numero };
-    });
+    const efetivada = await ctx.banco.transacao((tx) =>
+      efetivarProrrogacao(tx, ctx, app.fila, request, {
+        contratoId: contrato.id,
+        novaVigenciaFim: entrada.novaVigenciaFim,
+        valor: entrada.valor,
+        justificativa: entrada.justificativa,
+        natureza: travas.natureza,
+        avaliacao: travas.avaliacao,
+        travas: travas.travas,
+        verificacao: { id: verificacao.id, consulta: verificacao.consulta ? { fonte: verificacao.consulta.fonte, consultadoEm: verificacao.consulta.consultadoEm } : null },
+      }),
+    );
+    await app.fila.despachar([efetivada.tarefa]);
+    await app.fila.aguardar(efetivada.tarefa.id);
     reply.status(201);
     const resultado: Aditivo = {
-      id: aditivo.id,
-      numero: aditivo.numero,
+      id: efetivada.aditivoId,
+      numero: efetivada.numero,
       tipo: 'prorrogacao',
       valor: entrada.valor,
       novaVigenciaFim: entrada.novaVigenciaFim,
       assinadoEm: hoje,
       justificativa: entrada.justificativa,
     };
-    return { aditivo: resultado, verificacao };
+    const linha = await obterLinhaAlteracao(ctx.banco, contrato.id, efetivada.alteracaoId);
+    const alteracao = linha ? mapearAlteracao(linha, dadosContrato, hoje, await opcoesCalendario(ctx.banco)) : undefined;
+    return { aditivo: resultado, verificacao, ...(alteracao ? { alteracao } : {}) };
   });
 
   // ───────── pagamento: recheque antes do pagamento (RN-23) ─────────

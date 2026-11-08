@@ -19,6 +19,7 @@ import { SENHA_DEMONSTRACAO } from './usuarios-demonstracao.ts';
 import { gerarVinculoSalaDisputa } from './disputa.ts';
 import { gerarVinculosImpedimentos } from './vinculos-impedimentos.ts';
 import { gerarFila } from './fila.ts';
+import { gerarAlteracoes } from './alteracoes.ts';
 
 /** Semente fixa do gerador (Lei 14.133): a mesma data de referência produz sempre os mesmos dados. */
 export const SEMENTE_DEMONSTRACAO = 14_133;
@@ -41,6 +42,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'qualificacao-tecnica', executar: gerarQualificacaoTecnica },
   { nome: 'vinculos-impedimentos', executar: gerarVinculosImpedimentos },
   { nome: 'fila', executar: gerarFila },
+  { nome: 'alteracoes', executar: gerarAlteracoes },
 ];
 
 function dadosVazios(): DadosSeed {

@@ -114,8 +114,8 @@ test.describe('CEIS, CNEP e certidões (frente C)', () => {
     const prorrogar = async () => {
       await page.goto(`/contratos/${contrato.id}`);
       await esperarPaginaOk(page);
-      await page.getByRole('tab', { name: /^Aditivos/ }).click();
-      await expect(page.getByRole('heading', { name: 'Prorrogação da vigência (RN-09)' })).toBeVisible();
+      await page.getByRole('tab', { name: /^Alterações/ }).click();
+      await expect(page.getByRole('heading', { name: 'Prorrogação da vigência (RN-09 e RN-33)' })).toBeVisible();
       await page.getByRole('button', { name: 'Registrar prorrogação', exact: true }).click();
       const dialogo = page.getByRole('dialog', { name: 'Registrar prorrogação' });
       await expect(dialogo).toBeVisible();
@@ -123,6 +123,11 @@ test.describe('CEIS, CNEP e certidões (frente C)', () => {
       await dialogo
         .getByRole('textbox', { name: /^Justificativa/ })
         .fill('Serviço contínuo com preços vantajosos e execução satisfatória; prorrogação por 12 meses (art. 107).');
+      // Travas da RN-33 (frente K), conforme a natureza do contrato: aqui só a regularidade (RN-09) decide.
+      const semCulpa = dialogo.getByRole('radio', { name: /^Sem culpa do contratado/ });
+      if ((await semCulpa.count()) > 0) await semCulpa.check();
+      else for (const nome of [/^O edital prevê/, /^A autoridade atestou/, /^A pesquisa de preços/]) await dialogo.getByRole('checkbox', { name: nome }).check();
+      await dialogo.getByRole('checkbox', { name: /^Há crédito orçamentário/ }).check();
       await dialogo.getByRole('button', { name: 'Verificar e prorrogar', exact: true }).click();
       return dialogo;
     };
@@ -163,7 +168,7 @@ test.describe('CEIS, CNEP e certidões (frente C)', () => {
     const dialogo = await prorrogar();
     await expect(dialogo).toBeHidden();
     await esperarAviso(page, 'Prorrogação registrada');
-    await expect(page.getByRole('table', { name: 'Termos aditivos' }).getByText('Prorrogação').first()).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Histórico de alterações' }).getByText(/^Prorrogação/).first()).toBeVisible();
     erros.verificar();
   });
 

@@ -226,3 +226,30 @@ describe('CATALOGO_REGRAS — frente C (CEIS, CNEP e certidões)', () => {
     assert.match(d, /protocolo/);
   });
 });
+
+describe('CATALOGO_REGRAS — frente K (execução contratual como ato)', () => {
+  const casos: [string, string[], string, RegExp][] = [
+    ['RN-32', ['contratos.detalhe'], 'avaliarTermoAditivo', /arts\. 53, § 4º, 91, § 4º, 94, 124 e 125/],
+    ['RN-33', ['contratos.detalhe', 'notificacoes'], 'avaliarProrrogacao', /arts\. 105 a 107, 110, 111 e 114/],
+    ['RF-27', ['contratos.detalhe'], 'avaliarReajuste', /arts\. 25, § 7º, 92, § 3º/],
+  ];
+  for (const [id, telas, implementacao, fundamento] of casos) {
+    it(`${id}: etapa 7, telas ${telas.join(', ')} e ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, 7);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+    });
+  }
+
+  it('RN-32 é trava: acima do limite a API recusa', () => {
+    assert.match(regra('RN-32').descricao, /a API recusa a alteração/);
+  });
+
+  it('RN-33 cobre o escopo (art. 111) e o alerta de 120 dias; RF-27 cobre o contraditório na extinção', () => {
+    assert.match(regra('RN-33').descricao, /prorroga automaticamente/);
+    assert.match(regra('RN-33').descricao, /120 dias/);
+    assert.match(regra('RF-27').descricao, /contraditório/);
+  });
+});
