@@ -29,6 +29,7 @@ import { rotasDocumentos } from './documentos/rotas.ts';
 import { rotasImpedimentos } from './impedimentos/rotas.ts';
 import { rotasFila } from './fila/rotas.ts';
 import { rotasPublicacaoPncp } from './publicacao-pncp/rotas.ts';
+import { rotasPlanejamento } from './planejamento/rotas.ts';
 import { rotasOperacao } from './operacao/rotas.ts';
 import { rotasMetasEtp } from './metas-etp/rotas.ts';
 import { rotasImr } from './imr/rotas.ts';
@@ -77,6 +78,7 @@ export const MODULOS_API: readonly ModuloRotas[] = [
   rotasImpedimentos,
   rotasFila,
   rotasPublicacaoPncp,
+  rotasPlanejamento,
   rotasOperacao,
   rotasMetasEtp,
   rotasImr,

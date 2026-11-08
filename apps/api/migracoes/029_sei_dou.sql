@@ -9,7 +9,7 @@
 -- Novas tarefas da fila de integrações (RNF-07).
 ALTER TABLE fila_tarefas DROP CONSTRAINT fila_tarefas_tipo_check;
 ALTER TABLE fila_tarefas ADD CONSTRAINT fila_tarefas_tipo_check
-  CHECK (tipo IN ('sincronizacao', 'pncp.compra', 'pncp.arquivo', 'pncp.contrato', 'pncp.termo', 'sei.envio', 'sei.assinaturas', 'dou.conferencia'));
+  CHECK (tipo IN ('sincronizacao', 'pncp.compra', 'pncp.arquivo', 'pncp.contrato', 'pncp.termo', 'pncp.pca', 'sei.envio', 'sei.assinaturas', 'dou.conferencia'));
 
 -- Canal SEI das notificações ligado ao web service do SEI do órgão.
 ALTER TABLE notificacoes_envios DROP CONSTRAINT notificacoes_envios_modo_check;

@@ -127,6 +127,11 @@ export type Permissao =
   | 'impedimentos:parecer'
   | 'impedimentos:decidir'
   | 'agentes:declarar'
+  | 'pca:ler'
+  | 'pca:editar'
+  | 'pca:aprovar'
+  | 'irp:gerenciar'
+  | 'irp:aderir'
   | 'operacao:ler'
   | 'operacao:administrar'
   | 'metas:ler'
@@ -2544,7 +2549,8 @@ export type TipoTarefaFila =
   | 'pncp.termo'
   | 'sei.envio'
   | 'sei.assinaturas'
-  | 'dou.conferencia';
+  | 'dou.conferencia'
+  | 'pncp.pca';
 /** 'pendente' inclui a espera de nova tentativa (`tentativas` > 0 e `proximaTentativaEm`); 'erro' é a fila de erro (dead letter). */
 export type SituacaoTarefaFila = 'pendente' | 'executando' | 'concluida' | 'erro';
 export interface TarefaFila {
@@ -2617,6 +2623,303 @@ export interface PublicacaoPncp {
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
 // POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)
 
+// ───────────────────────── Planejamento: PCA, catálogo e IRP (F10, F19 e F5; RF-31, RIA-13, RN-38) ─────────────────────────
+
+export type PrioridadeDemandaPca = 'baixa' | 'media' | 'alta';
+/** Categoria do item do plano (tabela 5.16 do Manual de Integração PNCP). */
+export type CategoriaPca =
+  | 'material'
+  | 'servico'
+  | 'obras'
+  | 'servicos_engenharia'
+  | 'solucoes_tic'
+  | 'locacao_imoveis'
+  | 'alienacao_concessao_permissao'
+  | 'obras_servicos_engenharia';
+export type SituacaoPlanoContratacoes = 'em_elaboracao' | 'consolidado' | 'aprovado' | 'publicado';
+/** CATMAT (material) ou CATSER (serviço). */
+export type TipoItemCatalogo = 'material' | 'servico';
+
+/** Origem e integridade de uma consulta a sistema externo feita pelo servidor (PNCP, dados abertos de compras). */
+export interface ProvenienciaConsulta {
+  fonte: string;
+  modo: 'offline' | 'online';
+  endereco: string | null;
+  consultadoEm: InstanteISO;
+  registros: number;
+  /** SHA-256 do conteúdo recebido (ou do resultado simulado, no modo offline). */
+  hash: string;
+  /** true = resposta do cache local, dentro da validade configurada. */
+  deCache: boolean;
+}
+
+export interface PublicacaoPca {
+  situacao: 'na_fila' | 'publicado' | 'erro';
+  /** Número de controle do PCA no PNCP (`CNPJ-0-SEQUENCIAL/ANO`). */
+  idPncp: string | null;
+  protocolo: string | null;
+  modo: 'offline' | 'online' | null;
+  hashEnvio: string | null;
+  publicadoEm: InstanteISO | null;
+  tentativas: number;
+  ultimoErro: string | null;
+}
+
+export interface ResumoPlanoContratacoes {
+  id: Id;
+  uasg: string;
+  uasgNome: string;
+  ano: number;
+  situacao: SituacaoPlanoContratacoes;
+  /** 'pncp' = plano lido do PNCP pelo conector (não elaborado na Ágora). */
+  origem: 'agora' | 'pncp';
+  demandas: number;
+  itens: number;
+  valorTotal: Centavos;
+  publicacao: PublicacaoPca | null;
+}
+
+export interface DemandaPlanoContratacoes {
+  id: Id;
+  unidadeRequisitante: string;
+  descricao: string;
+  codigoCatalogo: string | null;
+  tipoCatalogo: TipoItemCatalogo | null;
+  unidadeFornecimento: string;
+  quantidade: number;
+  valorUnitario: Centavos;
+  valorTotal: Centavos;
+  dataDesejada: DataISO;
+  prioridade: PrioridadeDemandaPca;
+  categoria: CategoriaPca;
+  /** Número do item consolidado que agregou a demanda (null antes da consolidação). */
+  itemNumero: number | null;
+  registradaPor: UsuarioResumo | null;
+  registradaEm: InstanteISO;
+}
+
+export interface ItemPlanoContratacoes {
+  id: Id;
+  numero: number;
+  /** `UASG/ANO-NNNN`. */
+  identificador: string;
+  descricao: string;
+  codigoCatalogo: string | null;
+  tipoCatalogo: TipoItemCatalogo | null;
+  unidadeFornecimento: string;
+  categoria: CategoriaPca;
+  quantidade: number;
+  valorUnitario: Centavos;
+  valorTotal: Centavos;
+  dataDesejada: DataISO;
+  prioridade: PrioridadeDemandaPca;
+  unidadesRequisitantes: string[];
+  demandas: number;
+}
+
+export interface PlanoContratacoesDetalhe extends ResumoPlanoContratacoes {
+  demandasRegistradas: DemandaPlanoContratacoes[];
+  itensConsolidados: ItemPlanoContratacoes[];
+  consolidadoPor: UsuarioResumo | null;
+  consolidadoEm: InstanteISO | null;
+  aprovadoPor: UsuarioResumo | null;
+  aprovadoEm: InstanteISO | null;
+  /** Última devolução para ajustes pela autoridade (Decreto 10.947/2022, art. 12, § 1º). */
+  devolucao: { motivo: string; em: InstanteISO; por: UsuarioResumo | null } | null;
+  fundamento: string;
+}
+
+export interface EntradaPlanoContratacoes {
+  uasg: string;
+  ano: number;
+}
+export interface EntradaDemandaPca {
+  unidadeRequisitante: string;
+  descricao: string;
+  codigoCatalogo: string | null;
+  tipoCatalogo: TipoItemCatalogo | null;
+  unidadeFornecimento: string;
+  quantidade: number;
+  valorUnitario: Centavos;
+  dataDesejada: DataISO;
+  prioridade: PrioridadeDemandaPca;
+  categoria: CategoriaPca;
+}
+export interface EntradaDevolucaoPca {
+  motivo: string;
+}
+
+/** Item de PCA publicado que o DFD pode apontar (art. 18, § 1º, II). */
+export interface ItemPcaDisponivel {
+  id: Id;
+  identificador: string;
+  uasg: string;
+  ano: number;
+  numero: number;
+  descricao: string;
+  codigoCatalogo: string | null;
+  unidadeFornecimento: string;
+  quantidade: number;
+  valorTotal: Centavos;
+  dataDesejada: DataISO;
+  prioridade: PrioridadeDemandaPca;
+  /** Número de controle do PCA no PNCP. */
+  idPcaPncp: string | null;
+}
+
+export interface SugestaoRegistroCompartilhado {
+  codigoCatalogo: string;
+  descricao: string;
+  quantidadeTotal: number;
+  outrasUnidades: { uasg: string; quantidade: number }[];
+  mensagem: string;
+  fundamento: string;
+}
+
+export type SituacaoIntencaoRegistroPrecos = 'agendada' | 'aberta' | 'encerrada' | 'consolidada';
+
+/** Planejamento do DFD: vínculo com o PCA, conferência, itens disponíveis e sinais de registro compartilhado (RIA-01). */
+export interface PlanejamentoDfd {
+  processoId: Id;
+  uasg: string;
+  exercicio: number;
+  /** A UASG tem PCA publicado para o exercício: o DFD aponta o item ou justifica (art. 18, § 1º, II). */
+  exigePca: boolean;
+  vinculo: { tipo: 'item'; item: ItemPcaDisponivel } | { tipo: 'fora_do_pca'; justificativa: string } | null;
+  vinculoRegistradoPor: UsuarioResumo | null;
+  vinculoRegistradoEm: InstanteISO | null;
+  conferencia: {
+    situacao: 'vinculado' | 'fora_do_pca' | 'pendente' | 'sem_pca_publicado';
+    pendencias: string[];
+    alertas: { nivel: 'informativo' | 'atencao'; mensagem: string }[];
+    fundamento: string;
+  };
+  itensDisponiveis: ItemPcaDisponivel[];
+  /** Última consulta do PCA publicado no PNCP para a UASG. */
+  consultaPncp: ProvenienciaConsulta | null;
+  registroPrecosCompartilhado: SugestaoRegistroCompartilhado[];
+  /** Intenções de registro de preços propostas a partir do processo. */
+  irps: { id: Id; numero: string; situacao: SituacaoIntencaoRegistroPrecos; codigoCatalogo: string | null }[];
+}
+export type EntradaVinculoPca = { tipo: 'item'; itemId: Id } | { tipo: 'fora_do_pca'; justificativa: string };
+
+export interface ItemCatalogoCompras {
+  codigo: string;
+  tipo: TipoItemCatalogo;
+  descricao: string;
+  /** Classe do material ou grupo do serviço. */
+  classeCodigo: string | null;
+  classeNome: string | null;
+  pdmCodigo: string | null;
+  pdmNome: string | null;
+  sustentavel: boolean;
+  ativo: boolean;
+  origem: 'seed' | 'api';
+  atualizadoEm: InstanteISO;
+}
+export interface ConsultaCatalogo {
+  itens: ItemCatalogoCompras[];
+  proveniencia: ProvenienciaConsulta;
+  aviso: string | null;
+}
+export interface SugestaoItemCatalogo {
+  codigo: string;
+  tipo: TipoItemCatalogo;
+  descricao: string;
+  classe: string | null;
+  /** 0 a 100. */
+  pontuacao: number;
+  termosComuns: string[];
+}
+/** Sinal da RIA-13: quem escolhe o código é o agente. */
+export interface SugestoesCatalogo {
+  regra: 'RIA-13';
+  termos: string[];
+  sugestoes: SugestaoItemCatalogo[];
+  aviso: string;
+  fundamento: string;
+  fontes: string[];
+  premissas: string[];
+  geradoEm: InstanteISO;
+  proveniencia: ProvenienciaConsulta;
+}
+export interface EntradaEscolhaCatalogo {
+  codigo: string;
+  tipo: TipoItemCatalogo;
+  origem: 'sugestao' | 'busca';
+  /** Pontuação da sugestão escolhida (null quando o código veio da busca). */
+  pontuacao: number | null;
+}
+
+export interface AdesaoIrp {
+  id: Id;
+  uasg: string;
+  uasgNome: string;
+  quantidade: number;
+  manifestacao: string;
+  registradaPor: UsuarioResumo | null;
+  registradaEm: InstanteISO;
+}
+export interface IntencaoRegistroPrecos {
+  id: Id;
+  numero: string;
+  uasgGerenciadora: string;
+  uasgGerenciadoraNome: string;
+  processo: { id: Id; numeroSei: string } | null;
+  objeto: string;
+  codigoCatalogo: string | null;
+  unidadeFornecimento: string;
+  quantidadeGerenciador: number;
+  abertura: DataISO;
+  encerramento: DataISO;
+  /** Dias úteis do período (RN-38: pelo menos 8). */
+  diasUteis: number;
+  situacao: SituacaoIntencaoRegistroPrecos;
+  adesoes: AdesaoIrp[];
+  /** Gerenciador + adesões registradas até agora. */
+  quantidadeTotal: number;
+  consolidacao: {
+    quantidadeTotal: number;
+    participantes: { uasg: string; papel: 'gerenciador' | 'participante'; quantidade: number; percentual: number }[];
+    consolidadaEm: InstanteISO;
+    consolidadaPor: UsuarioResumo | null;
+  } | null;
+  criadaPor: UsuarioResumo | null;
+  criadaEm: InstanteISO;
+  fundamento: string;
+}
+export interface EntradaIrp {
+  uasgGerenciadora: string;
+  processoId: Id | null;
+  objeto: string;
+  codigoCatalogo: string | null;
+  unidadeFornecimento: string;
+  quantidadeGerenciador: number;
+  abertura: DataISO;
+  encerramento: DataISO;
+}
+export interface EntradaAdesaoIrp {
+  uasg: string;
+  quantidade: number;
+  manifestacao: string;
+}
+// GET /pca?ano&uasg → ResumoPlanoContratacoes[] (pca:ler; escopo de UASG)
+// POST /pca body EntradaPlanoContratacoes → PlanoContratacoesDetalhe (pca:editar)
+// GET /pca/:id → PlanoContratacoesDetalhe (pca:ler)
+// POST /pca/:id/demandas body EntradaDemandaPca → PlanoContratacoesDetalhe (pca:editar; plano em elaboração)
+// DELETE /pca/:id/demandas/:demandaId → PlanoContratacoesDetalhe (pca:editar; plano em elaboração)
+// POST /pca/:id/consolidar → PlanoContratacoesDetalhe (pca:editar)
+// POST /pca/:id/devolver body EntradaDevolucaoPca → PlanoContratacoesDetalhe (pca:aprovar)
+// POST /pca/:id/aprovar → PlanoContratacoesDetalhe (pca:aprovar; quem consolidou não aprova; enfileira a publicação no PNCP)
+// POST /pca/:id/publicar → PlanoContratacoesDetalhe (pca:aprovar; reabre a publicação que foi para a fila de erro)
+// GET /processos/:id/pca → PlanejamentoDfd (jornada:ler) ; PUT /processos/:id/pca body EntradaVinculoPca → ProcessoDetalhe (jornada:editar; etapa 1)
+// POST /processos/:id/pca/consultar → PlanejamentoDfd (jornada:editar; consulta o PCA publicado no PNCP pelo conector)
+// GET /catalogo/itens?busca&tipo → ConsultaCatalogo ; GET /catalogo/sugestoes?descricao&tipo → SugestoesCatalogo (jornada:ler ou pca:ler)
+// PUT /processos/:id/dfd/itens/:indice/catalogo body EntradaEscolhaCatalogo → ProcessoDetalhe (jornada:editar; etapa 1; auditado)
+// GET /irps → IntencaoRegistroPrecos[] (pca:ler) ; GET /irps/:id → IntencaoRegistroPrecos
+// POST /irps body EntradaIrp → IntencaoRegistroPrecos (irp:gerenciar; 422 REGRA_NEGOCIO com RN-38 se o prazo for menor que 8 dias úteis)
+// POST /irps/:id/adesoes body EntradaAdesaoIrp → IntencaoRegistroPrecos (irp:aderir; só com a IRP aberta)
+// POST /irps/:id/consolidar → IntencaoRegistroPrecos (irp:gerenciar; depois do encerramento)
 // ───────────────────────── Operação: disponibilidade e janelas do PNCP (RNF-10, IMR-01) ─────────────────────────
 
 export type ComponenteOperacao = 'api' | 'banco' | 'fila' | 'sincronizacao';

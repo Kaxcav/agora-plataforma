@@ -79,6 +79,9 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/impedimentos/extensoes/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ExtensaoDetalhe')) },
   { caminho: '/impedimentos/declaracao', permissao: 'agentes:declarar', pagina: lazy(() => import('../paginas/impedimentos/MinhaDeclaracao')) },
 
+  // Planejamento: plano de contratações anual e intenções de registro de preços (RF-31, RN-38)
+  { caminho: '/planejamento/pca', permissao: 'pca:ler', pagina: lazy(() => import('../paginas/planejamento/PlanoContratacoes')) },
+  { caminho: '/planejamento/irp', permissao: 'pca:ler', pagina: lazy(() => import('../paginas/planejamento/IntencoesRegistroPrecos')) },
   // Operação (RNF-10, IMR-01) e painel das metas do ETP (RF-39)
   { caminho: '/operacao', permissao: 'operacao:ler', pagina: lazy(() => import('../paginas/operacao/Operacao')) },
   { caminho: '/metas-etp', permissao: 'metas:ler', pagina: lazy(() => import('../paginas/metas/PainelMetas')) },

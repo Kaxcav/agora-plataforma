@@ -19,6 +19,7 @@ import { SENHA_DEMONSTRACAO } from './usuarios-demonstracao.ts';
 import { gerarVinculoSalaDisputa } from './disputa.ts';
 import { gerarVinculosImpedimentos } from './vinculos-impedimentos.ts';
 import { gerarFila } from './fila.ts';
+import { gerarPlanejamento } from './planejamento.ts';
 import { gerarOperacaoMetas } from './operacao-metas.ts';
 import { gerarImr } from './imr.ts';
 import { gerarPreparatorios } from './preparatorios.ts';
@@ -50,6 +51,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   // primeira consulta ao CEIS/CNEP para cada um. Usa PRNG próprio, então a posição não altera as outras etapas.
   { nome: 'regularidade', executar: gerarRegularidade },
   { nome: 'fila', executar: gerarFila },
+  { nome: 'planejamento', executar: gerarPlanejamento },
   { nome: 'operacao-metas', executar: gerarOperacaoMetas },
   { nome: 'imr', executar: gerarImr },
   { nome: 'preparatorios', executar: gerarPreparatorios },

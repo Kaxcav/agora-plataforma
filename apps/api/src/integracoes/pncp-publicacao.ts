@@ -16,6 +16,7 @@ import {
   interpretarLocalizacaoPncp,
   interpretarLocalizacaoTermoPncp,
   numeroControlePncp,
+  type ItemPlanoPncp,
   type LocalizacaoPncp,
 } from '@agora/dominio';
 import { FalhaTarefa } from '../fila/tipos.ts';
@@ -89,6 +90,13 @@ export interface AtaPncp {
   dataAssinatura: string;
   dataVigenciaInicio: string;
   dataVigenciaFim: string;
+}
+
+/** Plano de contratações anual de uma unidade (seção 6.7.1 do manual: `POST /v1/orgaos/{cnpj}/pca`). */
+export interface PlanoPncp {
+  codigoUnidade: string;
+  anoPca: number;
+  itensPlano: ItemPlanoPncp[];
 }
 
 /** Termo de contrato no formato do PNCP (IncluirTermoContratoDTO). */
@@ -179,6 +187,8 @@ export interface ClientePncp {
   incluirArquivoCompra(cnpj: string, ano: number, sequencial: number, arquivo: ArquivoPncp): Promise<RespostaInclusao>;
   incluirContrato(cnpj: string, contrato: ContratoPncp): Promise<RespostaInclusao>;
   incluirAta(cnpj: string, anoCompra: number, sequencialCompra: number, ata: AtaPncp): Promise<RespostaInclusao>;
+  /** PCA aprovado da unidade (art. 12, § 1º; Decreto 10.947/2022, art. 12, § 2º). */
+  incluirPca(cnpj: string, plano: PlanoPncp): Promise<RespostaInclusao>;
   /** Inclui o termo no contrato já divulgado; `registro.sequencialDocumento` traz o sequencial do termo no PNCP. */
   incluirTermoContrato(cnpj: string, anoContrato: number, sequencialContrato: number, termo: TermoContratoPncp): Promise<RespostaInclusao>;
 }
@@ -334,6 +344,9 @@ export function criarClientePncp(o: OpcoesClientePncp): ClientePncp {
     },
     incluirAta(cnpj, anoCompra, sequencialCompra, ata) {
       return incluir('a inclusão da ata', `/v1/orgaos/${cnpj}/compras/${anoCompra}/${sequencialCompra}/atas`, json(ata));
+    },
+    incluirPca(cnpj, plano) {
+      return incluir('a inclusão do plano de contratações anual', `/v1/orgaos/${cnpj}/pca`, json(plano));
     },
     incluirTermoContrato(cnpj, anoContrato, sequencialContrato, termo) {
       return incluir('a inclusão do termo do contrato', `/v1/orgaos/${cnpj}/contratos/${anoContrato}/${sequencialContrato}/termos`, json(termo), localizacaoDoTermo);

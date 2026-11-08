@@ -51,6 +51,8 @@ export interface Config {
   };
   /** Publicação no PNCP (RF-19): API de manutenção e login do sistema credenciado. */
   pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
+  /** Planejamento (frente O): consulta do PCA publicado no PNCP e validade do cache do catálogo CATMAT/CATSER. */
+  planejamento: { pncpConsultaUrl: string; catalogoCacheHoras: number };
   /** Operação (RNF-10, IMR-01): sonda de disponibilidade e meta configurada pelo órgão. */
   operacao: ConfigOperacao;
   /** Catálogo de dados abertos (RF-38): limite de requisições por minuto e por IP nas rotas públicas do catálogo. */
@@ -234,6 +236,8 @@ const esquemaAmbiente = z.object({
   AGORA_PNCP_PUBLICACAO_URL: textoOpcional,
   AGORA_PNCP_USUARIO: textoOpcional,
   AGORA_PNCP_SENHA: textoOpcional,
+  AGORA_PNCP_CONSULTA_URL: z.string().trim().min(1).default('https://pncp.gov.br/api/consulta'),
+  AGORA_CATALOGO_CACHE_HORAS: z.coerce.number().int().min(0).max(8760).default(168),
   AGORA_OPERACAO_SONDA_SEGUNDOS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(0).max(3600).default(60)),
   AGORA_OPERACAO_FILA_ATRASO_MINUTOS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1).max(1440).default(15)),
   AGORA_OPERACAO_SINCRONIZACAO_ATRASO_HORAS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(0).max(720).default(0)),
@@ -421,6 +425,7 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_CARIMBO_TEMPO_POLITICA !== null && !/^\d+(\.\d+)+$/.test(e.AGORA_CARIMBO_TEMPO_POLITICA)) {
     problemas.push('AGORA_CARIMBO_TEMPO_POLITICA: informe o OID da política (ex.: 2.16.76.1.6.2)');
   }
+  if (!urlValida(e.AGORA_PNCP_CONSULTA_URL)) problemas.push('AGORA_PNCP_CONSULTA_URL: URL inválida (ex.: https://pncp.gov.br/api/consulta)');
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -488,6 +493,10 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       url: (e.AGORA_PNCP_PUBLICACAO_URL ?? (producao ? 'https://pncp.gov.br/api/pncp' : 'https://treina.pncp.gov.br/api/pncp')).replace(/\/+$/, ''),
       usuario: e.AGORA_PNCP_USUARIO,
       senha: e.AGORA_PNCP_SENHA,
+    },
+    planejamento: {
+      pncpConsultaUrl: e.AGORA_PNCP_CONSULTA_URL.replace(/\/+$/, ''),
+      catalogoCacheHoras: e.AGORA_CATALOGO_CACHE_HORAS,
     },
     operacao: {
       sondaSegundos: e.AGORA_OPERACAO_SONDA_SEGUNDOS,

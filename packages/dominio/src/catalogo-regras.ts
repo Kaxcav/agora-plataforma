@@ -243,7 +243,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     fundamento: 'Lei 14.133/2021, art. 12, VII, e art. 75, § 1º',
     etapa: 1,
     telas: ['jornada.dfd', 'jornada.detalhe'],
-    implementacao: 'avaliarFracionamento',
+    implementacao: 'avaliarFracionamento, consolidarDemandas, sugerirRegistroPrecosCompartilhado',
   },
   {
     id: 'RIA-02',
@@ -864,6 +864,40 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: ['jornada.detalhe'],
     implementacao:
       'interpretarLocalizacaoPncp, numeroControlePncp, codigosContratacaoPncp, tituloDocumentoPncp, prazoDivulgacaoContratoPncp; api: POST /processos/:id/publicar; GET /processos/:id/publicacao-pncp; POST /processos/:id/contrato/publicar-pncp',
+  },
+  {
+    id: 'RN-38',
+    tipo: 'RN',
+    titulo: 'Intenção de registro de preços aberta por pelo menos 8 dias úteis',
+    descricao:
+      'Na fase preparatória do registro de preços, o órgão gerenciador realiza a intenção de registro de preços (IRP) para que outras unidades e órgãos manifestem interesse e informem as quantidades. A IRP fica aberta por pelo menos 8 dias úteis, contados com exclusão do dia da abertura, que não pode ser anterior a hoje; o servidor recusa período menor e informa a data mínima de encerramento. As adesões só são aceitas enquanto a IRP está aberta, e depois do encerramento o gerenciador consolida as quantidades. A IRP é dispensável quando o gerenciador é o único contratante.',
+    fundamento: 'Lei 14.133/2021, art. 86, caput e § 1º; Decreto 11.462/2023, art. 9º; Lei 14.133/2021, art. 183',
+    etapa: null,
+    telas: ['planejamento.irp', 'jornada.dfd'],
+    implementacao: 'verificarPrazoIrp, prazoMinimoIrp, situacaoIrp, consolidarQuantidadesIrp; api: POST /irps; POST /irps/:id/adesoes; POST /irps/:id/consolidar',
+  },
+  {
+    id: 'RF-31',
+    tipo: 'RF',
+    titulo: 'Plano de contratações anual, conferência do DFD e intenções de registro de preços',
+    descricao:
+      'A tela Plano de contratações reúne as demandas das unidades de cada UASG (item, código do catálogo, quantidade, valor estimado, data desejada e grau de prioridade), consolida as de mesma natureza, leva o plano à aprovação da autoridade competente e o publica no PNCP pela fila de integrações. No DFD, o agente aponta o item do PCA publicado em que a demanda está prevista e o código do catálogo de cada item; quando a UASG tem PCA publicado no exercício, o DFD sem item do plano só avança com a justificativa da contratação não planejada. A tela Intenções de registro de preços abre a IRP, recebe as adesões das unidades e consolida as quantidades.',
+    fundamento: 'Lei 14.133/2021, art. 12, VII e § 1º, art. 18, § 1º, II, e art. 86; Decreto 10.947/2022; Decreto 11.462/2023',
+    etapa: 1,
+    telas: ['planejamento.pca', 'planejamento.irp', 'jornada.dfd'],
+    implementacao:
+      'consolidarPca, validarDemandaPca, validarTransicaoPca, itemPlanoContratacoesPncp, conferirDfdComPca, identificadorItemPca; api: GET /pca; POST /pca/:id/consolidar; POST /pca/:id/aprovar; PUT /processos/:id/pca; GET /irps',
+  },
+  {
+    id: 'RIA-13',
+    tipo: 'RIA',
+    titulo: 'Sugestão do código do catálogo CATMAT/CATSER',
+    descricao:
+      'Para cada item do DFD, a Ágora compara a descrição com os itens ativos do catálogo de materiais e serviços do governo federal, consultado no servidor pela API de dados abertos de compras (com cache e registro da consulta), e sugere os códigos mais semelhantes, com a pontuação e os termos em comum. A semelhança é determinística, por termos do texto, sem modelo de linguagem. É sinal: o agente confere a descrição do item no catálogo e escolhe o código, e a escolha fica na trilha de auditoria; deixar de usar o catálogo continua exigindo justificativa escrita (RN-02).',
+    fundamento: 'Lei 14.133/2021, art. 19, II e § 2º',
+    etapa: 1,
+    telas: ['jornada.dfd'],
+    implementacao: 'sugerirItensCatalogo, termosCatalogo; api: GET /catalogo/itens; GET /catalogo/sugestoes; PUT /processos/:id/dfd/itens/:indice/catalogo',
   },
   {
     id: 'RNF-10',
