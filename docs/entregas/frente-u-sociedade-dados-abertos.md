@@ -177,6 +177,8 @@ Entrega da frente U: o canal de gestão compartilhada com a sociedade do art. 17
 - `autenticacao/govbr.ts` devolve também `nome` e `email` das claims;
 - `sessao/rotas.ts` cria a conta de cidadão no retorno quando há a intenção e volta ao caminho pedido;
 - `paginas/publicas/TransparenciaContrato.tsx` ganhou uma linha que inclui as seções da gestão compartilhada;
+- `paginas/publicas/Entrar.tsx`: o cidadão que entra sem destino vai para "Minhas manifestações", e não para o painel interno;
+- `jornada/servico.ts` (servidores designáveis) e `impedimentos/rotas.ts` (agentes públicos para vínculos) excluem o perfil cidadão, que não é agente público;
 - `apps/api/test/jornada.test.ts`: a contagem de servidores designáveis exclui o perfil cidadão;
 - o módulo `publico/` não foi alterado: as rotas públicas novas ficam nos módulos `sociedade/` e `dados-abertos/`.
 

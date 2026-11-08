@@ -92,6 +92,18 @@ test('cidadã identificada envia mensagem e imagem; a moderação publica com mo
   await expect(imagem).toBeVisible();
   await semDadosDeLocalizacao(page, (await imagem.getAttribute('src')) ?? '');
   await verificarAcessibilidade(page, '/transparencia/contratos/:id (público)');
+
+  // 4. A cidadã, ao entrar sem destino, vai para as próprias manifestações e vê a decisão com o motivo.
+  await page.goto('/entrar');
+  await page.getByRole('textbox', { name: /^E-mail institucional/ }).fill('cidadao@agora.demo');
+  await page.getByRole('textbox', { name: /^Senha/ }).fill(SENHA);
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page).toHaveURL(/\/sociedade\/minhas-manifestacoes$/);
+  await esperarPaginaOk(page);
+  const minha = page.locator('li.sociedade__manifestacao', { hasText: 'A calçada ao lado da obra' });
+  await expect(minha.getByText('Publicada', { exact: true })).toBeVisible();
+  await expect(minha.getByText('Relato pertinente à execução, sem dado pessoal de terceiros.')).toBeVisible();
+  await verificarAcessibilidade(page, '/sociedade/minhas-manifestacoes');
   erros.verificar();
 });
 
