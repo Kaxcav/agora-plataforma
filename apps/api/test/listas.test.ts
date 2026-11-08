@@ -32,6 +32,7 @@ import type {
 import type { FastifyInstance } from 'fastify';
 import { gerarCpf } from '../src/seed/documentos.ts';
 import { Prng } from '../src/seed/prng.ts';
+import { USUARIOS_DEMONSTRACAO, USUARIOS_DEMONSTRACAO_ADICIONAIS } from '../src/seed/usuarios-demonstracao.ts';
 import { chamar, criarAppTeste, entrar, obterJson, type Credenciais } from './apoio.ts';
 
 function temCampos(objeto: unknown, campos: readonly string[], contexto: string): void {
@@ -62,7 +63,7 @@ describe('formato das respostas (contrato @agora/contratos) e escritas operacion
     const config = r.json<ConfiguracaoPublica>();
     temCampos(config, ['produto', 'versao', 'ambiente', 'orgao', 'govbrHabilitado', 'iaHabilitada', 'encarregadoLgpd', 'usuariosDemonstracao'], 'configuração');
     assert.equal(config.produto, 'Ágora');
-    assert.equal(config.usuariosDemonstracao?.length, 9);
+    assert.equal(config.usuariosDemonstracao?.length, USUARIOS_DEMONSTRACAO.length + USUARIOS_DEMONSTRACAO_ADICIONAIS.length);
     assert.ok(!JSON.stringify(config).includes('Agora@Demo2026'), 'a senha não é exposta');
   });
 

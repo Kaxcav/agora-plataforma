@@ -12,6 +12,7 @@ import { gerarInstrumentos } from './instrumentos.ts';
 import { Prng } from './prng.ts';
 import { gerarProcessos } from './processos.ts';
 import { gerarReferenciasPrecos } from './precos.ts';
+import { gerarControle } from './controle.ts';
 import { SENHA_DEMONSTRACAO } from './usuarios-demonstracao.ts';
 import { gerarVinculoSalaDisputa } from './disputa.ts';
 
@@ -31,6 +32,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'processos', executar: gerarProcessos },
   { nome: 'precos', executar: gerarReferenciasPrecos },
   { nome: 'sala-disputa', executar: gerarVinculoSalaDisputa },
+  { nome: 'controle', executar: gerarControle },
 ];
 
 function dadosVazios(): DadosSeed {

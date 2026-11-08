@@ -29,6 +29,7 @@ const UNIDADE_POR_PERFIL: Record<CodigoPerfil, string> = {
   juridico: 'ASJUR',
   auditor: 'COCIN',
   consulta: 'DIPAT',
+  controle_interno: 'COCIN',
 };
 
 function telefone(ctx: ContextoSeed, uf: string): string {

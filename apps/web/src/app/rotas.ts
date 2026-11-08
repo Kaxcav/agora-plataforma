@@ -58,6 +58,14 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/auditoria', permissao: 'auditoria:ler', pagina: lazy(() => import('../paginas/auditoria/TrilhaAuditoria')) },
   { caminho: '/auditoria/lgpd', permissao: 'lgpd:relatorio', pagina: lazy(() => import('../paginas/auditoria/AcessosLgpd')) },
   { caminho: '/jornada/:id/disputa', permissao: 'jornada:ler', pagina: lazy(() => import('../paginas/disputa/SalaDisputa')) },
+
+  // Controle das contratações (arts. 169 a 171)
+  {
+    caminho: '/controle',
+    permissao: ['controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha'],
+    pagina: lazy(() => import('../paginas/controle/LinhasDefesa')),
+  },
+  { caminho: '/controle-externo', permissao: 'controle_externo:ler', pagina: lazy(() => import('../paginas/controle/ControleExterno')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

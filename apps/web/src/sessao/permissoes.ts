@@ -23,6 +23,7 @@ export const NOMES_PERFIS: Record<CodigoPerfil, string> = {
   juridico: 'Jurídico',
   auditor: 'Auditor',
   consulta: 'Consulta',
+  controle_interno: 'Controle interno',
 };
 
 export const NOMES_PERMISSOES: Record<Permissao, string> = {
@@ -55,6 +56,12 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'notificacoes:enviar': 'Disparar e reenviar notificações',
   'notificacoes:administrar': 'Executar a varredura de notificações',
   'disputa:conduzir': 'Conduzir a sala de disputa',
+  'controle:primeira_linha': 'Painel da 1ª linha de defesa',
+  'controle:segunda_linha': 'Painel da 2ª linha de defesa',
+  'controle:terceira_linha': 'Painel da 3ª linha de defesa e relatório de auditoria',
+  'controle_externo:ler': 'Consultar medidas do controle externo',
+  'controle_externo:registrar': 'Registrar medidas do controle externo e respostas',
+  'riscos:revisar': 'Revisar a matriz de riscos dos contratos',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

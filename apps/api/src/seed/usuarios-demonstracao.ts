@@ -24,3 +24,12 @@ export const USUARIOS_DEMONSTRACAO: readonly UsuarioDemonstracao[] = [
   { email: 'auditor@agora.demo', nome: 'Paulo Henrique Siqueira', perfil: 'auditor', descricao: 'Auditor: trilha de auditoria e acessos a dados pessoais', escopo: 'todas' },
   { email: 'consulta@agora.demo', nome: 'Larissa Campos Ventura', perfil: 'consulta', descricao: 'Consulta somente leitura, restrita a 2 UASGs', escopo: 2 },
 ];
+
+/**
+ * Usuários de demonstração acrescentados depois da carga base. Cada etapa da carga cria os seus, com PRNG próprio,
+ * para não alterar a sequência determinística dos dados já existentes. Aparecem na tela de entrada como os demais.
+ */
+export const USUARIOS_DEMONSTRACAO_ADICIONAIS: readonly UsuarioDemonstracao[] = [
+  { email: 'controle@agora.demo', nome: 'Renata Quintela Duarte', perfil: 'controle_interno', descricao: 'Controle interno: linhas de defesa, TCU/CGU e matriz de riscos', escopo: 'todas' },
+  { email: 'auditoria.externa@agora.demo', nome: 'Otávio Brandão Lessa', perfil: 'auditor', descricao: 'Auditor do controle externo (CGU/TCU): 3ª linha de defesa e relatório', escopo: 'todas' },
+];

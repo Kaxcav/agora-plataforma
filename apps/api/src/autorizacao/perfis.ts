@@ -31,6 +31,12 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'notificacoes:enviar',
   'notificacoes:administrar',
   'disputa:conduzir',
+  'controle:primeira_linha',
+  'controle:segunda_linha',
+  'controle:terceira_linha',
+  'controle_externo:ler',
+  'controle_externo:registrar',
+  'riscos:revisar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -65,6 +71,9 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'jornada:ler',
       'notificacoes:ler',
       'notificacoes:enviar',
+      'controle:primeira_linha',
+      'controle_externo:ler',
+      'riscos:revisar',
     ],
   },
   {
@@ -85,6 +94,9 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'sancoes:ler',
       'notificacoes:ler',
       'notificacoes:enviar',
+      'controle:primeira_linha',
+      'controle_externo:ler',
+      'riscos:revisar',
     ],
   },
   {
@@ -102,13 +114,14 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'integracoes:executar',
       'fornecedores:ler',
       'notificacoes:ler',
+      'controle:primeira_linha',
     ],
   },
   {
     codigo: 'planejamento',
     nome: 'Planejamento',
     descricao: 'Conduz a fase preparatória da contratação (DFD, ETP, riscos e preços).',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler'],
   },
   {
     codigo: 'agente_contratacao',
@@ -125,25 +138,49 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'jornada:editar',
       'jornada:publicar',
       'disputa:conduzir',
+      'controle:primeira_linha',
+      'controle_externo:ler',
     ],
   },
   {
     codigo: 'juridico',
     nome: 'Assessoria jurídica',
     descricao: 'Realiza o controle prévio de legalidade (art. 53) e aprova a fase jurídica.',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler'],
   },
   {
     codigo: 'auditor',
     nome: 'Auditor',
     descricao: 'Consulta tudo, verifica a trilha de auditoria e acompanha os acessos a dados pessoais.',
-    permissoes: [...PERMISSOES_LEITURA, 'lgpd:revelar', 'lgpd:relatorio'],
+    permissoes: [...PERMISSOES_LEITURA, 'lgpd:revelar', 'lgpd:relatorio', 'controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha'],
   },
   {
     codigo: 'consulta',
     nome: 'Consulta',
     descricao: 'Somente leitura dos instrumentos e da execução financeira das UASGs autorizadas.',
     permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'empenhos:ler', 'pagamentos:ler', 'fornecedores:ler'],
+  },
+  {
+    codigo: 'controle_interno',
+    nome: 'Controle interno',
+    descricao:
+      'Unidade de controle interno e gestão de riscos (2ª linha de defesa): acompanha a conformidade, registra as medidas do TCU e da CGU e as respostas, e revisa a matriz de riscos dos contratos.',
+    permissoes: [
+      'painel:ler',
+      'atas:ler',
+      'contratos:ler',
+      'itens:ler',
+      'empenhos:ler',
+      'pagamentos:ler',
+      'fornecedores:ler',
+      'sancoes:ler',
+      'jornada:ler',
+      'auditoria:ler',
+      'controle:segunda_linha',
+      'controle_externo:ler',
+      'controle_externo:registrar',
+      'riscos:revisar',
+    ],
   },
 ];
 

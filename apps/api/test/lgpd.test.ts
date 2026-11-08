@@ -12,6 +12,7 @@ import type {
   UsuarioAdmin,
 } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
+import { USUARIOS_DEMONSTRACAO_ADICIONAIS } from '../src/seed/usuarios-demonstracao.ts';
 import { chamar, criarAppTeste, entrar, obterJson, type Credenciais } from './apoio.ts';
 
 const CPF_MASCARADO = /^\*\*\*\.\d{3}\.\d{3}-\*\*$/;
@@ -67,7 +68,7 @@ describe('LGPD: mascaramento por padrão e revelação registrada', () => {
   test('usuários: CPF sempre mascarado', async () => {
     const admin = await entrar(app, 'admin@agora.demo');
     const usuarios = await obterJson<Pagina<UsuarioAdmin>>(app, admin, '/api/v1/usuarios?tamanhoPagina=100');
-    assert.equal(usuarios.total, 17);
+    assert.equal(usuarios.total, 17 + USUARIOS_DEMONSTRACAO_ADICIONAIS.length);
     assert.ok(usuarios.itens.every((u) => CPF_MASCARADO.test(u.cpf)));
   });
 

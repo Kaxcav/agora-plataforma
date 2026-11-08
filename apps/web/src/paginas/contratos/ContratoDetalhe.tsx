@@ -43,6 +43,7 @@ import { PlanoGestao } from '../compartilhado/PlanoGestao';
 import { ORIGENS_CONTRATO, TIPOS_ADITIVO } from '../compartilhado/rotulos';
 import { SimuladorAditivo } from './SimuladorAditivo';
 import { BotaoNotificar } from '../notificacoes/DialogoNotificar';
+import { AbaRiscosContrato } from '../controle/AbaRiscosContrato';
 
 const DIVULGACAO: Record<DadosContrato['divulgacaoPncp']['situacao'], { rotulo: string; tom: TomEtiqueta }> = {
   divulgado_no_prazo: { rotulo: 'Divulgado no prazo', tom: 'sucesso' },
@@ -447,6 +448,7 @@ function ConteudoContrato({ contrato }: { contrato: DadosContrato }) {
           { id: 'pagamentos', rotulo: 'Pagamentos', conteudo: () => <AbaPagamentos id={contrato.id} /> },
           { id: 'aditivos', rotulo: 'Aditivos', conteudo: () => <AbaAditivos contrato={contrato} /> },
           { id: 'historico', rotulo: 'Histórico', conteudo: () => <AbaHistorico id={contrato.id} /> },
+          { id: 'riscos', rotulo: 'Matriz de riscos', conteudo: () => <AbaRiscosContrato contrato={contrato} /> },
         ]}
       />
     </>

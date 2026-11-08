@@ -1,0 +1,57 @@
+/* Telas de controle (linhas de defesa, controle externo, matriz de riscos do contrato). Tokens do tema da Ágora. */
+
+.lista-controle {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista-controle li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--esp-1) var(--esp-3);
+  padding: var(--esp-3) 0;
+  border-bottom: 1px solid var(--cor-divisoria);
+}
+
+.lista-controle li:last-child {
+  border-bottom: 0;
+}
+
+.lista-controle__titulo {
+  font-weight: var(--peso-semi);
+  min-width: 0;
+}
+
+.lista-controle__descricao,
+.lista-controle__explicacao {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lista-controle__acao {
+  grid-column: 1 / -1;
+}
+
+.controle-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--esp-3) var(--esp-5);
+}
+
+.controle-filtros > * {
+  width: min(100%, 16rem);
+}
+
+.revisao-risco {
+  border: 1px solid var(--cor-divisoria);
+  border-radius: var(--raio-cartao);
+  padding: var(--esp-3) var(--esp-4);
+}
+
+.revisao-risco legend {
+  font-weight: var(--peso-semi);
+  padding: 0 var(--esp-1);
+}

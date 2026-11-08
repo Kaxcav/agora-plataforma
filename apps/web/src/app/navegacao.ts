@@ -26,6 +26,8 @@ import {
   Wallet,
   Workflow,
   BellRing,
+  Landmark,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -118,5 +120,18 @@ export const MENU: readonly SecaoMenu[] = [
     id: 'regras',
     titulo: null,
     itens: [{ rotulo: 'Caderno de regras', caminho: '/regras', icone: BookOpen }],
+  },
+  {
+    id: 'controle',
+    titulo: 'Controle',
+    itens: [
+      {
+        rotulo: 'Linhas de defesa',
+        caminho: '/controle',
+        icone: ShieldCheck,
+        permissao: ['controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha'],
+      },
+      { rotulo: 'Controle externo', caminho: '/controle-externo', icone: Landmark, permissao: 'controle_externo:ler' },
+    ],
   },
 ];
