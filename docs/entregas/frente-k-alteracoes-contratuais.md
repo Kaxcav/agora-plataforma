@@ -172,5 +172,12 @@ divulgado no PNCP. A execução da garantia e a retenção de créditos seguem n
 
 ## 9. Verificações
 
-Registradas no relatório final do coordenador (build, typecheck, testes do domínio e da API, e2e na porta 3111 e
-gates da Fábrica).
+Depois do `git merge integracao`:
+
+- `npm run build -w @agora/dominio`, `npm run build -w @agora/contratos`, `npm run typecheck` e `npm run build`: sem erros.
+- `npm run test -w @agora/dominio`: 618 testes passando (39 novos em `test/alteracoes-contratuais.test.ts` e 5 no catálogo).
+- `npm run test -w @agora/api`: 246 testes passando (11 novos em `test/alteracoes-contratuais.test.ts`).
+- e2e na porta 3111: `testes/alteracoes-contratuais.spec.ts` com 3 testes passando, com verificação axe; suíte inteira com 83 testes passando.
+- Gates da Fábrica: aprovados. Ficam para revisão as asserções do `ceis-cnep.spec.ts` alteradas de propósito (aba
+  **Alterações**, título da seção de prorrogação com a RN-33 e tabela **Histórico de alterações**) e, no teste da API
+  da frente C, as travas da RN-33 acrescentadas ao corpo da prorrogação.
