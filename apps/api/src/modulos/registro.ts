@@ -13,6 +13,7 @@ import { rotasLgpd } from './lgpd/rotas.ts';
 import { rotasPainel } from './painel/rotas.ts';
 import { rotasPendencias } from './pendencias/rotas.ts';
 import { rotasPublico } from './publico/rotas.ts';
+import { rotasRegularidade } from './regularidade/rotas.ts';
 import { rotasSancoes } from './sancoes/rotas.ts';
 import { rotasSessao } from './sessao/rotas.ts';
 import { rotasSincronizacoes } from './sincronizacoes/rotas.ts';
@@ -42,4 +43,5 @@ export const MODULOS_API: readonly ModuloRotas[] = [
   rotasSancoes,
   rotasJornada,
   rotasPublico,
+  rotasRegularidade,
 ];

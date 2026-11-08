@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardCheck } from 'lucide-react';
+import { ClipboardCheck, ShieldCheck } from 'lucide-react';
 import type { FiltroPagamentos, Pagamento } from '@agora/contratos';
 import { formatarData, formatarMoeda } from '@agora/dominio';
 import { useAtestarPagamento, usePagamentos } from '../../api/financeiro';
@@ -24,6 +24,7 @@ import { useParametrosUrl } from '../../utilitarios/parametrosUrl';
 import { CampoUasg } from '../compartilhado/CampoUasg';
 import { COLUNAS_PAGAMENTO } from '../compartilhado/colunasFinanceiro';
 import { chavesDe, opcoesDe, SITUACOES_PAGAMENTO } from '../compartilhado/rotulos';
+import { DialogoVerificarPagamento, PreviaRegularidadeAtesto } from './RegularidadePagamento';
 
 const FILTROS = ['busca', 'situacao', 'uasg'] as const;
 
@@ -33,7 +34,9 @@ export default function Pagamentos() {
   const { avisar } = useAvisos();
   const atestar = useAtestarPagamento();
   const [alvo, definirAlvo] = useState<Pagamento | null>(null);
+  const [verificando, definirVerificando] = useState<Pagamento | null>(null);
   const podeAtestar = temPermissao('pagamentos:atestar');
+  const podeVerificar = temPermissao('regularidade:consultar');
 
   const filtro: FiltroPagamentos = {
     busca: p.texto('busca'),
@@ -50,13 +53,17 @@ export default function Pagamentos() {
     if (!alvo) return;
     const nota = alvo.notaFiscal;
     atestar.mutate(alvo.id, {
-      onSuccess: () => {
+      onSuccess: (r) => {
         definirAlvo(null);
-        avisar({
-          tipo: 'sucesso',
-          titulo: 'Pagamento atestado',
-          mensagem: `NF ${nota} atestada. A atestação fica registrada na trilha de auditoria.`,
-        });
+        avisar(
+          r.verificacaoRegularidade.regular
+            ? { tipo: 'sucesso', titulo: 'Pagamento atestado', mensagem: `NF ${nota} atestada. A atestação e a verificação de regularidade ficam na trilha de auditoria.` }
+            : {
+                tipo: 'aviso',
+                titulo: 'Pagamento atestado com ressalva',
+                mensagem: `NF ${nota} atestada. A verificação apontou ${r.verificacaoRegularidade.motivos.length} restrição(ões) do contratado${r.pendenciaAberta ? '; uma pendência foi aberta para notificá-lo' : ''} (RN-23).`,
+              },
+        );
       },
     });
   };
@@ -111,11 +118,11 @@ export default function Pagamentos() {
             atualizando={consulta.isFetching && consulta.data !== undefined}
             destaque={(pg) => (pg.situacao === 'atrasado' ? 'erro' : undefined)}
             acoes={
-              podeAtestar
+              podeAtestar || podeVerificar
                 ? {
                     cabecalho: 'Ações',
                     celula: (pg) =>
-                      pg.situacao === 'previsto' ? (
+                      pg.situacao === 'previsto' && podeAtestar ? (
                         <Botao
                           variante="secundario"
                           tamanho="compacto"
@@ -127,6 +134,16 @@ export default function Pagamentos() {
                           }}
                         >
                           Atestar
+                        </Botao>
+                      ) : pg.situacao !== 'previsto' && pg.situacao !== 'pago' && podeVerificar ? (
+                        <Botao
+                          variante="secundario"
+                          tamanho="compacto"
+                          icone={ShieldCheck}
+                          aria-label={`Verificar regularidade antes do pagamento da nota fiscal ${pg.notaFiscal} do contrato ${pg.contrato.numero}`}
+                          onClick={() => definirVerificando(pg)}
+                        >
+                          Verificar regularidade
                         </Botao>
                       ) : (
                         <span className="texto-pequeno texto-secundario">—</span>
@@ -182,6 +199,7 @@ export default function Pagamentos() {
         aoConfirmar={confirmar}
         processando={atestar.isPending}
         erro={atestar.error}
+        largura="ampla"
       >
         {alvo ? (
           <ListaDefinicoes
@@ -196,7 +214,9 @@ export default function Pagamentos() {
             ]}
           />
         ) : null}
+        {alvo ? <PreviaRegularidadeAtesto pagamentoId={alvo.id} /> : null}
       </ConfirmarAcao>
+      {podeVerificar ? <DialogoVerificarPagamento pagamento={verificando} aoFechar={() => definirVerificando(null)} /> : null}
     </Pagina>
   );
 }

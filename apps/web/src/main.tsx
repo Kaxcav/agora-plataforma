@@ -13,6 +13,7 @@ import './design/paginas-b.css';
 import './design/paginas-c.css';
 import './design/paginas-jornada.css';
 import './design/impressao.css';
+import './design/paginas-regularidade.css';
 import { ErroApi } from './api/cliente';
 import { roteador } from './app/roteador';
 

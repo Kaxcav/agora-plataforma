@@ -41,6 +41,7 @@ import { COLUNAS_EMPENHO, COLUNAS_PAGAMENTO, semColunas } from '../compartilhado
 import { Historico } from '../compartilhado/Historico';
 import { PlanoGestao } from '../compartilhado/PlanoGestao';
 import { ORIGENS_CONTRATO, TIPOS_ADITIVO } from '../compartilhado/rotulos';
+import { ProrrogacaoContrato } from './ProrrogacaoContrato';
 import { SimuladorAditivo } from './SimuladorAditivo';
 
 const DIVULGACAO: Record<DadosContrato['divulgacaoPncp']['situacao'], { rotulo: string; tom: TomEtiqueta }> = {
@@ -231,6 +232,7 @@ function AbaAditivos({ contrato }: { contrato: DadosContrato }) {
         )}
       </ConteudoConsulta>
       <SimuladorAditivo contrato={contrato} />
+      <ProrrogacaoContrato contrato={contrato} />
     </div>
   );
 }

@@ -48,6 +48,7 @@ import { formatarPercentual } from '../../utilitarios/formatacao';
 import { useParametrosUrl } from '../../utilitarios/parametrosUrl';
 import { chavesDe, opcoesDe, SITUACOES_SANCAO, TIPOS_SANCAO } from '../compartilhado/rotulos';
 import { colunasSancao } from './colunasSancao';
+import { RegistroCeisCnep } from './RegistroCeisCnep';
 
 const FILTROS = ['situacao', 'tipo'] as const;
 const COLUNAS = colunasSancao({ comFornecedor: true });
@@ -736,6 +737,7 @@ export default function Sancoes() {
           />
         </>
       )}
+      <RegistroCeisCnep />
       <SimuladorDosimetria />
       <SimuladorMoratoria />
       {podeInstruir ? <DialogoInstaurar aberto={instaurando} aoFechar={() => definirInstaurando(false)} /> : null}

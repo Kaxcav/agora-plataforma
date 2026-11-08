@@ -103,7 +103,9 @@ export type Permissao =
   | 'admin:usuarios'
   | 'auditoria:ler'
   | 'lgpd:revelar'
-  | 'lgpd:relatorio';
+  | 'lgpd:relatorio'
+  | 'certidoes:registrar'
+  | 'regularidade:consultar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -1017,3 +1019,155 @@ export interface EditalPublico {
 
 // ───────────────────────── Saúde ─────────────────────────
 // GET /saude/vivo → { situacao: 'ok' }   GET /saude/pronto → { situacao: 'ok' | 'indisponivel', banco: boolean, versao: string }
+
+// ───────────────────────── Regularidade do contratado: CEIS, CNEP e certidões (RF-20, RN-09, RN-23, RN-24) ─────────────────────────
+
+/** Momento em que o checklist é executado: assinatura e prorrogação bloqueiam (art. 91, § 4º); atesto e pagamento rechecam (art. 92, XVI). */
+export type MomentoVerificacaoRegularidade = 'assinatura' | 'prorrogacao' | 'atesto' | 'pagamento';
+export type TipoCertidao = 'fiscal_federal' | 'fgts' | 'trabalhista';
+export type ResultadoCertidao = 'negativa' | 'positiva_com_efeitos_de_negativa' | 'positiva';
+export type SituacaoCertidao = 'valida' | 'a_vencer' | 'vencida' | 'positiva';
+
+export interface ItemChecklistRegularidade {
+  id: 'ceis_cnep' | 'sancoes_agora' | TipoCertidao;
+  rotulo: string;
+  situacao: 'conforme' | 'atencao' | 'pendente' | 'impeditivo';
+  detalhes: string[];
+  fonte: string;
+  /** Instante da consulta (CEIS/CNEP) ou data de validade (certidão). */
+  referencia: string | null;
+  fundamento: string;
+}
+
+/** Registro do CEIS/CNEP normalizado no servidor (sem nomes nem documentos de pessoas). */
+export interface RegistroCadastroSancao {
+  cadastro: 'CEIS' | 'CNEP';
+  tipoSancao: string;
+  orgaoSancionador: string;
+  esfera: string | null;
+  uf: string | null;
+  dataInicio: DataISO | null;
+  dataFim: DataISO | null;
+  numeroProcesso: string | null;
+  fundamentacao: string | null;
+  abrangencia: string | null;
+  vigente: boolean;
+  impeditivo: boolean;
+}
+
+/** Consulta ao CEIS e ao CNEP com proveniência (cache no servidor). */
+export interface ConsultaCadastrosSancoes {
+  id: Id;
+  modo: 'offline' | 'online';
+  fonte: string;
+  consultadoEm: InstanteISO;
+  hashConteudo: string;
+  quantidade: number;
+  registros: RegistroCadastroSancao[];
+}
+
+export interface ChecklistRegularidade {
+  fornecedor: { id: Id; razaoSocial: string; documento: string };
+  momento: MomentoVerificacaoRegularidade;
+  regular: boolean;
+  /** true quando a irregularidade impede o ato (assinatura e prorrogação). */
+  bloqueia: boolean;
+  itens: ItemChecklistRegularidade[];
+  motivos: string[];
+  avisos: string[];
+  providencias: string[];
+  consulta: ConsultaCadastrosSancoes | null;
+  falhaConsulta: string | null;
+  fundamento: string;
+  aviso: string;
+  avaliadoEm: InstanteISO;
+}
+
+/** Verificação registrada (trilha de auditoria): checklist executado numa trava ou a pedido do agente. */
+export interface VerificacaoRegularidade extends ChecklistRegularidade {
+  id: Id;
+  instrumento: { tipo: 'processo' | 'contrato' | 'pagamento' | 'fornecedor'; id: Id };
+  verificadoPor: UsuarioResumo | null;
+}
+// GET  /fornecedores/:id/regularidade?momento → ChecklistRegularidade (fornecedores:ler; usa a última consulta, sem chamada externa)
+// POST /fornecedores/:id/regularidade/consultar → VerificacaoRegularidade (regularidade:consultar; consulta CEIS/CNEP agora)
+// GET  /contratos/:id/regularidade?momento → ChecklistRegularidade (contratos:ler)
+// GET  /pagamentos/:id/regularidade → ChecklistRegularidade (pagamentos:ler; momento do atesto ou do pagamento)
+// POST /pagamentos/:id/regularidade → VerificacaoRegularidade (regularidade:consultar; recheque antes do pagamento — RN-23)
+// GET  /regularidade/verificacoes/:id/comprovante.pdf → application/pdf (fornecedores:ler; para juntar ao processo)
+
+export interface CertidaoRegistrada {
+  id: Id;
+  tipo: TipoCertidao;
+  numero: string;
+  emissor: string;
+  emitidaEm: DataISO;
+  validaAte: DataISO;
+  resultado: ResultadoCertidao;
+  situacao: SituacaoCertidao;
+  diasRestantes: number;
+  mensagem: string;
+  conferidaPor: UsuarioResumo | null;
+  conferidaEm: InstanteISO;
+  observacao: string | null;
+}
+/** POST /fornecedores/:id/certidoes (certidoes:registrar) → CertidaoRegistrada. `conferida` confirma que o agente conferiu a certidão no sítio do emissor. */
+export interface EntradaRegistrarCertidao {
+  tipo: TipoCertidao;
+  numero: string;
+  emissor: string;
+  emitidaEm: DataISO;
+  validaAte: DataISO;
+  resultado: ResultadoCertidao;
+  observacao?: string | null;
+  conferida: true;
+}
+// GET /fornecedores/:id/certidoes → CertidaoRegistrada[] (fornecedores:ler; mais recentes primeiro)
+
+/** POST /contratos/:id/prorrogacoes (contratos:editar) → RespostaProrrogacao; 422 REGRA_NEGOCIO com detalhes RN-09 se a regularidade bloquear. */
+export interface EntradaProrrogarContrato {
+  novaVigenciaFim: DataISO;
+  valor: Centavos;
+  justificativa: string;
+}
+export interface RespostaProrrogacao {
+  aditivo: Aditivo;
+  verificacao: VerificacaoRegularidade;
+}
+
+/** Resposta de POST /pagamentos/:id/atestar: o pagamento e o recheque de regularidade (RN-23). */
+export interface RespostaAtesto extends Pagamento {
+  verificacaoRegularidade: VerificacaoRegularidade;
+  /** true quando o recheque apontou irregularidade e abriu pendência para notificar o contratado. */
+  pendenciaAberta: boolean;
+}
+
+export type SituacaoRegistroCeisCnep = 'pendente_no_prazo' | 'pendente_vencida' | 'registrada_no_prazo' | 'registrada_fora_do_prazo';
+
+/** Sanção aplicada e o seu registro no CEIS/CNEP (RN-24, art. 161). */
+export interface RegistroSancaoCeisCnep {
+  sancao: { id: Id; tipo: TipoSancao; incisoInfracao: string; aplicadaEm: DataISO; contrato: { id: Id; numero: string } | null };
+  fornecedor: { id: Id; razaoSocial: string; documento: string };
+  prazo: DataISO;
+  situacao: SituacaoRegistroCeisCnep;
+  diasUteisRestantes: number | null;
+  diasUteisAtraso: number | null;
+  alerta: boolean;
+  mensagem: string;
+  envio: {
+    cadastro: 'CEIS' | 'CNEP';
+    protocolo: string;
+    enviadoEm: DataISO;
+    responsavel: UsuarioResumo | null;
+    registradoEm: InstanteISO;
+    observacao: string | null;
+  } | null;
+}
+/** POST /sancoes/:id/registro-ceis-cnep (sancoes:instruir) → RegistroSancaoCeisCnep. Não há API pública de escrita: registra o envio feito no sistema da CGU. */
+export interface EntradaRegistrarEnvioCeisCnep {
+  cadastro: 'CEIS' | 'CNEP';
+  protocolo: string;
+  enviadoEm: DataISO;
+  observacao?: string | null;
+}
+// GET /sancoes/registro-ceis-cnep?situacao(pendentes|registradas) → RegistroSancaoCeisCnep[] (sancoes:ler; pendentes primeiro)

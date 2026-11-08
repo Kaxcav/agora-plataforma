@@ -1,0 +1,90 @@
+/* ───────── Regularidade do contratado: checklist CEIS/CNEP e certidões (RF-20, RN-09, RN-23, RN-24) ───────── */
+.regularidade {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-3);
+}
+
+.regularidade__cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2) var(--esp-3);
+}
+
+.regularidade__itens {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.regularidade__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+  padding: var(--esp-2) var(--esp-3);
+  border: 1px solid var(--cor-divisoria);
+  border-left-width: 4px;
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+}
+
+.regularidade__item--conforme {
+  border-left-color: var(--verde-50);
+}
+
+.regularidade__item--atencao,
+.regularidade__item--pendente {
+  border-left-color: var(--ambar-60);
+}
+
+.regularidade__item--impeditivo {
+  border-left-color: var(--vermelho-50);
+  background: var(--vermelho-10);
+}
+
+.regularidade__item-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-1) var(--esp-2);
+}
+
+.regularidade__item-titulo {
+  font-weight: var(--peso-semi);
+  color: var(--cor-texto-forte);
+  overflow-wrap: anywhere;
+}
+
+.regularidade__detalhes {
+  margin: 0;
+  padding-left: var(--esp-4);
+}
+
+.regularidade__fonte {
+  font-size: var(--fonte-pequena);
+  color: var(--cor-texto-secundario);
+  overflow-wrap: anywhere;
+}
+
+.regularidade__proveniencia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-1) var(--esp-3);
+  padding: var(--esp-2) var(--esp-3);
+  border-radius: var(--raio);
+  background: var(--cinza-2);
+  border: 1px solid var(--cor-divisoria);
+  font-size: var(--fonte-pequena);
+  overflow-wrap: anywhere;
+}
+
+.regularidade__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-2);
+}

@@ -8,6 +8,7 @@ import type {
   Pagina,
   PaginaEmpenhos,
   PrevisaoPagamentos,
+  RespostaAtesto,
 } from '@agora/contratos';
 import { api, urlApi } from './cliente';
 
@@ -45,11 +46,12 @@ export function usePagamentos(filtro: FiltroPagamentos) {
 export function useAtestarPagamento() {
   const cliente = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.criar<Pagamento>(`/pagamentos/${encodeURIComponent(id)}/atestar`),
+    mutationFn: (id: string) => api.criar<RespostaAtesto>(`/pagamentos/${encodeURIComponent(id)}/atestar`),
     onSuccess: () => {
       void cliente.invalidateQueries({ queryKey: ['pagamentos'] });
       void cliente.invalidateQueries({ queryKey: ['contratos', 'detalhe'] });
       void cliente.invalidateQueries({ queryKey: ['pendencias'] });
+      void cliente.invalidateQueries({ queryKey: ['regularidade'] });
     },
   });
 }

@@ -19,6 +19,8 @@ export interface Config {
   webDir: string | null;
   confiarProxy: boolean;
   limiteRequisicoesPorMinuto: number;
+  /** API de dados do Portal da Transparência (CGU) para consultar o CEIS e o CNEP (RF-20). Usada com `integracoes = 'online'`. */
+  transparencia: { url: string; chave: string | null; cacheMinutos: number };
 }
 
 export class ErroConfiguracao extends Error {
@@ -75,6 +77,9 @@ const esquemaAmbiente = z.object({
   AGORA_WEB_DIR: textoOpcional,
   AGORA_CONFIAR_PROXY: booleanoOpcional,
   AGORA_LIMITE_REQUISICOES_MINUTO: z.coerce.number().int().min(10).max(100_000).default(300),
+  AGORA_TRANSPARENCIA_URL: z.string().trim().min(1).default('https://api.portaldatransparencia.gov.br/api-de-dados'),
+  AGORA_TRANSPARENCIA_CHAVE: textoOpcional,
+  AGORA_TRANSPARENCIA_CACHE_MINUTOS: z.coerce.number().int().min(0).max(1440).default(60),
 });
 
 function urlValida(valor: string): boolean {
@@ -133,6 +138,7 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_ORGAO_CNPJ !== null && !/^\d{14}$/.test(e.AGORA_ORGAO_CNPJ.replace(/\D/g, ''))) {
     problemas.push('AGORA_ORGAO_CNPJ: informe os 14 dígitos do CNPJ do órgão');
   }
+  if (!urlValida(e.AGORA_TRANSPARENCIA_URL)) problemas.push('AGORA_TRANSPARENCIA_URL: URL inválida');
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -158,5 +164,10 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     webDir: e.AGORA_WEB_DIR,
     confiarProxy: e.AGORA_CONFIAR_PROXY ?? false,
     limiteRequisicoesPorMinuto: e.AGORA_LIMITE_REQUISICOES_MINUTO,
+    transparencia: {
+      url: e.AGORA_TRANSPARENCIA_URL.replace(/\/+$/, ''),
+      chave: e.AGORA_TRANSPARENCIA_CHAVE,
+      cacheMinutos: e.AGORA_TRANSPARENCIA_CACHE_MINUTOS,
+    },
   };
 }
