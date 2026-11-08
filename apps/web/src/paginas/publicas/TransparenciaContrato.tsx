@@ -3,6 +3,7 @@ import { Banknote, CircleDollarSign } from 'lucide-react';
 import { formatarData, formatarMoeda, formatarMoedaCompacta } from '@agora/dominio';
 import { useContratoPublico } from '../../api/publico';
 import {
+  Alerta,
   BarraProgresso,
   ConteudoConsulta,
   EsqueletoDetalhe,
@@ -53,7 +54,13 @@ export default function TransparenciaContrato() {
           const percentualPago = c.valorGlobal > 0 ? (c.valorPago / c.valorGlobal) * 100 : 0;
           return (
             <>
-              <div className="grade grade--kpi">
+              {c.sigilo ? (
+                <Alerta tipo="aviso" titulo="Contrato sigiloso: registro mínimo">
+                  <p>{c.sigilo.mensagem}</p>
+                  <p className="texto-pequeno">{c.sigilo.fundamento}</p>
+                </Alerta>
+              ) : null}
+              <div className="grade grade--kpi" hidden={Boolean(c.sigilo)}>
                 <Indicador
                   rotulo="Valor global"
                   icone={CircleDollarSign}

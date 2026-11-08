@@ -53,3 +53,4 @@ export * from './lei14133/conferencia-cruzada.ts';
 export * from './lei14133/auditor-continuo.ts';
 export * from './integracoes/sei.ts';
 export * from './lei14133/dou.ts';
+export * from './lei14133/sigilo.ts';

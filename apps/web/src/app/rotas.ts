@@ -95,6 +95,8 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/jornada/:id/conferencia', permissao: 'jornada:ler', pagina: lazy(() => import('../paginas/ia/ConferenciaProcesso')) },
   // Publicações no DOU (RF-36): avisos de licitação e extratos, envio pelo INCom e conferência da publicação
   { caminho: '/publicacoes-dou', permissao: ['jornada:ler', 'contratos:ler'], pagina: lazy(() => import('../paginas/publicacoes/PublicacoesDou')) },
+  // Sigilo de segurança pública (F25: RN-40, RF-33 e RNF-09)
+  { caminho: '/jornada/:id/sigilo', permissao: 'sigilo:ler', pagina: lazy(() => import('../paginas/sigilo/SigiloProcesso')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

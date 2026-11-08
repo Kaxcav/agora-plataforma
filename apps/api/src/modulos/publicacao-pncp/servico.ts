@@ -2,7 +2,7 @@
  * Publicação no PNCP (RF-19) — lado da API: grava o pedido na fila (RNF-07) junto com o registro do envio, e monta a
  * situação de cada envio para a etapa de publicação da jornada. A execução é do trabalhador (./tarefas.ts).
  */
-import { chaveIdempotencia, TIPOS_DOCUMENTO_PNCP, tituloDocumentoPncp } from '@agora/dominio';
+import { chaveIdempotencia, hojeISO, TIPOS_DOCUMENTO_PNCP, tituloDocumentoPncp } from '@agora/dominio';
 import type { EnvioPncp, PublicacaoPncp, SituacaoEnvioPncp } from '@agora/contratos';
 import type { Executor, Transacao } from '../../banco/tipos.ts';
 import { sha256Hex } from '../../compartilhado/cripto.ts';
@@ -14,6 +14,8 @@ import type { ServicoFila } from '../../fila/servico.ts';
 import type { ArquivoPncp } from '../../integracoes/pncp-publicacao.ts';
 import type { LinhaProcesso } from '../jornada/tipos.ts';
 import { tarjarDadosPessoais } from '../publico/editais.ts';
+import { regraNegocio } from '../../http/erros.ts';
+import { contratosSigilosos, documentoRetido, documentosRetidos } from '../sigilo/consultas.ts';
 
 export type DocumentoPublicavel = 'edital' | 'tr' | 'minuta_contrato';
 
@@ -162,6 +164,9 @@ export async function solicitarPublicacaoEdital(
   modo: 'offline' | 'online',
   agora: Date,
 ): Promise<{ tarefa: LinhaTarefa; nova: boolean; reaberta: boolean }> {
+  // Sigilo (RN-40; art. 13): edital ou processo classificado não vai ao PNCP.
+  const retido = await documentoRetido(tx, linha.id, 'edital', hojeISO(agora));
+  if (retido !== null) throw regraNegocio(`O edital não pode ser publicado no PNCP. ${retido}`, [{ campo: 'RN-40', mensagem: 'Edital ou processo classificado' }]);
   const { tarefa, criada } = await fila.enfileirar(tx, {
     tipo: 'pncp.compra',
     chave: chaveIdempotencia(['pncp', 'compra', linha.id]),
@@ -192,6 +197,12 @@ export async function solicitarDivulgacaoContrato(
   modo: 'offline' | 'online',
   agora: Date,
 ): Promise<{ tarefa: LinhaTarefa; nova: boolean }> {
+  // Contrato sigiloso (art. 91, § 1º): não é divulgado no PNCP.
+  if ((await contratosSigilosos(tx, [contrato.id], hojeISO(agora))).has(contrato.id)) {
+    throw regraNegocio('O contrato é sigiloso (Lei 14.133/2021, art. 91, § 1º) e não é divulgado no PNCP; a transparência mostra só o registro mínimo.', [
+      { campo: 'RN-40', mensagem: 'Contrato sigiloso' },
+    ]);
+  }
   const { tarefa, criada } = await fila.enfileirar(tx, {
     tipo: 'pncp.contrato',
     chave: chaveIdempotencia(['pncp', 'contrato', contrato.id]),
@@ -248,7 +259,7 @@ function mapearEnvio(l: LinhaEnvioComTarefa): EnvioPncp {
 }
 
 /** Situação dos envios ao PNCP de um processo (etapas 5 e 7 da jornada). */
-export async function consultarPublicacaoPncp(executor: Executor, linha: LinhaProcesso): Promise<PublicacaoPncp> {
+export async function consultarPublicacaoPncp(executor: Executor, linha: LinhaProcesso, hoje: string = hojeISO(new Date())): Promise<PublicacaoPncp> {
   const linhas = await executor.consultar<LinhaEnvioComTarefa>(
     `SELECT e.id, e.tarefa_id, e.objeto, e.processo_id, e.contrato_id, e.documento_tipo, e.titulo, e.tipo_documento_pncp, e.modo,
             e.hash_arquivo, e.protocolo, e.numero_controle, e.sequencial_documento, e.enviado_em, e.criado_em,
@@ -271,5 +282,8 @@ export async function consultarPublicacaoPncp(executor: Executor, linha: LinhaPr
     linkPublico: publicado ? `/transparencia/editais/${linha.id}` : null,
     envios,
     contrato: contrato ? mapearEnvio(contrato) : null,
+    retidosPorSigilo: [...((await documentosRetidos(executor, [linha.id], hoje)).get(linha.id) ?? new Map<string, string>())]
+      .filter((par): par is [DocumentoPublicavel, string] => par[0] === 'edital' || par[0] === 'tr' || par[0] === 'minuta_contrato')
+      .map(([documento, motivo]) => ({ documento, titulo: ROTULOS[documento], motivo })),
   };
 }

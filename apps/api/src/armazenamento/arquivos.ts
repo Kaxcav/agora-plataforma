@@ -4,7 +4,7 @@
  * alteração no disco é detectada na leitura. A interface permite trocar o disco local por um armazenamento de
  * objetos auto-hospedado no órgão (compatível com S3, por exemplo) sem mudar as rotas.
  */
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { sha256Hex } from '../compartilhado/cripto.ts';
@@ -15,6 +15,8 @@ export interface ArmazenamentoArquivos {
   gravar(sha256: string, conteudo: Buffer): Promise<void>;
   /** Lê e confere a integridade; lança `ErroArmazenamento` se faltar ou se o conteúdo não bater com o hash. */
   ler(sha256: string): Promise<Buffer>;
+  /** Apaga o conteúdo (cofre de anexos sigilosos: o original em claro sai do armazenamento depois de cifrado). */
+  remover(sha256: string): Promise<void>;
 }
 
 export class ErroArmazenamento extends Error {
@@ -75,6 +77,10 @@ class ArmazenamentoDisco implements ArmazenamentoArquivos {
     }
     return conferir(sha256, conteudo);
   }
+
+  async remover(sha256: string): Promise<void> {
+    await rm(this.caminho(sha256), { force: true });
+  }
 }
 
 class ArmazenamentoMemoria implements ArmazenamentoArquivos {
@@ -93,11 +99,23 @@ class ArmazenamentoMemoria implements ArmazenamentoArquivos {
     if (!conteudo) throw new ErroArmazenamento('ausente', 'O arquivo não foi encontrado no armazenamento.');
     return conferir(sha256, Buffer.from(conteudo));
   }
+
+  async remover(sha256: string): Promise<void> {
+    exigirHash(sha256);
+    this.arquivos.delete(sha256);
+  }
 }
+
+/** Armazenamentos em memória por endereço: os módulos da mesma aplicação (documentos e cofre) compartilham o conteúdo. */
+const MEMORIAS = new Map<string, ArmazenamentoMemoria>();
 
 /** `memory://` (testes) ou diretório local; `null` = envio de documentos desligado. */
 export function criarArmazenamento(diretorio: string | null): ArmazenamentoArquivos | null {
   if (diretorio === null) return null;
-  if (diretorio.startsWith('memory://')) return new ArmazenamentoMemoria();
+  if (diretorio.startsWith('memory://')) {
+    const existente = MEMORIAS.get(diretorio) ?? new ArmazenamentoMemoria();
+    MEMORIAS.set(diretorio, existente);
+    return existente;
+  }
   return new ArmazenamentoDisco(diretorio);
 }

@@ -24,6 +24,10 @@ import { exigirEtapaAte } from '../jornada/servico.ts';
 import type { LinhaProcesso } from '../jornada/tipos.ts';
 import { listarArquivos, mapearArquivo, mencaoPublica, obterArquivo, obterQualificacao, parcelasParaLeitura, type ParcelaArmazenada } from './repositorio.ts';
 import { lerDocumento, montarQualificacao, valorTotalEstimado } from './servico.ts';
+import { anexoNoCofre } from '../sigilo/consultas.ts';
+
+/** Sigilo (RN-40): o anexo guardado no cofre só sai pela tela de sigilo, com motivo e decisão de acesso. */
+const MENSAGEM_COFRE = 'Anexo sigiloso guardado no cofre: abra a tela Sigilo do processo e baixe-o informando o motivo do acesso.';
 
 const CATEGORIAS = ['processo', 'habilitacao'] as const;
 const TIPOS = ['atestado_capacidade_tecnica', 'balanco_patrimonial', 'certidao', 'proposta', 'documento_processo', 'outro'] as const;
@@ -292,6 +296,7 @@ export async function rotasDocumentos(app: FastifyInstance): Promise<void> {
     const linha = await processoNoEscopo(request);
     const arquivo = await obterArquivo(ctx.banco, linha.id, idDaRota(request.params, 'arquivoId'));
     if (!arquivo) throw naoEncontrado('Documento não encontrado.');
+    if (await anexoNoCofre(ctx.banco, arquivo.id)) throw regraNegocio(MENSAGEM_COFRE, [{ campo: 'RN-40', mensagem: 'Anexo no cofre' }]);
     if (armazenamento === null) throw new ErroApi(503, 'INDISPONIVEL', 'O armazenamento de documentos não está configurado neste ambiente.');
     if (arquivo.contem_dado_pessoal && entrada.finalidade === undefined) {
       throw regraNegocio('Informe a finalidade do acesso: o documento contém dado pessoal e o acesso é registrado (LGPD, art. 37).', [
@@ -346,6 +351,7 @@ export async function rotasDocumentos(app: FastifyInstance): Promise<void> {
     const linha = await processoNoEscopo(request);
     const arquivo = await obterArquivo(ctx.banco, linha.id, idDaRota(request.params, 'arquivoId'));
     if (!arquivo) throw naoEncontrado('Documento não encontrado.');
+    if (await anexoNoCofre(ctx.banco, arquivo.id)) throw regraNegocio(MENSAGEM_COFRE, [{ campo: 'RN-40', mensagem: 'Anexo no cofre' }]);
     if (arquivo.tipo !== 'atestado_capacidade_tecnica') throw regraNegocio('A leitura assistida é feita nos atestados de capacidade técnica.');
     if (armazenamento === null) throw new ErroApi(503, 'INDISPONIVEL', 'O armazenamento de documentos não está configurado neste ambiente.');
     let conteudo: Buffer;

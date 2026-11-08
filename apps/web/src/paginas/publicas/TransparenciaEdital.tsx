@@ -3,6 +3,7 @@ import { FileDown } from 'lucide-react';
 import { formatarData } from '@agora/dominio';
 import { useEditalPublico } from '../../api/publico';
 import { ConteudoConsulta, EsqueletoDetalhe, LinkBotao, LinkExterno, ListaDefinicoes, Pagina, Secao } from '../../componentes';
+import { SigiloEditalPublico } from '../sigilo/Publico';
 
 export default function TransparenciaEdital() {
   const { id = '' } = useParams();
@@ -56,6 +57,7 @@ export default function TransparenciaEdital() {
                 ]}
               />
             </Secao>
+            <SigiloEditalPublico edital={e} />
             <Secao
               titulo="Inteiro teor"
               id="documentos-edital-publico"

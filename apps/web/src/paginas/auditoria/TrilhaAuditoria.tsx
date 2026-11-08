@@ -20,6 +20,7 @@ import {
 } from '../../componentes';
 import { abreviarHash, formatarInstante, formatarNumero } from '../../utilitarios/formatacao';
 import { useParametrosUrl } from '../../utilitarios/parametrosUrl';
+import { AncoragemTrilha } from './AncoragemTrilha';
 
 const FILTROS = ['busca', 'acao', 'recurso', 'usuario', 'de', 'ate'] as const;
 
@@ -247,6 +248,7 @@ export default function TrilhaAuditoria() {
         verificação recalcula a cadeia inteira no servidor e aponta o primeiro evento divergente.
       </p>
       <ResultadoVerificacao solicitada={solicitada} />
+      <AncoragemTrilha />
 
       {consulta.isError && consulta.data === undefined ? (
         <FalhaConsulta consulta={consulta} />

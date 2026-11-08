@@ -92,6 +92,11 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'alteracoes:decidir': 'Assinar aditivos e apostilas e decidir reequilíbrio e extinção (autoridade competente)',
   'normas:ler': 'Consultar a base normativa (Lei 14.133/2021)',
   'qualidade_ia:ler': 'Acompanhar a qualidade normativa dos rascunhos (IMR-02)',
+  'sigilo:ler': 'Consultar o sigilo do processo',
+  'sigilo:classificar': 'Classificar, reclassificar e desclassificar informação sigilosa',
+  'sigilo:credenciar': 'Credenciar o acesso a informação sigilosa',
+  'sigilo:controle': 'Acesso irrestrito de órgão de controle a informação sigilosa',
+  'auditoria:ancorar': 'Ancorar a trilha de auditoria em carimbo do tempo',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

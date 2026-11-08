@@ -1054,6 +1054,43 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'montarMateriaDou, dataPrevistaPublicacaoDou, localizarMateriaDou; api: GET /publicacoes-dou; POST /publicacoes-dou; POST /publicacoes-dou/:id/envio; POST /publicacoes-dou/:id/conferir; POST /publicacoes-dou/:id/publicacao; POST /publicacoes-dou/:id/jornal',
   },
+  {
+    id: 'RN-40',
+    tipo: 'RN',
+    titulo: 'Sigilo de segurança pública: classificação, acesso restrito e divulgação',
+    descricao:
+      'O processo, cada documento gerado, cada anexo e o contrato podem ser classificados como informação classificada da LAI (reservada, secreta ou ultrassecreta, com hipótese do art. 23, razões, termo final por data ou evento dentro do prazo máximo do grau e autoridade com competência do art. 27) ou como sigilo do orçamento estimado (art. 24), que exige a decisão motivada na pesquisa de preços, não vale no julgamento por maior desconto e termina com a fase de lances ou o julgamento. A classificação, a reclassificação e a desclassificação vão para a trilha de auditoria; vencido o prazo, a informação fica pública sozinha. O servidor só libera o conteúdo para quem tem credencial no processo, ativa e de grau suficiente; os órgãos de controle têm acesso irrestrito; todo acesso, permitido ou negado, é registrado. Documento classificado não aparece na transparência nem vai ao PNCP, contrato sigiloso mostra só um registro mínimo e o PDF interno sai com a marcação do grau nos cabeçalhos e rodapés.',
+    fundamento:
+      'Lei 14.133/2021, arts. 13, 18, § 1º, VI, 24, 91, § 1º, e 169, § 2º; Lei 12.527/2011, arts. 23 a 27; Decreto 7.845/2012, arts. 18, 19, 20, 23 e 38, § 4º',
+    etapa: null,
+    telas: ['jornada.sigilo', 'jornada.detalhe', 'transparencia'],
+    implementacao:
+      'validarClassificacaoSigilo, prazoMaximoSigilo, autoridadeCompetenteSigilo, classificacaoVigente, situacaoOrcamentoSigiloso, decidirAcessoSigilo, marcacaoSigilo, codigoIndexacaoSigilo; api: POST /processos/:id/sigilo/classificacoes; POST /processos/:id/sigilo/classificacoes/:classificacaoId/desclassificar; POST /processos/:id/sigilo/documentos/:tipo/pdf; checagens em /publico/editais, /publico/contratos e na fila do PNCP',
+  },
+  {
+    id: 'RF-33',
+    tipo: 'RF',
+    titulo: 'Sigilo do processo: classificação, credenciamento e registro de acessos',
+    descricao:
+      'A tela de sigilo do processo mostra a classificação do processo, dos documentos, dos anexos e do contrato, com o código de indexação, o grau, o termo final e a autoridade classificadora; permite classificar, reclassificar e desclassificar com motivo; credenciar e descredenciar quem precisa conhecer a informação, por credencial de segurança ou termo de compromisso de manutenção de sigilo, com grau máximo e validade; enviar anexos direto ao cofre; baixar o PDF marcado e o anexo do cofre informando o motivo; e consultar o registro de todos os acessos, permitidos e negados.',
+    fundamento: 'Lei 12.527/2011, arts. 25 e 27; Decreto 7.845/2012, arts. 18, 19 e 38, § 4º',
+    etapa: null,
+    telas: ['jornada.sigilo'],
+    implementacao:
+      'api: GET /processos/:id/sigilo; POST /processos/:id/sigilo/credenciais; POST /processos/:id/sigilo/credenciais/:credencialId/revogar; GET /processos/:id/sigilo/acessos; POST /processos/:id/sigilo/anexos; POST /processos/:id/sigilo/anexos/:arquivoId/baixar',
+  },
+  {
+    id: 'RNF-09',
+    tipo: 'RNF',
+    titulo: 'Cofre de anexos sigilosos e carimbo de tempo da trilha de auditoria',
+    descricao:
+      'Anexos sigilosos ficam cifrados em repouso com AES-256-GCM, com a chave do órgão vinda de variável de ambiente e o registro ligado ao conteúdo (dados autenticados); o arquivo em claro é apagado do armazenamento quando nenhum outro registro o usa, e o download exige motivo e fica registrado. A trilha de auditoria é ancorada periodicamente: o servidor envia o hash da cadeia a uma autoridade de carimbo do tempo RFC 3161 configurada pelo órgão (servida por ele ou credenciada na ICP-Brasil) e guarda o token; sem a autoridade, registra a ancoragem local. A tela da trilha confere cada ancoragem: o hash da cadeia, a declaração carimbada e a assinatura do token.',
+    fundamento: 'Decreto 7.845/2012, arts. 31 e 38; Lei 14.133/2021, art. 12, VI; RFC 3161 (Time-Stamp Protocol); MP 2.200-2/2001 (ICP-Brasil)',
+    etapa: null,
+    telas: ['jornada.sigilo', 'auditoria'],
+    implementacao:
+      'declaracaoAncoragem, ancoragemDevida, conferirAncoragem; api: GET /auditoria/ancoragens; POST /auditoria/ancoragens; GET /auditoria/ancoragens/verificacao; cofre (apps/api/src/modulos/sigilo/cofre.ts)',
+  },
 ]);
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */
 export function regrasPorTela(tela: string): RegraCatalogo[] {
