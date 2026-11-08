@@ -34,15 +34,16 @@ const DESCONTOS: Record<TipoSancao, number> = {
   declaracao_inidoneidade: -40,
 };
 const JANELA_SANCOES_MESES = 36;
-const AVISO_IDC = 'Indicador objetivo de apoio. Não constitui sanção nem impede participação em licitações.';
+const AVISO_IDC =
+  'Indicador objetivo de apoio (Lei 14.133/2021, art. 88, §§ 3º e 4º). Não constitui sanção nem impede participação em licitações; impedimento decorre exclusivamente de sanção aplicada em processo.';
 
-type Faixa = 'excelente' | 'bom' | 'regular' | 'insuficiente' | 'critico';
+export type FaixaIdc = 'diamante' | 'ouro' | 'prata' | 'em_observacao' | 'critico' | 'sem_historico';
 
-function faixaDaNota(nota: number): Faixa {
-  if (nota >= 90) return 'excelente';
-  if (nota >= 75) return 'bom';
-  if (nota >= 60) return 'regular';
-  if (nota >= 40) return 'insuficiente';
+function faixaDaNota(nota: number): FaixaIdc {
+  if (nota >= 90) return 'diamante';
+  if (nota >= 75) return 'ouro';
+  if (nota >= 60) return 'prata';
+  if (nota >= 50) return 'em_observacao';
   return 'critico';
 }
 
@@ -56,7 +57,7 @@ function exigirParTotal(parte: number, total: number, nomeParte: string, nomeTot
  * IDC = Σ (componente × peso) + descontos por sanções aplicadas nos últimos 36 meses, limitado a 0–100 (1 casa).
  * Componentes: pontualidade das entregas, qualidade dos recebimentos e tratamento de ocorrências da fiscalização.
  * Componente sem dados (total 0) vale 100 e é indicado na metodologia. Sem nenhum histórico: nota 0,
- * faixa 'regular' e semHistorico = true (a ausência de dados não é penalizada).
+ * faixa 'sem_historico' e semHistorico = true (a ausência de dados não é penalizada).
  */
 export function calcularIdc(
   ind: IndicadoresDesempenho,
@@ -64,7 +65,7 @@ export function calcularIdc(
   pesos: PesosIdc = PESOS_IDC_PADRAO,
 ): {
   nota: number;
-  faixa: Faixa;
+  faixa: FaixaIdc;
   componentes: { nome: string; valor: number; peso: number; contribuicao: number }[];
   penalidades: { tipo: TipoSancao; dataAplicacao: DataISO; desconto: number }[];
   semHistorico: boolean;
@@ -112,16 +113,16 @@ export function calcularIdc(
   }
   const totalDescontos = penalidades.reduce((acc, p) => acc + p.desconto, 0);
   const nota = semHistorico ? 0 : arredondar(Math.min(100, Math.max(0, base + totalDescontos)), 1);
-  const faixa: Faixa = semHistorico ? 'regular' : faixaDaNota(nota);
+  const faixa: FaixaIdc = semHistorico ? 'sem_historico' : faixaDaNota(nota);
 
   const pct = (peso: number): string => `${formatarNumero(arredondar(peso * 100, 2))}%`;
   const partes = [
     `IDC = ${pct(pesos.prazo)} × pontualidade das entregas (entregas no prazo ÷ entregas) + ${pct(pesos.qualidade)} × qualidade dos recebimentos (recebimentos definitivos sem ressalva ÷ recebimentos) + ${pct(pesos.ocorrencias)} × tratamento de ocorrências (ocorrências resolvidas no prazo ÷ ocorrências), cada componente de 0 a 100.`,
     `Descontos por sanção aplicada nos últimos ${JANELA_SANCOES_MESES} meses até ${formatarData(hoje)}: advertência −5, multa −10, impedimento de licitar e contratar −25, declaração de inidoneidade −40. Resultado limitado entre 0 e 100.`,
-    'Faixas: excelente ≥ 90; bom ≥ 75; regular ≥ 60; insuficiente ≥ 40; crítico < 40.',
+    'Faixas: diamante ≥ 90; ouro ≥ 75; prata ≥ 60; em observação ≥ 50; crítico < 50.',
   ];
   if (semHistorico) {
-    partes.push('Sem histórico de entregas, recebimentos ou ocorrências: nota 0 e faixa regular, sem penalizar a ausência de dados.');
+    partes.push('Sem histórico de entregas, recebimentos ou ocorrências: nota 0 e faixa sem histórico, sem penalizar a ausência de dados.');
   } else if (semDados.length > 0) {
     partes.push(`Componentes sem dados (considerados 100): ${semDados.join('; ')}.`);
   }

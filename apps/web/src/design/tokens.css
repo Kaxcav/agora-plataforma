@@ -3,6 +3,15 @@
  * Cores, tipografia (Minor Third 1,2 sobre base de 14 px), espaçamento em passos de 4 px.
  */
 :root {
+  /* Cores da bandeira / papéis acessíveis (RNF-01 / WCAG 2.1 AA) */
+  --bandeira-azul: #002776;
+  --bandeira-azul-nav: #1351b4;
+  --bandeira-verde: #009c3b;
+  --bandeira-amarelo: #ffdf00;
+  --bandeira-ouro: #d4a017;
+  --alerta-vermelho: #dc2626;
+  --fundo-claro: #f8fafc;
+
   /* Cores institucionais */
   --azul-90: #071d41;
   --azul-80: #0c326f;
@@ -34,14 +43,14 @@
   --cinza-20: #cccccc;
   --cinza-10: #e6e6e6;
   --cinza-5: #f0f0f0;
-  --cinza-2: #f8f8f8;
+  --cinza-2: var(--fundo-claro);
   --branco: #ffffff;
 
   /* Papéis semânticos */
   --cor-texto: var(--cinza-80);
   --cor-texto-forte: var(--cinza-90);
   --cor-texto-secundario: var(--cinza-60);
-  --cor-fundo: var(--cinza-2);
+  --cor-fundo: var(--fundo-claro);
   --cor-superficie: var(--branco);
   --cor-borda: var(--cinza-20);
   --cor-divisoria: var(--cinza-10);

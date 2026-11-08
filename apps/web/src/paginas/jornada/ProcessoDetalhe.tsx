@@ -389,7 +389,7 @@ export default function ProcessoDetalhe() {
               ) : null}
               {podeAvancar && proxima ? (
                 <Botao
-                  variante="primario"
+                  variante="avanco"
                   iconeFim={ArrowRight}
                   onClick={() => {
                     avancar.reset();
@@ -448,6 +448,7 @@ export default function ProcessoDetalhe() {
           aoFechar={() => definirConfirmandoAvanco(false)}
           titulo={`Avançar para a etapa ${proxima} — ${tituloEtapa(proxima)}`}
           largura="media"
+          variante="avanco"
           descricao={
             <p>
               O servidor verifica todas as regras da etapa {processo.etapaAtual} — {tituloEtapa(processo.etapaAtual)}. Se alguma não for atendida,
