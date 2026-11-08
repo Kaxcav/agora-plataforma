@@ -7,6 +7,20 @@
         "deploy/docker-compose.yml"
       ],
       "reason": "Exemplos de formato de AGORA_BANCO_URL na validação e no compose (a senha do compose vem de variável de ambiente); não há credencial real."
+    },
+    {
+      "rule": "db_uri",
+      "paths": [
+        "apps/api/test/infraestrutura.test.ts"
+      ],
+      "reason": "Fixture de teste da validação de configuração, com URL fictícia; nunca usada para conectar."
+    },
+    {
+      "rule": "generic_secret",
+      "paths": [
+        "apps/api/test/govbr.test.ts"
+      ],
+      "reason": "Fixture do teste do login gov.br com segredo fictício e chave gerada no próprio teste; nada é enviado a serviço real."
     }
   ]
 }
