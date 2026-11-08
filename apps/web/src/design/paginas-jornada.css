@@ -226,8 +226,8 @@
 }
 
 .jornada-trilha__item--concluida .jornada-trilha__marcador {
-  background: var(--verde-50);
-  border-color: var(--verde-50);
+  background: var(--bandeira-verde);
+  border-color: var(--bandeira-verde);
   color: var(--branco);
 }
 
@@ -438,7 +438,7 @@
 }
 
 .jornada-ocorrencia__icone--bloqueio {
-  color: var(--vermelho-50);
+  color: var(--alerta-vermelho);
 }
 
 .jornada-sem-bloqueio {

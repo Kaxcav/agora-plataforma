@@ -102,7 +102,7 @@ function Visualizador({
         </div>
         <div className="linha">
           {podeAprovar && documento.situacao !== 'aprovado' && !documento.geradoComParametrosAnteriores ? (
-            <Botao variante="primario" tamanho="compacto" icone={BadgeCheck} onClick={aoAprovar}>
+            <Botao variante="avanco" tamanho="compacto" icone={BadgeCheck} onClick={aoAprovar}>
               Aprovar
             </Botao>
           ) : null}
@@ -282,6 +282,7 @@ export function DocumentosEtapa({ processo, tipos, editavel, titulo, descricao, 
         aoFechar={fecharAprovacao}
         titulo="Aprovar documento"
         largura="media"
+        variante="avanco"
         descricao={
           aprovando ? (
             <p>

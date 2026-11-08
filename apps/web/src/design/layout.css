@@ -53,12 +53,19 @@
 
 /* Cabeçalho */
 .cabecalho {
-  background: var(--azul-90);
+  background: var(--bandeira-azul);
   color: var(--branco);
   position: sticky;
   top: 0;
   z-index: 50;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), var(--sombra-2);
+}
+
+/* Destaques de IA no cabeçalho em amarelo sobre fundo escuro */
+.cabecalho [data-ia],
+.cabecalho .destaque-ia,
+.cabecalho__ia {
+  color: var(--bandeira-amarelo);
 }
 
 .cabecalho__interno {
@@ -101,7 +108,7 @@
 }
 
 .marca__traco--base {
-  stroke: var(--amarelo-20);
+  stroke: var(--bandeira-amarelo);
 }
 
 .marca__textos {

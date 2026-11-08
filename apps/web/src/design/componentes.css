@@ -80,6 +80,16 @@
   color: var(--branco);
 }
 
+.botao--avanco {
+  background: var(--verde-50);
+  color: var(--branco);
+}
+
+.botao--avanco:hover:not(:disabled, [aria-disabled='true']) {
+  background: var(--verde-60);
+  color: var(--branco);
+}
+
 .botao:disabled,
 .botao[aria-disabled='true'] {
   opacity: 0.55;
@@ -169,7 +179,7 @@
 }
 
 .campo--erro .campo__controle {
-  border-color: var(--vermelho-50);
+  border-color: var(--alerta-vermelho);
   border-width: 2px;
 }
 
@@ -184,7 +194,7 @@
   gap: var(--esp-1);
   font-size: var(--fonte-pequena);
   font-weight: var(--peso-semi);
-  color: var(--vermelho-60);
+  color: var(--alerta-vermelho);
 }
 
 .campo__erro svg {
@@ -499,20 +509,22 @@ fieldset.grupo-campos {
 
 .etiqueta--sucesso {
   background: var(--verde-10);
-  border-color: #b5dfb1;
+  border-color: var(--bandeira-verde);
+  color: var(--verde-50);
 }
 
 .etiqueta--sucesso svg {
-  color: var(--verde-50);
+  color: var(--bandeira-verde);
 }
 
 .etiqueta--aviso {
   background: var(--amarelo-5);
-  border-color: #f0d36b;
+  border-color: var(--bandeira-ouro);
+  color: var(--cinza-90);
 }
 
 .etiqueta--aviso svg {
-  color: var(--ambar-60);
+  color: var(--bandeira-ouro);
 }
 
 .etiqueta--alerta {
@@ -535,11 +547,12 @@ fieldset.grupo-campos {
 
 .etiqueta--erro {
   background: var(--vermelho-10);
-  border-color: #f5aa9d;
+  border-color: var(--alerta-vermelho);
+  color: var(--alerta-vermelho);
 }
 
 .etiqueta--erro svg {
-  color: var(--vermelho-60);
+  color: var(--alerta-vermelho);
 }
 
 .semaforo {
@@ -657,17 +670,17 @@ h3.secao__titulo {
 
 .indicador__icone--sucesso {
   background: var(--verde-10);
-  color: var(--verde-50);
+  color: var(--bandeira-verde);
 }
 
 .indicador__icone--aviso {
   background: var(--amarelo-5);
-  color: var(--ambar-60);
+  color: var(--bandeira-ouro);
 }
 
 .indicador__icone--erro {
   background: var(--vermelho-10);
-  color: var(--vermelho-60);
+  color: var(--alerta-vermelho);
 }
 
 .indicador__valor {
@@ -725,11 +738,11 @@ h3.secao__titulo {
 }
 
 .barra-progresso__preenchimento--aviso {
-  background: #c99700;
+  background: var(--bandeira-ouro);
 }
 
 .barra-progresso__preenchimento--erro {
-  background: var(--vermelho-50);
+  background: var(--alerta-vermelho);
 }
 
 .barra-progresso__valor {
@@ -793,29 +806,29 @@ h3.secao__titulo {
 
 .alerta--sucesso {
   background: var(--verde-10);
-  border-color: var(--verde-50);
+  border-color: var(--bandeira-verde);
 }
 
 .alerta--sucesso .alerta__icone {
-  color: var(--verde-50);
+  color: var(--bandeira-verde);
 }
 
 .alerta--aviso {
   background: var(--amarelo-5);
-  border-color: #d9a900;
+  border-color: var(--bandeira-ouro);
 }
 
 .alerta--aviso .alerta__icone {
-  color: var(--ambar-60);
+  color: var(--bandeira-ouro);
 }
 
 .alerta--erro {
   background: var(--vermelho-10);
-  border-color: var(--vermelho-50);
+  border-color: var(--alerta-vermelho);
 }
 
 .alerta--erro .alerta__icone {
-  color: var(--vermelho-60);
+  color: var(--alerta-vermelho);
 }
 
 /* ───────── Estados (vazio, erro, permissão) ───────── */
@@ -843,11 +856,11 @@ h3.secao__titulo {
 
 .estado--erro {
   border-style: solid;
-  border-color: #f5aa9d;
+  border-color: var(--alerta-vermelho);
 }
 
 .estado--erro .estado__icone {
-  color: var(--vermelho-60);
+  color: var(--alerta-vermelho);
 }
 
 .estado--permissao .estado__icone {

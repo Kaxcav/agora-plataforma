@@ -83,6 +83,8 @@ export async function carregarFornecedores(
   const mapa = new Map<string, FornecedorCalculado>();
   for (const linha of linhas) {
     const doFornecedor = sancoes.filter((s) => s.fornecedor_id === linha.id);
+    const sancoesVigentes = doFornecedor.filter((s) => sancaoVigente(s, hoje));
+    const impedido = sancoesVigentes.some((s) => s.tipo === 'impedimento_licitar' || s.tipo === 'declaracao_inidoneidade');
     const indicadores = indicadoresDe(linha, doFornecedor);
     const idc = calcularIdc(indicadores, hoje);
     mapa.set(linha.id, {
@@ -95,7 +97,8 @@ export async function carregarFornecedores(
         razaoSocial: nomeExibivel(linha.tipo_pessoa, linha.razao_social),
         porte: linha.porte,
         uf: linha.uf,
-        sancoesVigentes: doFornecedor.filter((s) => sancaoVigente(s, hoje)).length,
+        sancoesVigentes: sancoesVigentes.length,
+        impedido,
         idc: { nota: idc.nota, faixa: idc.faixa, semHistorico: idc.semHistorico },
       },
     });
