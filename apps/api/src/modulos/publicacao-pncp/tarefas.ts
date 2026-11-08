@@ -23,6 +23,7 @@ import { opcoesCalendario } from '../../compartilhado/instrumentos.ts';
 import { FalhaTarefa, type ConclusaoTarefa, type LinhaTarefa } from '../../fila/tipos.ts';
 import type { ContextoApp } from '../../http/contexto.ts';
 import { criarClientePncp, reais, type ClientePncp, type CompraPncp, type ContratoPncp } from '../../integracoes/pncp-publicacao.ts';
+import { gerarAvisoLicitacaoAutomatico } from '../dou/servico.ts';
 import { obterLinhaProcesso } from '../jornada/repositorio.ts';
 import { analisarCesta } from '../jornada/regras.ts';
 import { cnpjDoOrgao, gravarJson, publicarOffline } from '../jornada/servico.ts';
@@ -199,9 +200,11 @@ export async function executarPublicacaoCompra(ctx: ContextoApp, tarefa: LinhaTa
         tx,
         linha.id,
         'publicacao',
-        { pncp: 'publicado', dou: 'publicado', publicadoEm, dataMinimaPropostas: prazo.data, idPncp: numeroControle },
+        // RF-36: o DOU fica "na fila" até a publicação do aviso de licitação ser conferida (art. 54, § 1º).
+        { pncp: 'publicado', dou: 'na_fila', publicadoEm, dataMinimaPropostas: prazo.data, idPncp: numeroControle },
         agora,
       );
+      const aviso = await gerarAvisoLicitacaoAutomatico(tx, linha.id, agora);
       const anexos: string[] = [];
       for (const documento of ANEXOS_PNCP) {
         if (!(await documentoAprovado(tx, linha.id, documento))) continue;
@@ -235,7 +238,7 @@ export async function executarPublicacaoCompra(ctx: ContextoApp, tarefa: LinhaTa
           acao: 'pncp.publicar',
           recurso: 'processo',
           recursoId: linha.id,
-          resumo: `Publicou o edital no PNCP${aceito.modo === 'online' ? '' : ' (simulação)'} sob o nº ${numeroControle} e o extrato no DOU (simulado); propostas a partir de ${formatarData(prazo.data)}`,
+          resumo: `Publicou o edital no PNCP${aceito.modo === 'online' ? '' : ' (simulação)'} sob o nº ${numeroControle}; ${'erro' in aviso ? `aviso de licitação para o DOU não gerado (${aviso.erro})` : 'aviso de licitação para o DOU gerado, a enviar pelo INCom'}; propostas a partir de ${formatarData(prazo.data)}`,
           dados: {
             numeroSei: linha.numero_sei,
             numeroControle,
@@ -249,6 +252,7 @@ export async function executarPublicacaoCompra(ctx: ContextoApp, tarefa: LinhaTa
             diasUteis: prazo.diasUteis,
             fundamento: prazo.fundamento,
             anexosEnfileirados: anexos,
+            avisoDou: 'erro' in aviso ? { erro: aviso.erro } : { materiaId: aviso.id },
           },
           ipHash: null,
         },

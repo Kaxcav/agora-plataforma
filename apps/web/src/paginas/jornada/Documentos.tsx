@@ -9,6 +9,7 @@ import { useAprovarDocumento, useGerarDocumento, type TipoDocumento } from '../.
 import { Alerta, Botao, CaixaSelecao, ConfirmarAcao, Etiqueta, useAvisos } from '../../componentes';
 import { formatarInstante } from '../../utilitarios/formatacao';
 import { ErroOperacao } from './comum';
+import { SituacaoSeiDocumento } from './IntegracaoSei';
 import { Markdown } from './Markdown';
 import { SITUACOES_DOCUMENTO, TIPOS_DOCUMENTO } from './rotulos';
 
@@ -245,6 +246,7 @@ export function DocumentosEtapa({ processo, tipos, editavel, titulo, descricao, 
                     <Etiqueta compacta>Não gerado</Etiqueta>
                   </p>
                 )}
+                {doc ? <SituacaoSeiDocumento processo={processo} documento={doc} /> : null}
               </div>
               <div className="jornada-docs__acoes">
                 {doc ? (

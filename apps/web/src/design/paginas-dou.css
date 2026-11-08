@@ -1,0 +1,29 @@
+/* Publicações no DOU (RF-36): texto da matéria no padrão de publicação. */
+
+.materia-dou__texto {
+  margin: 0;
+  padding: var(--esp-3);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: var(--fonte-pequena);
+  line-height: 1.5;
+  background: var(--cinza-2);
+  border: 1px solid var(--cor-divisoria);
+  border-radius: var(--raio-cartao);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.materia-dou__formulario {
+  display: grid;
+  gap: var(--esp-3);
+  padding-top: var(--esp-3);
+  border-top: 1px solid var(--cor-divisoria);
+}
+
+@media (min-width: 48rem) {
+  .materia-dou__formulario--duplo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

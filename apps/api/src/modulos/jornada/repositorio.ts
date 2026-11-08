@@ -138,7 +138,7 @@ export async function carregarArvore(executor: Executor, processoId: string): Pr
     assinado_em: string | null;
     assinado_por: string | null;
   }>(
-    `SELECT a.numero, a.titulo, a.documento_id, a.incluido_em, a.assinado_em, u.nome AS assinado_por
+    `SELECT a.numero, a.titulo, a.documento_id, a.incluido_em, a.assinado_em, COALESCE(u.nome, a.assinado_por_nome) AS assinado_por
        FROM processos_arvore_sei a
        LEFT JOIN usuarios u ON u.id = a.assinado_por
       WHERE a.processo_id = $1

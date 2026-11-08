@@ -1,13 +1,20 @@
 /**
  * Canais de envio da central de notificações (RF-26), sempre no servidor:
  * - e-mail: servidor SMTP do órgão (`AGORA_NOTIFICACOES_EMAIL=smtp` + `AGORA_SMTP_*`) ou driver simulado;
- * - SEI: interface pronta para o web service do SEI (inclusão de documento no processo); nesta fase, driver simulado;
+ * - SEI: web service do SEI do órgão (`AGORA_NOTIFICACOES_SEI=webservice` + `AGORA_SEI_*`): o aviso entra como documento
+ *   no processo SEI do instrumento; sem a configuração, driver simulado;
  * - gov.br: interface pronta para a Caixa Postal/notificações do gov.br (pessoa física, por CPF); driver simulado.
  * O driver simulado não envia nada para fora: devolve um protocolo determinístico para acompanhar a situação.
  */
 import type { CanalNotificacao, ModoCanalNotificacao, PapelDestinatario } from '@agora/contratos';
+import { dataHoraSei, nivelAcessoSei } from '@agora/dominio';
 import type { Config } from '../../config.ts';
 import { sha256Hex } from '../../compartilhado/cripto.ts';
+import { gerarPdfTexto } from '../../compartilhado/pdf-texto.ts';
+import { FalhaTarefa } from '../../fila/tipos.ts';
+import type { FuncaoFetch } from '../../http/contexto.ts';
+import { criarClienteSei } from '../../integracoes/sei.ts';
+import { tarjarDadosPessoais } from '../publico/editais.ts';
 import { enviarEmailSmtp, ErroSmtp } from './smtp.ts';
 
 export interface MensagemCanal {
@@ -114,10 +121,61 @@ export function driverSeiSimulado(): DriverCanal {
   return {
     canal: 'sei',
     modo: 'simulado',
-    descricao: 'Simulado: registra o documento que seria incluído no processo SEI do instrumento. A integração com o web service do SEI é de outra fase.',
+    descricao: 'Simulado: registra o documento que seria incluído no processo SEI do instrumento. Para incluir de fato, configure o web service do SEI (AGORA_NOTIFICACOES_SEI=webservice).',
     enviar: (m) => {
       if (m.endereco === null || m.endereco.trim() === '') return Promise.reject(new ErroEnvio('O instrumento não tem processo SEI informado.', true));
       return Promise.resolve({ modo: 'simulado', protocolo: `${protocoloSimulado('SEI-SIM', m)} (processo ${m.endereco})` });
+    },
+  };
+}
+
+/**
+ * SEI real (RF-35): o aviso vira um documento externo (PDF) incluído no processo SEI do instrumento pelo web service do
+ * SEI (`incluirDocumento`). O protocolo do envio é o número do documento no SEI. Recusa do SEI (processo inexistente,
+ * acesso negado) é falha permanente; indisponibilidade é temporária e segue as novas tentativas da central.
+ */
+export function driverSeiWebservice(config: Config, chamarFetch: FuncaoFetch): DriverCanal {
+  const sei = config.sei;
+  if (!sei.configurado || !sei.url || !sei.siglaSistema || !sei.identificacaoServico || !sei.idUnidade || !sei.idSerie) {
+    throw new Error('Web service do SEI não configurado (AGORA_SEI_*)');
+  }
+  const cliente = criarClienteSei({
+    url: sei.url,
+    siglaSistema: sei.siglaSistema,
+    identificacaoServico: sei.identificacaoServico,
+    idUnidade: sei.idUnidade,
+    fetch: chamarFetch,
+    timeoutMs: sei.timeoutMs,
+  });
+  const idSerie = sei.idSerie;
+  return {
+    canal: 'sei',
+    modo: 'webservice',
+    descricao: `Web service do SEI do órgão: o aviso é incluído como documento no processo SEI do instrumento (unidade ${sei.idUnidade}).`,
+    enviar: async (m) => {
+      if (m.endereco === null || m.endereco.trim() === '') throw new ErroEnvio('O instrumento não tem processo SEI informado.', true);
+      const texto = `${m.assunto} ${m.corpo}`;
+      const pdf = gerarPdfTexto({ titulo: m.assunto, rodape: `Notificação da Ágora — ${config.orgao.sigla}`, conteudo: m.corpo });
+      const nivel = nivelAcessoSei({ contemDadoPessoal: tarjarDadosPessoais(texto) !== texto, orcamentoSigiloso: false });
+      try {
+        const r = await cliente.incluirDocumento({
+          protocoloProcedimento: m.endereco.trim(),
+          idSerie,
+          numero: `AVISO-${m.envioId.slice(0, 8).toUpperCase()}`,
+          nomeArvore: 'Notificação da Ágora',
+          data: dataHoraSei(m.agora).slice(0, 10),
+          remetente: { sigla: config.orgao.sigla, nome: `${config.orgao.nome} — Ágora` },
+          nomeArquivo: `notificacao-${m.envioId.slice(0, 8)}.pdf`,
+          conteudo: pdf,
+          nivelAcesso: nivel.nivel,
+          idHipoteseLegal: sei.idHipoteseLegal,
+          observacao: null,
+        });
+        return { modo: 'webservice', protocolo: `Documento SEI nº ${r.documentoFormatado} (processo ${m.endereco.trim()})` };
+      } catch (erro) {
+        if (erro instanceof FalhaTarefa) throw new ErroEnvio(erro.message, !erro.retentavel, { cause: erro });
+        throw erro;
+      }
     },
   };
 }
@@ -139,11 +197,19 @@ export function driverGovbrSimulado(): DriverCanal {
 }
 
 /** Drivers conforme a configuração (`sobrescrever` serve aos testes). */
-export function criarDrivers(config: Config, sobrescrever: Partial<DriversCanais> = {}): DriversCanais {
+export function criarDrivers(
+  config: Config,
+  sobrescrever: Partial<DriversCanais> = {},
+  chamarFetch: FuncaoFetch = (entrada, init) => fetch(entrada, init),
+): DriversCanais {
   const n = config.notificacoes;
+  const sei = (): DriverCanal => {
+    if (n.sei === 'desligado') return driverDesligado('sei', 'AGORA_NOTIFICACOES_SEI');
+    return n.sei === 'webservice' ? driverSeiWebservice(config, chamarFetch) : driverSeiSimulado();
+  };
   return {
     email: sobrescrever.email ?? (n.email === 'smtp' && n.smtp ? driverEmailSmtp(config) : driverEmailSimulado()),
-    sei: sobrescrever.sei ?? (n.sei === 'desligado' ? driverDesligado('sei', 'AGORA_NOTIFICACOES_SEI') : driverSeiSimulado()),
+    sei: sobrescrever.sei ?? sei(),
     govbr: sobrescrever.govbr ?? (n.govbr === 'desligado' ? driverDesligado('govbr', 'AGORA_NOTIFICACOES_GOVBR') : driverGovbrSimulado()),
   };
 }

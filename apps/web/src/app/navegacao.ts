@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   FileSignature,
+  Newspaper,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -139,5 +140,10 @@ export const MENU: readonly SecaoMenu[] = [
       },
       { rotulo: 'Controle externo', caminho: '/controle-externo', icone: Landmark, permissao: 'controle_externo:ler' },
     ],
+  },
+  {
+    id: 'publicacoes',
+    titulo: 'Publicações',
+    itens: [{ rotulo: 'Publicações no DOU', caminho: '/publicacoes-dou', icone: Newspaper, permissao: ['jornada:ler', 'contratos:ler'] }],
   },
 ];

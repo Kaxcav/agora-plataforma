@@ -78,6 +78,9 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/impedimentos/fornecedores/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/FornecedorVinculos')) },
   { caminho: '/impedimentos/extensoes/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ExtensaoDetalhe')) },
   { caminho: '/impedimentos/declaracao', permissao: 'agentes:declarar', pagina: lazy(() => import('../paginas/impedimentos/MinhaDeclaracao')) },
+
+  // Publicações no DOU (RF-36): avisos de licitação e extratos, envio pelo INCom e conferência da publicação
+  { caminho: '/publicacoes-dou', permissao: ['jornada:ler', 'contratos:ler'], pagina: lazy(() => import('../paginas/publicacoes/PublicacoesDou')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

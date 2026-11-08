@@ -51,6 +51,42 @@ export interface Config {
   };
   /** Publicação no PNCP (RF-19): API de manutenção e login do sistema credenciado. */
   pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
+  /** Web service do SEI do órgão (RF-35): SeiWS (SOAP), com sigla do sistema e chave de acesso do serviço. */
+  sei: ConfigSei;
+  /** Publicação no DOU (RF-36): consulta pública usada para conferir a publicação e horário de fechamento do INCom. */
+  dou: ConfigDou;
+}
+
+export interface ConfigSei {
+  /** Endereço do serviço SOAP (`soap:address` do WSDL), ex.: https://sei.orgao.gov.br/sei/ws/SeiWS.php. */
+  url: string | null;
+  /** Sigla do sistema cadastrado no SEI (Administração › Sistemas). */
+  siglaSistema: string | null;
+  /** Chave de acesso do serviço (parâmetro IdentificacaoServico). Segredo: fica só no servidor. */
+  identificacaoServico: string | null;
+  /** Id da unidade do SEI onde os processos são gerados. */
+  idUnidade: string | null;
+  /** Id do tipo de processo no SEI (ex.: "Licitação: Pregão eletrônico"). */
+  idTipoProcedimento: string | null;
+  /** Id do tipo de documento externo no SEI para os PDFs da Ágora. */
+  idSerie: string | null;
+  /** Id da unidade para onde o processo é enviado depois da inclusão dos documentos (opcional). */
+  idUnidadeDestino: string | null;
+  /** Hipótese legal dos documentos restritos (opcional; sem ela, a do tipo de processo). */
+  idHipoteseLegal: string | null;
+  /** Monta o bloco de assinatura com os documentos incluídos. */
+  blocoAssinatura: boolean;
+  timeoutMs: number;
+  /** Endereço, sigla, chave, unidade, tipo de processo e tipo de documento informados. */
+  configurado: boolean;
+}
+
+export interface ConfigDou {
+  /** Consulta pública do DOU (Imprensa Nacional), chamada só pelo servidor. */
+  consultaUrl: string;
+  /** Hora de Brasília em que o INCom fecha a edição do dia útil seguinte. */
+  horaFechamento: number;
+  timeoutMs: number;
 }
 
 export interface ConfigSmtp {
@@ -67,7 +103,7 @@ export interface ConfigNotificacoes {
   /** 'api' = varredura e fila no próprio processo da API; 'externo' = processo à parte (`npm run notificacoes -w @agora/api`). */
   agendador: 'api' | 'externo';
   email: 'simulado' | 'smtp';
-  sei: 'simulado' | 'desligado';
+  sei: 'simulado' | 'desligado' | 'webservice';
   govbr: 'simulado' | 'desligado';
   smtp: ConfigSmtp | null;
 }
@@ -134,7 +170,7 @@ const esquemaAmbiente = z.object({
   AGORA_PRECOS_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(15_000),
   AGORA_NOTIFICACOES_AGENDADOR: z.enum(['api', 'externo']).default('api'),
   AGORA_NOTIFICACOES_EMAIL: z.enum(['simulado', 'smtp']).default('simulado'),
-  AGORA_NOTIFICACOES_SEI: z.enum(['simulado', 'desligado']).default('simulado'),
+  AGORA_NOTIFICACOES_SEI: z.enum(['simulado', 'desligado', 'webservice']).default('simulado'),
   AGORA_NOTIFICACOES_GOVBR: z.enum(['simulado', 'desligado']).default('simulado'),
   AGORA_SMTP_HOST: textoOpcional,
   AGORA_SMTP_PORTA: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1).max(65535).optional()),
@@ -161,6 +197,19 @@ const esquemaAmbiente = z.object({
   AGORA_PNCP_PUBLICACAO_URL: textoOpcional,
   AGORA_PNCP_USUARIO: textoOpcional,
   AGORA_PNCP_SENHA: textoOpcional,
+  AGORA_SEI_URL: textoOpcional,
+  AGORA_SEI_SIGLA_SISTEMA: textoOpcional,
+  AGORA_SEI_IDENTIFICACAO_SERVICO: textoOpcional,
+  AGORA_SEI_ID_UNIDADE: textoOpcional,
+  AGORA_SEI_ID_TIPO_PROCEDIMENTO: textoOpcional,
+  AGORA_SEI_ID_SERIE: textoOpcional,
+  AGORA_SEI_ID_UNIDADE_DESTINO: textoOpcional,
+  AGORA_SEI_ID_HIPOTESE_LEGAL: textoOpcional,
+  AGORA_SEI_BLOCO_ASSINATURA: booleanoOpcional,
+  AGORA_SEI_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(300_000).default(60_000),
+  AGORA_DOU_CONSULTA_URL: z.string().trim().min(1).default('https://www.in.gov.br/consulta/-/buscar/dou'),
+  AGORA_DOU_HORA_FECHAMENTO: z.coerce.number().int().min(0).max(23).default(19),
+  AGORA_DOU_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(20_000),
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -281,6 +330,27 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if ((e.AGORA_PNCP_USUARIO === null) !== (e.AGORA_PNCP_SENHA === null)) {
     problemas.push('AGORA_PNCP_USUARIO e AGORA_PNCP_SENHA: defina os dois juntos (ou nenhum)');
   }
+  const camposSei = [e.AGORA_SEI_URL, e.AGORA_SEI_SIGLA_SISTEMA, e.AGORA_SEI_IDENTIFICACAO_SERVICO, e.AGORA_SEI_ID_UNIDADE, e.AGORA_SEI_ID_TIPO_PROCEDIMENTO, e.AGORA_SEI_ID_SERIE];
+  const seiConfigurado = camposSei.every((c) => c !== null);
+  if (!seiConfigurado && camposSei.some((c) => c !== null)) {
+    problemas.push('AGORA_SEI_*: defina URL, SIGLA_SISTEMA, IDENTIFICACAO_SERVICO, ID_UNIDADE, ID_TIPO_PROCEDIMENTO e ID_SERIE juntos (ou nenhum)');
+  }
+  if (e.AGORA_SEI_URL !== null && !urlValida(e.AGORA_SEI_URL)) {
+    problemas.push('AGORA_SEI_URL: URL inválida (ex.: https://sei.orgao.gov.br/sei/ws/SeiWS.php)');
+  }
+  for (const [nome, valor] of [
+    ['AGORA_SEI_ID_UNIDADE', e.AGORA_SEI_ID_UNIDADE],
+    ['AGORA_SEI_ID_TIPO_PROCEDIMENTO', e.AGORA_SEI_ID_TIPO_PROCEDIMENTO],
+    ['AGORA_SEI_ID_SERIE', e.AGORA_SEI_ID_SERIE],
+    ['AGORA_SEI_ID_UNIDADE_DESTINO', e.AGORA_SEI_ID_UNIDADE_DESTINO],
+    ['AGORA_SEI_ID_HIPOTESE_LEGAL', e.AGORA_SEI_ID_HIPOTESE_LEGAL],
+  ] as const) {
+    if (valor !== null && !/^\d{1,20}$/.test(valor)) problemas.push(`${nome}: informe o identificador numérico do SEI`);
+  }
+  if (e.AGORA_NOTIFICACOES_SEI === 'webservice' && !seiConfigurado) {
+    problemas.push('AGORA_NOTIFICACOES_SEI=webservice: configure antes o web service do SEI (AGORA_SEI_*)');
+  }
+  if (!urlValida(e.AGORA_DOU_CONSULTA_URL)) problemas.push('AGORA_DOU_CONSULTA_URL: URL inválida (use https://)');
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -348,6 +418,24 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       url: (e.AGORA_PNCP_PUBLICACAO_URL ?? (producao ? 'https://pncp.gov.br/api/pncp' : 'https://treina.pncp.gov.br/api/pncp')).replace(/\/+$/, ''),
       usuario: e.AGORA_PNCP_USUARIO,
       senha: e.AGORA_PNCP_SENHA,
+    },
+    sei: {
+      url: e.AGORA_SEI_URL,
+      siglaSistema: e.AGORA_SEI_SIGLA_SISTEMA,
+      identificacaoServico: e.AGORA_SEI_IDENTIFICACAO_SERVICO,
+      idUnidade: e.AGORA_SEI_ID_UNIDADE,
+      idTipoProcedimento: e.AGORA_SEI_ID_TIPO_PROCEDIMENTO,
+      idSerie: e.AGORA_SEI_ID_SERIE,
+      idUnidadeDestino: e.AGORA_SEI_ID_UNIDADE_DESTINO,
+      idHipoteseLegal: e.AGORA_SEI_ID_HIPOTESE_LEGAL,
+      blocoAssinatura: e.AGORA_SEI_BLOCO_ASSINATURA ?? true,
+      timeoutMs: e.AGORA_SEI_TIMEOUT_MS,
+      configurado: seiConfigurado,
+    },
+    dou: {
+      consultaUrl: e.AGORA_DOU_CONSULTA_URL.replace(/\/+$/, ''),
+      horaFechamento: e.AGORA_DOU_HORA_FECHAMENTO,
+      timeoutMs: e.AGORA_DOU_TIMEOUT_MS,
     },
   };
 }

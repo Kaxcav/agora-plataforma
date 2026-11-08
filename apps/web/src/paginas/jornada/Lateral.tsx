@@ -1,13 +1,14 @@
 /**
- * Coluna lateral do processo: árvore do processo SEI (com assinatura simulada), bloqueios da etapa atual
- * e sinais de atenção.
+ * Coluna lateral do processo: árvore do processo SEI (com a integração com o SEI do órgão — RF-35), bloqueios da
+ * etapa atual e sinais de atenção.
  */
 import { useState } from 'react';
 import { CircleCheck, FileText, OctagonAlert, PenLine } from 'lucide-react';
 import type { ProcessoDetalhe } from '@agora/contratos';
 import { useAssinarDocumentoSei } from '../../api/jornada';
-import { Alerta, Botao, BotaoCopiar, ConfirmarAcao, Etiqueta, Secao, useAvisos } from '../../componentes';
+import { Botao, BotaoCopiar, ConfirmarAcao, Etiqueta, Secao, useAvisos } from '../../componentes';
 import { contar, formatarInstante } from '../../utilitarios/formatacao';
+import { NumeroSeiDocumento, PainelSei, useAssinaturaSimuladaPermitida } from './IntegracaoSei';
 import { NIVEIS_SINAL, tituloEtapa } from './rotulos';
 
 type DocumentoArvore = ProcessoDetalhe['arvoreSei'][number];
@@ -25,6 +26,7 @@ export function ArvoreSei({ processo, podeAssinar }: { processo: ProcessoDetalhe
   const { avisar } = useAvisos();
   const assinar = useAssinarDocumentoSei(processo.id);
   const [alvo, definirAlvo] = useState<DocumentoArvore | null>(null);
+  const assinaturaSimulada = useAssinaturaSimuladaPermitida(processo.id);
   const pendentes = processo.arvoreSei.filter((d) => !d.assinado).length;
 
   const fechar = () => {
@@ -57,6 +59,7 @@ export function ArvoreSei({ processo, podeAssinar }: { processo: ProcessoDetalhe
               <div className="jornada-sei__corpo">
                 <span className="jornada-sei__numero mono">{doc.numero}</span>
                 <span className="jornada-sei__titulo">{doc.titulo}</span>
+                <NumeroSeiDocumento processoId={processo.id} numeroArvore={doc.numero} />
                 {doc.assinado ? (
                   <Etiqueta tom="sucesso" compacta>
                     {textoAssinatura(doc)}
@@ -67,7 +70,7 @@ export function ArvoreSei({ processo, podeAssinar }: { processo: ProcessoDetalhe
                   </Etiqueta>
                 )}
               </div>
-              {!doc.assinado && podeAssinar(doc) ? (
+              {!doc.assinado && assinaturaSimulada && podeAssinar(doc) ? (
                 <Botao
                   tamanho="compacto"
                   icone={PenLine}
@@ -84,12 +87,7 @@ export function ArvoreSei({ processo, podeAssinar }: { processo: ProcessoDetalhe
           ))}
         </ol>
       )}
-      <Alerta tipo="info" compacto titulo="Simulação do fluxo do SEI">
-        <p>
-          Numeração e assinatura são simuladas na Ágora. A integração real com o SEI e a assinatura com certificado ICP-Brasil dependem da API do
-          SEI do órgão e de certificado digital do signatário.
-        </p>
-      </Alerta>
+      <PainelSei processo={processo} />
       <ConfirmarAcao
         aberto={alvo !== null}
         aoFechar={fechar}
