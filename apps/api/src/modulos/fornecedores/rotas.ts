@@ -11,7 +11,7 @@ import { avaliarRegularidade, carregarFornecedor, carregarFornecedores } from '.
 
 const esquemaFiltro = z.object({
   busca: textoBusca,
-  faixa: z.enum(['excelente', 'bom', 'regular', 'insuficiente', 'critico']).optional(),
+  faixa: z.enum(['diamante', 'ouro', 'prata', 'em_observacao', 'critico', 'sem_historico']).optional(),
   comSancao: booleanoQuery.optional(),
   ordenarPor: z.enum(['razaoSocial', 'idc', 'sancoesVigentes', 'uf']).optional(),
   ordem: ordemQuery,

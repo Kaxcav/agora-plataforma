@@ -48,7 +48,10 @@ function SecaoIdc({ fornecedor }: { fornecedor: DadosFornecedor }) {
           <>
             <p className="idc-destaque__nota texto-secundario">—</p>
             <div className="pilha pilha--compacta">
-              <Etiqueta tom="neutro">Sem histórico</Etiqueta>
+              <div className="linha">
+                <Etiqueta tom="neutro">Sem histórico</Etiqueta>
+                {fornecedor.impedido ? <Etiqueta tom="erro">Impedido</Etiqueta> : null}
+              </div>
               <p className="texto-pequeno texto-secundario">Sem entregas, recebimentos ou ocorrências registrados: a ausência de dados não penaliza o fornecedor.</p>
             </div>
           </>
@@ -59,8 +62,11 @@ function SecaoIdc({ fornecedor }: { fornecedor: DadosFornecedor }) {
               <span className="idc-destaque__escala"> / 100</span>
             </p>
             <div className="pilha pilha--compacta">
-              <Etiqueta tom={faixa.tom}>Faixa {faixa.rotulo.toLowerCase()}</Etiqueta>
-              <p className="texto-pequeno texto-secundario">Faixas: excelente ≥ 90 · bom ≥ 75 · regular ≥ 60 · insuficiente ≥ 40 · crítico &lt; 40.</p>
+              <div className="linha">
+                <Etiqueta tom={faixa.tom}>Faixa {faixa.rotulo.toLowerCase()}</Etiqueta>
+                {fornecedor.impedido ? <Etiqueta tom="erro">Impedido</Etiqueta> : null}
+              </div>
+              <p className="texto-pequeno texto-secundario">Faixas: diamante ≥ 90 · ouro ≥ 75 · prata ≥ 60 · em observação ≥ 50 · crítico &lt; 50.</p>
             </div>
           </>
         )}
@@ -175,7 +181,7 @@ function ConteudoFornecedor({ fornecedor }: { fornecedor: DadosFornecedor }) {
         <Indicador
           rotulo="IDC"
           icone={Gauge}
-          tom={idc.semHistorico ? 'neutro' : idc.faixa === 'excelente' || idc.faixa === 'bom' ? 'sucesso' : idc.faixa === 'regular' ? 'info' : idc.faixa === 'insuficiente' ? 'aviso' : 'erro'}
+          tom={idc.semHistorico ? 'neutro' : idc.faixa === 'diamante' || idc.faixa === 'ouro' ? 'sucesso' : idc.faixa === 'prata' ? 'info' : idc.faixa === 'em_observacao' ? 'aviso' : 'erro'}
           valor={idc.semHistorico ? 'Sem histórico' : formatarNotaIdc(idc.nota)}
           detalhe={idc.semHistorico ? 'ausência de dados não penaliza' : `faixa ${FAIXAS_IDC[idc.faixa].rotulo.toLowerCase()}`}
         />
@@ -277,6 +283,7 @@ export default function FornecedorDetalhe() {
       marcadores={
         fornecedor ? (
           <>
+            {fornecedor.impedido ? <Etiqueta tom="erro">Impedido</Etiqueta> : null}
             {fornecedor.porte ? <Etiqueta tom="neutro">{PORTES[fornecedor.porte]}</Etiqueta> : null}
             {fornecedor.sancoesVigentes > 0 ? (
               <Etiqueta tom="erro">
