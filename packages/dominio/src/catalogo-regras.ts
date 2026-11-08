@@ -808,6 +808,39 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     implementacao:
       'classificarParcelaRelevancia, limiteQuantitativoMinimo, avaliarExigenciasQualificacaoTecnica, exerciciosBalancoExigiveis, avaliarBalancosApresentados; api: PUT /processos/:id/qualificacao-tecnica',
   },
+  {
+    id: 'RIA-10',
+    tipo: 'RIA',
+    titulo: 'Sinal de vínculo impeditivo e de possível sucessão de empresa sancionada',
+    descricao:
+      'Junta ao cruzamento do quadro societário (RIA-06) os vínculos de fonte lícita: endereço ou contato de cadastro em comum entre licitantes, vínculos declarados pelos licitantes ou pelos agentes e vínculos informados por agente público com fonte e evidência, inclusive casamento, união estável e parentesco até o 3º grau. Vínculo de licitante com agente público que atua no processo é sinal de possível impedimento (art. 14, IV). Também aponta empresa com sócio, administrador ou endereço em comum com fornecedor impedido ou inidôneo, sobretudo se aberta perto ou depois da sanção (art. 14, § 1º). O quadro societário vem dos dados abertos do CNPJ, por conector no servidor, com CPF mascarado; parentesco nunca é deduzido por cruzamento de dados pessoais nem por endereço IP. Cada sinal traz as evidências e a marca "requer revisão humana": nenhum sinal desclassifica, impede ou acusa.',
+    fundamento: 'Lei 14.133/2021, art. 9º, § 1º, e art. 14, III, IV, V e § 1º',
+    etapa: 6,
+    telas: ['impedimentos', 'impedimentos.processo', 'impedimentos.fornecedor', 'jornada.detalhe'],
+    implementacao: 'sinalizarVinculosLicitantes, detectarPossivelSucessao; api: POST /impedimentos/analise; GET /impedimentos/processos/:id; GET /impedimentos/fornecedores/:id',
+  },
+  {
+    id: 'RN-27',
+    tipo: 'RN',
+    titulo: 'Extensão dos efeitos da sanção (desconsideração da personalidade jurídica)',
+    descricao:
+      'Quando a personalidade jurídica é usada com abuso do direito para encobrir ilícitos ou provocar confusão patrimonial, os efeitos da sanção aplicada à pessoa jurídica podem ser estendidos aos administradores e sócios com poderes de administração, à pessoa jurídica sucessora ou à empresa do mesmo ramo coligada ou controlada. A Ágora conduz o procedimento a partir de um sinal: proposta fundamentada, intimação com prazo de defesa de 15 dias úteis, análise jurídica prévia por quem não propôs e decisão da autoridade competente, que não pode ser quem propôs nem quem deu o parecer. Só com a decisão a sanção é registrada para o alcançado no módulo de sanções, com a mesma vigência restante da sanção de origem.',
+    fundamento: 'Lei 14.133/2021, art. 160',
+    etapa: null,
+    telas: ['impedimentos', 'impedimentos.extensao'],
+    implementacao: 'proporExtensaoSancao, avancarExtensaoSancao, efeitosExtensaoSancao; api: POST /impedimentos/extensoes e /impedimentos/extensoes/:id/defesa, /parecer, /decisao',
+  },
+  {
+    id: 'RN-28',
+    tipo: 'RN',
+    titulo: 'Declaração de inexistência de impedimento dos agentes designados',
+    descricao:
+      'O agente só atua no processo depois de assinar a declaração de que não é cônjuge, companheiro ou parente até o 3º grau de licitantes ou contratados habituais, nem tem com eles vínculo técnico, comercial, econômico, financeiro, trabalhista ou civil, e de que não está em conflito de interesses. A declaração registra também o vínculo funcional e a capacitação. Na designação da equipe, junto com a segregação de funções, a Ágora recusa quem não tem declaração válida, quem não declarou a inexistência de impedimento, quem não tem a capacitação exigida nas funções essenciais e, para agente de contratação e pregoeiro, quem não é servidor efetivo ou empregado público permanente. Os vínculos declarados alimentam o sinal de vínculo impeditivo.',
+    fundamento: 'Lei 14.133/2021, art. 7º, I a III e § 2º, art. 8º, caput e § 5º, e art. 9º, § 1º',
+    etapa: 2,
+    telas: ['jornada.equipe', 'impedimentos.declaracao', 'impedimentos.processo'],
+    implementacao: 'verificarDeclaracaoAgente, verificarDeclaracoesEquipe; api: POST /impedimentos/declaracoes; PUT /processos/:id/equipe',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

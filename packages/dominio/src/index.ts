@@ -30,3 +30,6 @@ export * from './lei14133/sustentabilidade.ts';
 export * from './lei14133/regularidade.ts';
 export * from './lei14133/qualificacao-tecnica.ts';
 export * from './atestados.ts';
+export * from './lei14133/vinculos.ts';
+export * from './lei14133/extensao-sancao.ts';
+export * from './lei14133/declaracoes-agentes.ts';

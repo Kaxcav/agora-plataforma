@@ -42,7 +42,7 @@ import {
 import type { Executor, Transacao } from '../../banco/tipos.ts';
 import type { ConsultaSessaoOficial } from '../../integracoes/compras-gov-sessao.ts';
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
-import { vinculosEntreLicitantes } from '../jornada/repositorio.ts';
+import { sinaisVinculosDaDisputa } from '../impedimentos/jornada.ts';
 import { gravarJson, montarDisputa } from '../jornada/servico.ts';
 import type { DisputaArmazenada } from '../jornada/tipos.ts';
 
@@ -271,7 +271,15 @@ export function julgarSessao(linha: LinhaSessao, estado: EstadoSessaoDisputa): C
 
 // ───────────────────────── vínculos (RIA-06) ─────────────────────────
 
-/** Pares de participantes com sócio em comum, pelo mesmo cruzamento do registro da disputa (`vinculosEntreLicitantes`). */
+/** Sócio em comum entre licitantes (RIA-06), pelo mesmo cruzamento da etapa 6 (`sinaisVinculosDaDisputa`, frente de vínculos). */
+async function vinculosEntreLicitantes(executor: Executor, disputa: DisputaArmazenada): Promise<string[]> {
+  const agora = new Date();
+  const ids = disputa.licitantes.map((l) => l.fornecedorId);
+  if (ids.length < 2) return [];
+  return (await sinaisVinculosDaDisputa(executor, ids, [], agora.toISOString().slice(0, 10), agora)).ria06;
+}
+
+/** Pares de participantes com sócio em comum, pelo mesmo cruzamento do registro da disputa. */
 export async function vinculosDaSessao(executor: Executor, participantes: readonly ParticipanteArmazenado[]): Promise<VinculoPar[]> {
   const comoDisputa = (lista: readonly ParticipanteArmazenado[]): DisputaArmazenada => ({
     licitantes: lista.map((p) => ({ fornecedorId: p.fornecedorId, nome: p.nome, meEpp: p.meEpp, valorProposta: 0 })),

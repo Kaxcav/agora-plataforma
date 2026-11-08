@@ -68,6 +68,7 @@ Regras de camada: `apps/web` só importa `@agora/contratos`, `@agora/dominio` e 
 | `AGORA_CONFIAR_PROXY` | `false` | `true` atrás de Ingress/proxy reverso, para usar o IP real do cliente (`X-Forwarded-For`) |
 | `AGORA_LIMITE_REQUISICOES_MINUTO` | `300` | limite global por IP na API |
 | `AGORA_WEB_DIR` | `apps/web/dist` | diretório do front-end compilado |
+| `AGORA_QSA_URL`, `AGORA_QSA_CHAVE` | vazio | espelho dos dados abertos do CNPJ no órgão (quadro societário e cadastro, RIA-10); só com `AGORA_INTEGRACOES=online` |
 
 Configuração validada com zod na inicialização; falha → o processo encerra com mensagem clara.
 

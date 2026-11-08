@@ -120,7 +120,12 @@ export type Permissao =
   | 'regularidade:consultar'
   | 'documentos:ler'
   | 'documentos:enviar'
-  | 'documentos:analisar';
+  | 'documentos:analisar'
+  | 'impedimentos:ler'
+  | 'impedimentos:registrar'
+  | 'impedimentos:parecer'
+  | 'impedimentos:decidir'
+  | 'agentes:declarar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -2281,3 +2286,208 @@ export interface QualificacaoTecnica {
 // GET /processos/:id/qualificacao-tecnica → QualificacaoTecnica (documentos:ler)
 // PUT /processos/:id/qualificacao-tecnica body EntradaQualificacaoTecnica → QualificacaoTecnica
 //     (jornada:editar; até a etapa 4; 422 REGRA_NEGOCIO se violar o art. 67, §§ 1º e 2º)
+// ───────────────────────── Vínculos, extensão de sanção e declarações dos agentes (F4 e F14) ─────────────────────────
+// Fontes lícitas apenas (QSA dos dados abertos do CNPJ, cadastro, declarações e vínculos informados com evidência).
+// Todo sinal é para análise humana: nunca desclassifica, impede ou sanciona. Pessoas e CPFs sempre mascarados.
+
+export type FonteVinculo = 'qsa_receita' | 'cadastro_fornecedor' | 'declaracao_licitante' | 'declaracao_agente' | 'informado_agente';
+export type NaturezaVinculo = 'conjuge' | 'parentesco' | 'societario' | 'tecnico' | 'comercial' | 'economico' | 'financeiro' | 'trabalhista' | 'civil';
+export type TipoSinalVinculo =
+  | 'socio_comum'
+  | 'administrador_comum'
+  | 'endereco_comum'
+  | 'contato_comum'
+  | 'vinculo_informado'
+  | 'agente_publico'
+  | 'possivel_sucessao';
+
+export interface EvidenciaVinculo {
+  fonte: FonteVinculo;
+  descricao: string;
+}
+
+export interface SinalVinculo {
+  regra: 'RIA-06' | 'RIA-10';
+  tipo: TipoSinalVinculo;
+  nivel: 'atencao' | 'risco';
+  fornecedores: { id: Id; nome: string }[];
+  agente: { usuarioId: Id; nome: string } | null;
+  mensagem: string;
+  evidencias: EvidenciaVinculo[];
+  fundamento: string;
+  requerRevisaoHumana: true;
+  /** Só nos sinais de possível sucessão: sanção de origem, base da proposta de extensão (RN-27). */
+  sancaoOrigemId: Id | null;
+}
+
+export interface AnaliseVinculos {
+  licitantes: { id: Id; nome: string; documento: string; qsaConsultadoEm: InstanteISO | null }[];
+  sinais: SinalVinculo[];
+  grupos: { fornecedores: { id: Id; nome: string }[] }[];
+  aviso: string;
+  premissas: string[];
+  fundamento: string;
+  analisadoEm: InstanteISO;
+}
+/** POST /impedimentos/analise (impedimentos:ler; somente leitura) — 2 a 50 fornecedores. */
+export interface EntradaAnaliseVinculos {
+  fornecedorIds: Id[];
+}
+
+export interface VinculoRegistrado {
+  id: Id;
+  natureza: NaturezaVinculo;
+  grauParentesco: 1 | 2 | 3 | null;
+  fornecedor: { id: Id; nome: string };
+  outroFornecedor: { id: Id; nome: string } | null;
+  agente: UsuarioResumo | null;
+  fonte: FonteVinculo;
+  descricao: string;
+  evidencia: string;
+  processo: { id: Id; numeroSei: string } | null;
+  registradoPor: UsuarioResumo | null;
+  registradoEm: InstanteISO;
+  situacao: 'ativo' | 'revogado';
+  motivoRevogacao: string | null;
+}
+/** POST /impedimentos/vinculos (impedimentos:registrar) → VinculoRegistrado. Uma contraparte: outro fornecedor ou agente público. */
+export interface EntradaVinculo {
+  natureza: NaturezaVinculo;
+  grauParentesco: 1 | 2 | 3 | null;
+  fornecedorId: Id;
+  outroFornecedorId: Id | null;
+  agenteId: Id | null;
+  fonte: 'declaracao_licitante' | 'informado_agente';
+  descricao: string;
+  evidencia: string;
+  processoId: Id | null;
+}
+// GET /impedimentos/vinculos?fornecedorId&processoId&situacao → VinculoRegistrado[]
+// POST /impedimentos/vinculos/:id/revogar { motivo } → VinculoRegistrado (impedimentos:registrar)
+// GET /impedimentos/agentes (impedimentos:registrar) → UsuarioResumo[] — agentes públicos do órgão, para registrar vínculo
+
+export interface IntegranteQuadro {
+  id: Id;
+  nome: string; // mascarado
+  documento: string; // CPF mascarado (***.456.789-**)
+  qualificacao: 'socio' | 'administrador' | 'socio_administrador';
+  dataEntrada: DataISO | null;
+}
+export interface QuadroSocietario {
+  fornecedor: { id: Id; nome: string; documento: string };
+  dataAbertura: DataISO | null;
+  endereco: string | null;
+  integrantes: IntegranteQuadro[];
+  proveniencia: { fonte: string; modo: 'offline' | 'online'; consultadoEm: InstanteISO; hash: string; registros: number } | null;
+}
+// POST /impedimentos/fornecedores/:id/qsa (impedimentos:registrar) → QuadroSocietario (conector no servidor; offline por padrão)
+
+export type AlvoExtensaoSancao = 'administrador' | 'socio_administrador' | 'sucessora' | 'coligada_controlada';
+export type SituacaoExtensaoSancao = 'contraditorio' | 'analise_juridica' | 'decisao' | 'estendida' | 'nao_estendida' | 'arquivada';
+
+export interface ExtensaoSancao {
+  id: Id;
+  sancaoOrigem: { id: Id; tipo: TipoSancao; fornecedor: { id: Id; nome: string; documento: string }; fimVigencia: DataISO | null };
+  alvo: { tipo: AlvoExtensaoSancao; fornecedor: { id: Id; nome: string; documento: string } | null; pessoa: { nome: string; documento: string } | null };
+  situacao: SituacaoExtensaoSancao;
+  fundamentacao: string;
+  sinal: string | null;
+  intimacaoEm: DataISO;
+  prazoDefesa: DataISO;
+  defesa: { apresentada: boolean; resumo: string | null; registradaEm: InstanteISO } | null;
+  parecer: { conclusao: 'favoravel' | 'desfavoravel'; texto: string; parecerista: UsuarioResumo; registradoEm: InstanteISO } | null;
+  decisao: { resultado: 'estender' | 'nao_estender'; motivacao: string; autoridade: UsuarioResumo; decididaEm: InstanteISO; sancaoEstendidaId: Id | null } | null;
+  arquivamento: { motivo: string; arquivadoEm: InstanteISO } | null;
+  propostoPor: UsuarioResumo;
+  propostaEm: InstanteISO;
+}
+/** POST /impedimentos/extensoes (sancoes:instruir) → ExtensaoSancao. Pessoa física: `alvoIntegranteId` do quadro da sancionada. */
+export interface EntradaProporExtensao {
+  sancaoOrigemId: Id;
+  alvo: AlvoExtensaoSancao;
+  alvoFornecedorId: Id | null;
+  alvoIntegranteId: Id | null;
+  fundamentacao: string;
+  sinal: string | null;
+  intimacaoEm: DataISO;
+}
+// GET /impedimentos/extensoes → ExtensaoSancao[] ; GET /impedimentos/extensoes/:id → ExtensaoSancao (impedimentos:ler)
+// POST /impedimentos/extensoes/:id/defesa   { apresentada, resumo }  (sancoes:instruir)
+// POST /impedimentos/extensoes/:id/parecer  { conclusao, texto }     (impedimentos:parecer; quem propôs não emite)
+// POST /impedimentos/extensoes/:id/decisao  { resultado, motivacao } (impedimentos:decidir; nem quem propôs nem o parecerista)
+// POST /impedimentos/extensoes/:id/arquivar { motivo }               (sancoes:instruir)
+export interface EntradaDefesaExtensao {
+  apresentada: boolean;
+  resumo: string | null;
+}
+export interface EntradaParecerExtensao {
+  conclusao: 'favoravel' | 'desfavoravel';
+  texto: string;
+}
+export interface EntradaDecisaoExtensao {
+  resultado: 'estender' | 'nao_estender';
+  motivacao: string;
+}
+
+export type VinculoFuncional = 'servidor_efetivo' | 'empregado_publico_permanente' | 'cargo_comissao' | 'temporario' | 'outro';
+export type CapacitacaoAgente = 'atribuicoes' | 'formacao' | 'certificacao_escola_governo' | 'nenhuma';
+
+export interface DeclaracaoAgenteRegistrada {
+  id: Id;
+  usuario: UsuarioResumo;
+  declaradaEm: InstanteISO;
+  validaAte: DataISO;
+  semParentescoOuVinculo: boolean;
+  semConflitoInteresses: boolean;
+  vinculo: VinculoFuncional;
+  cargoMatricula: string | null;
+  capacitacao: CapacitacaoAgente;
+  capacitacaoDescricao: string | null;
+  situacao: 'vigente' | 'vencida';
+  vinculosDeclarados: VinculoRegistrado[];
+}
+/** POST /impedimentos/declaracoes (agentes:declarar) → MinhaDeclaracao. Declaração do próprio usuário; substitui a anterior. */
+export interface EntradaDeclaracaoAgente {
+  semParentescoOuVinculo: boolean;
+  semConflitoInteresses: boolean;
+  vinculo: VinculoFuncional;
+  cargoMatricula: string | null;
+  capacitacao: CapacitacaoAgente;
+  capacitacaoDescricao: string | null;
+  vinculosDeclarados: { fornecedorId: Id; natureza: NaturezaVinculo; grauParentesco: 1 | 2 | 3 | null; descricao: string }[];
+}
+
+export interface AptidaoAgente {
+  usuario: UsuarioResumo;
+  declaracao: { declaradaEm: InstanteISO; validaAte: DataISO; vinculo: VinculoFuncional; capacitacao: CapacitacaoAgente } | null;
+  papeis: { papel: string; apto: boolean; pendencias: string[]; sinais: string[] }[];
+}
+/** GET /impedimentos/declaracoes/minha (agentes:declarar) */
+export interface MinhaDeclaracao {
+  declaracao: DeclaracaoAgenteRegistrada | null;
+  aptidao: AptidaoAgente;
+}
+
+/** GET /impedimentos/processos/:id (impedimentos:ler; escopo de UASG) */
+export interface VinculosProcesso {
+  processo: { id: Id; numeroSei: string; titulo: string; etapaAtual: EtapaJornada };
+  analise: AnaliseVinculos;
+  equipe: AptidaoAgente[];
+  vinculos: VinculoRegistrado[];
+}
+/** GET /impedimentos/processos (impedimentos:ler) — processos com licitantes registrados, no escopo de UASG. */
+export interface ProcessoComLicitantes {
+  id: Id;
+  numeroSei: string;
+  titulo: string;
+  etapaAtual: EtapaJornada;
+  licitantes: number;
+}
+/** GET /impedimentos/fornecedores/:id (impedimentos:ler) */
+export interface VinculosFornecedor {
+  quadro: QuadroSocietario;
+  vinculos: VinculoRegistrado[];
+  sinais: SinalVinculo[];
+  extensoes: ExtensaoSancao[];
+}
+// GET /impedimentos/sucessoes (impedimentos:ler) → SinalVinculo[] (possíveis sucessões de empresas impedidas ou inidôneas)

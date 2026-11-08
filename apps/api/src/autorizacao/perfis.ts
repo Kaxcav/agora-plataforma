@@ -43,6 +43,11 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'documentos:ler',
   'documentos:enviar',
   'documentos:analisar',
+  'impedimentos:ler',
+  'impedimentos:registrar',
+  'impedimentos:parecer',
+  'impedimentos:decidir',
+  'agentes:declarar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -85,6 +90,10 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'certidoes:registrar',
       'regularidade:consultar',
       'documentos:ler',
+      'impedimentos:ler',
+      'impedimentos:registrar',
+      'impedimentos:decidir',
+      'agentes:declarar',
     ],
   },
   {
@@ -110,6 +119,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'riscos:revisar',
       'certidoes:registrar',
       'regularidade:consultar',
+      'agentes:declarar',
     ],
   },
   {
@@ -130,13 +140,14 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'controle:primeira_linha',
       'certidoes:registrar',
       'regularidade:consultar',
+      'agentes:declarar',
     ],
   },
   {
     codigo: 'planejamento',
     nome: 'Planejamento',
     descricao: 'Conduz a fase preparatória da contratação (DFD, ETP, riscos e preços).',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'controle:primeira_linha', 'controle_externo:ler', 'documentos:ler', 'documentos:enviar', 'agentes:declarar'],
   },
   {
     codigo: 'agente_contratacao',
@@ -160,13 +171,16 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'documentos:ler',
       'documentos:enviar',
       'documentos:analisar',
+      'impedimentos:ler',
+      'impedimentos:registrar',
+      'agentes:declarar',
     ],
   },
   {
     codigo: 'juridico',
     nome: 'Assessoria jurídica',
     descricao: 'Realiza o controle prévio de legalidade (art. 53) e aprova a fase jurídica.',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler', 'documentos:ler'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler', 'documentos:ler', 'impedimentos:ler', 'impedimentos:parecer', 'agentes:declarar'],
   },
   {
     codigo: 'auditor',

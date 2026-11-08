@@ -14,6 +14,7 @@ import { criarProvedorIa } from '../../ia/provedor.ts';
 import { avaliarRegularidade } from '../fornecedores/repositorio.ts';
 import { exigirSemCautelarSuspensiva } from '../../compartilhado/controle-externo.ts';
 import { exigirRegularidade, verificarRegularidade } from '../regularidade/servico.ts';
+import { verificarDeclaracoesDesignados } from '../impedimentos/declaracoes.ts';
 import {
   DFD_INICIAL,
   DISPUTA_INICIAL,
@@ -411,6 +412,10 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
           'A equipe viola a segregação de funções (RN-03).',
           segregacao.conflitos.map((cf) => ({ campo: 'RN-03', mensagem: `${cf.mensagem} (${cf.fundamento})` })),
         );
+      }
+      const semDeclaracao = await verificarDeclaracoesDesignados(tx, equipe, c.hoje);
+      if (semDeclaracao.length > 0) {
+        throw regraNegocio('Há agente sem declaração válida de inexistência de impedimento (RN-28): ele só atua no processo depois de declarar.', semDeclaracao);
       }
       await gravarEquipe(tx, linha.id, designacoes, c.agora);
       return {

@@ -71,6 +71,13 @@ export const ROTAS: readonly DefinicaoRota[] = [
 
   // Documentos do processo e leitura assistida de atestados (RF-21, RIA-08, RN-25)
   { caminho: '/jornada/:id/documentos', permissao: 'documentos:ler', pagina: lazy(() => import('../paginas/documentos/DocumentosProcesso')) },
+
+  // Vínculos e impedimentos (F4 e F14)
+  { caminho: '/impedimentos', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/Impedimentos')) },
+  { caminho: '/impedimentos/processos/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ProcessoVinculos')) },
+  { caminho: '/impedimentos/fornecedores/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/FornecedorVinculos')) },
+  { caminho: '/impedimentos/extensoes/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ExtensaoDetalhe')) },
+  { caminho: '/impedimentos/declaracao', permissao: 'agentes:declarar', pagina: lazy(() => import('../paginas/impedimentos/MinhaDeclaracao')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

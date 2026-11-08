@@ -40,6 +40,8 @@ export interface Config {
   antivirusUrl: string | null;
   /** Serviço de OCR auto-hospedado (apps/ocr); `null` = PDF digitalizado não é lido. */
   ocr: { url: string | null; timeoutMs: number };
+  /** Conector do quadro societário (QSA) e do cadastro do CNPJ: espelho dos dados abertos da Receita Federal no órgão. */
+  qsa: { url: string | null; chave: string | null };
 }
 
 export interface ConfigSmtp {
@@ -139,6 +141,8 @@ const esquemaAmbiente = z.object({
   AGORA_ANTIVIRUS_URL: textoOpcional,
   AGORA_OCR_URL: textoOpcional,
   AGORA_OCR_TIMEOUT_SEGUNDOS: z.coerce.number().int().min(5).max(900).default(120),
+  AGORA_QSA_URL: textoOpcional,
+  AGORA_QSA_CHAVE: textoOpcional,
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -244,6 +248,9 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_OCR_URL !== null && !urlValida(e.AGORA_OCR_URL)) {
     problemas.push('AGORA_OCR_URL: URL inválida (ex.: http://ocr:8080)');
   }
+  if (e.AGORA_QSA_URL !== null && !urlValida(e.AGORA_QSA_URL)) {
+    problemas.push('AGORA_QSA_URL: URL inválida (use http:// ou https://)');
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -297,5 +304,6 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     },
     antivirusUrl: e.AGORA_ANTIVIRUS_URL,
     ocr: { url: e.AGORA_OCR_URL === null ? null : e.AGORA_OCR_URL.replace(/\/+$/, ''), timeoutMs: e.AGORA_OCR_TIMEOUT_SEGUNDOS * 1000 },
+    qsa: { url: e.AGORA_QSA_URL === null ? null : e.AGORA_QSA_URL.replace(/\/+$/, ''), chave: e.AGORA_QSA_CHAVE },
   };
 }

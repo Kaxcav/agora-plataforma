@@ -29,6 +29,8 @@ import {
   BellRing,
   Landmark,
   ShieldCheck,
+  ShieldAlert,
+  FileSignature,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -56,6 +58,7 @@ export const MENU: readonly SecaoMenu[] = [
     itens: [
       { rotulo: 'Início', caminho: '/', icone: LayoutDashboard, permissao: 'painel:ler', exato: true },
       { rotulo: 'Jornada da contratação', caminho: '/jornada', icone: Route, permissao: 'jornada:ler' },
+      { rotulo: 'Minha declaração de impedimentos', caminho: '/impedimentos/declaracao', icone: FileSignature, permissao: 'agentes:declarar' },
     ],
   },
   {
@@ -88,6 +91,7 @@ export const MENU: readonly SecaoMenu[] = [
     itens: [
       { rotulo: 'Fornecedores', caminho: '/fornecedores', icone: Building2, permissao: 'fornecedores:ler' },
       { rotulo: 'Sanções', caminho: '/sancoes', icone: Gavel, permissao: 'sancoes:ler' },
+      { rotulo: 'Vínculos e impedimentos', caminho: '/impedimentos', icone: ShieldAlert, permissao: 'impedimentos:ler', exato: true },
     ],
   },
   {
