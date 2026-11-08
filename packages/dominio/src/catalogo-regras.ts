@@ -568,6 +568,41 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: [],
     implementacao: 'api: GET /publico/editais; GET /publico/editais/:id; GET /publico/editais/:id/documentos/:tipo; mascararCpf',
   },
+  {
+    id: 'RN-26',
+    tipo: 'RN',
+    titulo: 'Rito da sessão de disputa: modos, lances, prorrogação, encerramento e julgamento',
+    descricao:
+      'A sessão segue o modo de disputa do edital: aberto, aberto e fechado ou fechado e aberto no menor preço e no maior desconto, e só o fechado na técnica e preço (art. 56, §§ 1º e 2º). Cada lance precisa ser melhor que o último do próprio licitante e respeitar o intervalo mínimo do edital, tanto ao cobrir a melhor oferta quanto nos lances intermediários (art. 57). No modo aberto, a etapa dura 10 minutos e o lance nos 2 minutos finais prorroga a etapa por mais 2, sucessivamente; no aberto e fechado, a etapa aberta dura 15 minutos, segue-se o aviso de fechamento iminente com encerramento sorteado em até 10 minutos e o lance final e fechado, sigiloso, em até 5 minutos, para a faixa de 10% ou as 3 melhores ofertas; no fechado e aberto, só a faixa de 10% (ou as 3 melhores) vai à etapa aberta (IN SEGES/ME 73/2022, arts. 23 a 25, parâmetros configuráveis). Valores iguais alcançados por lance valem pela ordem de registro; empate sem lance segue o art. 60. Com diferença de ao menos 5% entre a primeira e a segunda colocadas, o agente pode admitir o reinício da disputa aberta, só com lances intermediários (art. 56, § 4º). Depois dos lances, o agente pode negociar com o primeiro colocado, e o resultado entra na ata (art. 61). Na técnica e preço, a proposta técnica pesa até 70% (art. 36, § 2º). Oferta acima do valor estimado vira sinal para o agente decidir (art. 59, III).',
+    fundamento: 'Lei 14.133/2021, arts. 33, 34, 36, § 2º, 56, 57, 59, 60 e 61; IN SEGES/ME 73/2022, arts. 5º e 19 a 30',
+    etapa: 6,
+    telas: ['jornada.disputa'],
+    implementacao:
+      'validarModoDisputa, parametrosPadraoDisputa, validarLance, calcularEstadoSessao, classificarSessaoDisputa, avaliarReinicioDisputa, pontuarTecnicaEPreco, aplicarDesempate; api: POST /sessoes-disputa/:id/lances',
+  },
+  {
+    id: 'RIA-09',
+    tipo: 'RIA',
+    titulo: 'Sinal de padrão de lances na sessão de disputa',
+    descricao:
+      'Analisa a sequência de lances da sessão e aponta, com as evidências, quatro padrões: lances do mesmo licitante em intervalos regulares, reduções seguidas exatamente iguais, alternância da melhor oferta só entre dois licitantes e lances de mesmo valor de licitantes diferentes. Quando o padrão envolve licitantes com sócio em comum (RIA-06), o sinal aparece reforçado. Durante a etapa de lances, os licitantes aparecem com rótulos anônimos. Todo sinal traz o fundamento e a marcação "requer revisão humana": não desclassifica, não impede e não constitui acusação, e o lance automático parametrizado no próprio sistema é permitido. A apuração cabe ao agente de contratação, com contraditório.',
+    fundamento: 'Lei 14.133/2021, art. 5º e art. 155, IX e XI; Lei 12.846/2013, art. 5º, IV, "a"; IN SEGES/ME 73/2022, art. 19',
+    etapa: 6,
+    telas: ['jornada.disputa'],
+    implementacao: 'detectarPadroesLances, cruzarPadroesComVinculos; api: GET /sessoes-disputa/:id',
+  },
+  {
+    id: 'RF-22',
+    tipo: 'RF',
+    titulo: 'Sala de disputa: simulação e acompanhamento da sessão oficial',
+    descricao:
+      'A sala de disputa abre a partir da etapa de seleção do processo e tem dois usos. Na simulação, para treino e para a prova de conceito, o agente de contratação cria a sessão com os participantes do cadastro, o critério, o modo e os parâmetros do edital; licitantes sintéticos dão lances determinísticos, o relógio da simulação pode ser adiantado e a sala mostra ao vivo o quadro de lances, o cronômetro, a situação e os sinais. No acompanhamento, a sessão oficial acontece no Compras.gov.br: o servidor da Ágora consulta os dados abertos da compra e do resultado, com proveniência, e o agente pode transcrever os lances para os sinais. Ao encerrar, a Ágora gera a ata da sessão para revisão humana e o resultado alimenta o registro da disputa do processo, com trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, arts. 17, 28, 33, 56, 59, 60 e 61; IN SEGES/ME 73/2022',
+    etapa: 6,
+    telas: ['jornada.disputa'],
+    implementacao:
+      'calcularEstadoSessaoSimulada, proximoLanceSimulado, redigirAtaSessaoDisputa; api: GET /processos/:id/sessoes-disputa; POST /processos/:id/sessoes-disputa; GET /sessoes-disputa/:id; POST /sessoes-disputa/:id/abertura; POST /sessoes-disputa/:id/relogio; POST /sessoes-disputa/:id/sincronizacao; POST /sessoes-disputa/:id/encerramento',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

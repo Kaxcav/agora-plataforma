@@ -103,7 +103,8 @@ export type Permissao =
   | 'admin:usuarios'
   | 'auditoria:ler'
   | 'lgpd:revelar'
-  | 'lgpd:relatorio';
+  | 'lgpd:relatorio'
+  | 'disputa:conduzir';
 
 export interface UsuarioSessao {
   id: Id;
@@ -1017,3 +1018,243 @@ export interface EditalPublico {
 
 // ───────────────────────── Saúde ─────────────────────────
 // GET /saude/vivo → { situacao: 'ok' }   GET /saude/pronto → { situacao: 'ok' | 'indisponivel', banco: boolean, versao: string }
+
+// ───────────────────────── Sala de disputa (RF-22, RN-26, RIA-09) ─────────────────────────
+
+/** Simulação (treino e prova de conceito) ou acompanhamento da sessão oficial, que acontece no Compras.gov.br. */
+export type UsoSessaoDisputa = 'simulacao' | 'acompanhamento';
+export type CriterioJulgamentoSessao = 'menor_preco' | 'maior_desconto' | 'tecnica_e_preco';
+export type ModoDisputaSessao = 'aberto' | 'aberto_fechado' | 'fechado_aberto' | 'fechado';
+export type FaseSessaoDisputa = 'aguardando_abertura' | 'lances_abertos' | 'fechamento_iminente' | 'lance_final_fechado' | 'encerrada' | 'concluida';
+export type PerfilLicitanteSimulado = 'competitivo' | 'tardio' | 'robo' | 'combinado' | 'conservador';
+export type CenarioSimulacaoDisputa = 'concorrencia' | 'conluio_e_robo';
+
+/** Parâmetros do rito (IN SEGES/ME 73/2022; Lei 14.133/2021, arts. 36, § 2º, 56, § 4º, e 57). Tempos em segundos. */
+export interface ParametrosSessaoDisputa {
+  duracaoEtapaAbertaSegundos: number;
+  janelaProrrogacaoSegundos: number;
+  prorrogacaoSegundos: number;
+  fechamentoIminenteMaximoSegundos: number;
+  prazoLanceFechadoSegundos: number;
+  faixaSelecaoPercentual: number;
+  minimoSelecionados: number;
+  diferencaReinicioPercentual: number;
+  /** Centavos ou pontos percentuais (absoluto), ou percentual da oferta de referência. */
+  intervaloMinimo: { tipo: 'absoluto' | 'percentual'; valor: number } | null;
+  pesoTecnicoPercentual: number | null;
+}
+
+/**
+ * Participante da sessão. `chave` ("L1", "L2"…) identifica o participante na sala. Enquanto a etapa de lances da
+ * simulação não termina, a identidade fica oculta (IN SEGES/ME 73/2022, art. 21, § 6º): `fornecedorId`, `nome` e
+ * `perfilSimulado` vêm nulos e `rotulo` é "Licitante N".
+ */
+export interface ParticipanteSessao {
+  chave: string;
+  rotulo: string;
+  fornecedorId: Id | null;
+  nome: string | null; // PF: nome mascarado
+  meEpp: boolean | null;
+  propostaInicial: number | null; // centavos ou % de desconto
+  notaTecnica: number | null;
+  perfilSimulado: PerfilLicitanteSimulado | null;
+  ofertaAtual: number | null; // última oferta pública
+  lances: number;
+  lanceFinalRegistrado: boolean; // o valor do lance final e fechado fica sigiloso até o fim do prazo
+  convocado: boolean; // participa da etapa de lances em curso
+  lider: boolean;
+}
+
+export interface LanceSessao {
+  sequencia: number;
+  participante: string; // chave
+  rotulo: string;
+  valor: number; // centavos ou % de desconto
+  instante: InstanteISO;
+  fase: 'lances_abertos' | 'fechamento_iminente' | 'lance_final_fechado';
+  rodada: number; // 0 = disputa original; 1… = reinício (art. 56, § 4º)
+  intermediario: boolean;
+  origem: 'simulador' | 'registrado' | 'transcrito';
+}
+
+/** Sinal para análise (RIA-09 padrão de lances; RIA-06 sócio em comum). Requer revisão humana; nunca desclassifica. */
+export interface SinalSessaoDisputa {
+  regra: 'RIA-09' | 'RIA-06';
+  tipo: 'intervalos_regulares' | 'decrementos_identicos' | 'alternancia_combinada' | 'lances_iguais' | 'socio_em_comum';
+  titulo: string;
+  participantes: string[]; // chaves
+  evidencias: string[];
+  fundamento: string;
+  aviso: string;
+  reforcadoPorVinculo: boolean;
+}
+
+export interface MarcoSessao {
+  instante: InstanteISO;
+  descricao: string;
+  fundamento: string;
+}
+
+export interface ClassificadoSessao {
+  posicao: number;
+  participante: string; // chave
+  rotulo: string;
+  valorOfertado: number;
+  valorConsiderado: Centavos;
+  origem: 'proposta' | 'lance' | 'lance_final' | 'negociacao' | 'resultado_oficial';
+  notaTecnica: number | null;
+  notaPreco: number | null;
+  notaFinal: number | null;
+}
+
+/** Julgamento depois de encerrada a etapa de lances (classificação, desempate, reinício e negociação). */
+export interface JulgamentoSessao {
+  classificacao: ClassificadoSessao[];
+  empateDetectado: boolean;
+  criterioDecisivo: string | null;
+  passos: { ordem: number; criterio: string; fundamento: string; resultado: string }[];
+  sorteioNecessario: boolean;
+  acimaDoEstimado: boolean | null; // art. 59, III: sinal para o agente, não desclassifica
+  memoria: string[];
+  fundamento: string;
+  reinicio: { cabivel: boolean; diferencaPercentual: number | null; motivo: string; fundamento: string };
+}
+
+/** Dados da compra e do resultado trazidos do Compras.gov.br pelo servidor, com proveniência. */
+export interface DadosOficiaisSessao {
+  fonte: 'COMPRAS_GOV';
+  modo: 'offline' | 'online';
+  consultadoEm: InstanteISO;
+  hash: string; // SHA-256 do conteúdo recebido
+  registros: number;
+  endereco: string | null; // consulta feita pelo servidor (online)
+  compra: {
+    idCompra: string;
+    numeroCompra: string | null;
+    modalidade: string | null;
+    modoDisputa: string | null;
+    situacao: string | null;
+    objeto: string | null;
+    valorTotalEstimado: Centavos | null;
+    valorTotalHomologado: Centavos | null;
+    aberturaPropostas: InstanteISO | null;
+    existeResultado: boolean;
+  };
+  resultados: { participante: string | null; documento: string; nome: string; valorTotalHomologado: Centavos; itens: number }[];
+}
+
+export interface AtaSessao {
+  titulo: string;
+  emitidaEm: InstanteISO;
+  texto: string; // Markdown
+  fontes: string[];
+  premissas: string[];
+  aviso: string; // "requer revisão humana"
+  definitiva: boolean; // false = prévia (sessão não concluída)
+}
+
+export interface SessaoDisputa {
+  id: Id;
+  processoId: Id;
+  numeroSei: string;
+  processoTitulo: string;
+  uso: UsoSessaoDisputa;
+  criterio: CriterioJulgamentoSessao;
+  modo: ModoDisputaSessao;
+  parametros: ParametrosSessaoDisputa;
+  fundamentosParametros: Record<string, string>;
+  cenario: CenarioSimulacaoDisputa | null;
+  idCompra: string | null;
+  valorReferencia: Centavos | null;
+  fase: FaseSessaoDisputa;
+  rodada: number;
+  /** Relógio da sessão (na simulação, com o adiantamento acumulado). */
+  agora: InstanteISO;
+  adiantamentoSegundos: number;
+  abertaEm: InstanteISO | null;
+  faseIniciadaEm: InstanteISO | null;
+  fimPrevisto: InstanteISO | null; // nulo no fechamento iminente (sorteado e sigiloso)
+  fimSigiloso: boolean;
+  encerradaEm: InstanteISO | null;
+  concluidaEm: InstanteISO | null;
+  identidadesOcultas: boolean;
+  participantes: ParticipanteSessao[];
+  melhorOferta: number | null;
+  lider: string | null; // chave
+  lances: LanceSessao[];
+  lancesSigilosos: number; // lances finais e fechados ainda não divulgados
+  prorrogacoes: number;
+  marcos: MarcoSessao[];
+  sinais: SinalSessaoDisputa[];
+  julgamento: JulgamentoSessao | null;
+  oficial: DadosOficiaisSessao | null;
+  conduzidaPor: string | null;
+  criadaEm: InstanteISO;
+  atualizadaEm: InstanteISO;
+  /** Ações que o servidor aceita agora para quem tem `disputa:conduzir` no escopo da UASG. */
+  acoes: {
+    abrir: boolean;
+    adiantarRelogio: boolean;
+    registrarLance: boolean;
+    transcreverLances: boolean;
+    sincronizar: boolean;
+    reiniciar: boolean;
+    negociar: boolean;
+    encerrar: boolean;
+  };
+}
+
+export interface SessaoDisputaResumo {
+  id: Id;
+  uso: UsoSessaoDisputa;
+  criterio: CriterioJulgamentoSessao;
+  modo: ModoDisputaSessao;
+  fase: FaseSessaoDisputa;
+  participantes: number;
+  lances: number;
+  conduzidaPor: string | null;
+  criadaEm: InstanteISO;
+  concluidaEm: InstanteISO | null;
+}
+
+export interface EntradaSessaoDisputa {
+  uso: UsoSessaoDisputa;
+  criterio: CriterioJulgamentoSessao;
+  modo: ModoDisputaSessao;
+  /** Fornecedores do cadastro. Simulação: 2 a 20 (propostas sintéticas quando não informadas). */
+  participantes: { fornecedorId: Id; propostaInicial?: number | null; notaTecnica?: number | null }[];
+  cenario?: CenarioSimulacaoDisputa | null;
+  idCompra?: string | null; // acompanhamento: identificador da compra no Compras.gov.br
+  parametros?: Partial<ParametrosSessaoDisputa>;
+}
+/** Lance de treino em nome de um participante da simulação. */
+export interface EntradaLanceSessao {
+  participante: string;
+  valor: number;
+}
+/** Lances transcritos da sessão oficial (acompanhamento), para os sinais RIA-09. */
+export interface EntradaTranscricaoLances {
+  lances: { documento: string; valor: number; instante: InstanteISO }[];
+}
+export interface EntradaRelogioSessao {
+  avancar: 'minuto' | 'fim_da_etapa';
+}
+export interface EntradaJustificativaSessao {
+  justificativa: string;
+}
+export interface EntradaNegociacaoSessao {
+  valor: number;
+  justificativa: string;
+}
+// GET  /processos/:id/sessoes-disputa                  → SessaoDisputaResumo[]           (jornada:ler)
+// POST /processos/:id/sessoes-disputa                  body EntradaSessaoDisputa → 201 SessaoDisputa (disputa:conduzir; etapa 6)
+// GET  /sessoes-disputa/:id                             → SessaoDisputa (consulta periódica pela sala) (jornada:ler)
+// GET  /sessoes-disputa/:id/ata                         → AtaSessao (prévia até a conclusão)      (jornada:ler)
+// POST /sessoes-disputa/:id/abertura                    → SessaoDisputa (simulação)              (disputa:conduzir)
+// POST /sessoes-disputa/:id/relogio                     body EntradaRelogioSessao → SessaoDisputa (simulação)
+// POST /sessoes-disputa/:id/lances                      body EntradaLanceSessao → SessaoDisputa (simulação; 422 LANCE_RECUSADO)
+// POST /sessoes-disputa/:id/lances/transcricao          body EntradaTranscricaoLances → SessaoDisputa (acompanhamento)
+// POST /sessoes-disputa/:id/sincronizacao               → SessaoDisputa (acompanhamento; consulta o Compras.gov.br no servidor)
+// POST /sessoes-disputa/:id/reinicio                    body EntradaJustificativaSessao → SessaoDisputa (art. 56, § 4º)
+// POST /sessoes-disputa/:id/negociacao                  body EntradaNegociacaoSessao → SessaoDisputa (art. 61)
+// POST /sessoes-disputa/:id/encerramento                body EntradaJustificativaSessao → SessaoDisputa (ata + registro da disputa no processo)

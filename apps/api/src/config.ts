@@ -19,6 +19,8 @@ export interface Config {
   webDir: string | null;
   confiarProxy: boolean;
   limiteRequisicoesPorMinuto: number;
+  /** Dados abertos do Compras.gov.br (acompanhamento da sessão oficial na sala de disputa; só no modo online). */
+  comprasGov: { url: string };
 }
 
 export class ErroConfiguracao extends Error {
@@ -75,6 +77,7 @@ const esquemaAmbiente = z.object({
   AGORA_WEB_DIR: textoOpcional,
   AGORA_CONFIAR_PROXY: booleanoOpcional,
   AGORA_LIMITE_REQUISICOES_MINUTO: z.coerce.number().int().min(10).max(100_000).default(300),
+  AGORA_COMPRAS_GOV_URL: z.string().trim().min(1).default('https://dadosabertos.compras.gov.br'),
 });
 
 function urlValida(valor: string): boolean {
@@ -133,6 +136,7 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_ORGAO_CNPJ !== null && !/^\d{14}$/.test(e.AGORA_ORGAO_CNPJ.replace(/\D/g, ''))) {
     problemas.push('AGORA_ORGAO_CNPJ: informe os 14 dígitos do CNPJ do órgão');
   }
+  if (!urlValida(e.AGORA_COMPRAS_GOV_URL)) problemas.push('AGORA_COMPRAS_GOV_URL: URL inválida (use https://)');
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -158,5 +162,6 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     webDir: e.AGORA_WEB_DIR,
     confiarProxy: e.AGORA_CONFIAR_PROXY ?? false,
     limiteRequisicoesPorMinuto: e.AGORA_LIMITE_REQUISICOES_MINUTO,
+    comprasGov: { url: e.AGORA_COMPRAS_GOV_URL.replace(/\/+$/, '') },
   };
 }

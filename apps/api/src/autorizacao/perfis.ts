@@ -27,6 +27,7 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'auditoria:ler',
   'lgpd:revelar',
   'lgpd:relatorio',
+  'disputa:conduzir',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -115,6 +116,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'jornada:ler',
       'jornada:editar',
       'jornada:publicar',
+      'disputa:conduzir',
     ],
   },
   {

@@ -12,6 +12,7 @@ import { gerarInstrumentos } from './instrumentos.ts';
 import { Prng } from './prng.ts';
 import { gerarProcessos } from './processos.ts';
 import { SENHA_DEMONSTRACAO } from './usuarios-demonstracao.ts';
+import { gerarVinculoSalaDisputa } from './disputa.ts';
 
 /** Semente fixa do gerador (Lei 14.133): a mesma data de referência produz sempre os mesmos dados. */
 export const SEMENTE_DEMONSTRACAO = 14_133;
@@ -27,6 +28,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'execucao', executar: gerarExecucao },
   { nome: 'gestao', executar: gerarGestao },
   { nome: 'processos', executar: gerarProcessos },
+  { nome: 'sala-disputa', executar: gerarVinculoSalaDisputa },
 ];
 
 function dadosVazios(): DadosSeed {
