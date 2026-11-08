@@ -13,6 +13,7 @@ import { camposPaginacao, centavos, codigoUasg, dataIso, idDaRota, pagina, texto
 import { criarProvedorIa } from '../../ia/provedor.ts';
 import { avaliarRegularidade } from '../fornecedores/repositorio.ts';
 import { exigirSemCautelarSuspensiva } from '../../compartilhado/controle-externo.ts';
+import { exigirRegularidade, verificarRegularidade } from '../regularidade/servico.ts';
 import {
   DFD_INICIAL,
   DISPUTA_INICIAL,
@@ -793,8 +794,16 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     }),
   );
 
-  app.post('/processos/:id/contratar', edicao, async (request) =>
-    alterar(request, async (tx, linha, c) => {
+  app.post('/processos/:id/contratar', edicao, async (request) => {
+    // RN-09 (art. 91, § 4º): antes da transação, checklist com nova consulta ao CEIS/CNEP, registrado mesmo se bloquear.
+    const previa = await obterLinhaProcesso(ctx.banco, idDaRota(request.params), escopoUasgs(sessaoDe(request)));
+    const vencedorPrevio = previa && previa.etapa_atual === 7 && previa.contrato_id === null ? vencedorDoProcesso(previa) : null;
+    const verificacao =
+      previa && vencedorPrevio
+        ? await verificarRegularidade(ctx, request, { fornecedorId: vencedorPrevio, momento: 'assinatura', instrumento: { tipo: 'processo', id: previa.id } })
+        : null;
+    if (verificacao) exigirRegularidade(verificacao, 'O vencedor não atende à verificação prévia à assinatura (RN-09, art. 91, § 4º).');
+    return alterar(request, async (tx, linha, c) => {
       exigirEtapa(linha, 7, 'A geração do contrato');
       if (linha.contrato_id !== null) throw regraNegocio(`O processo já gerou o contrato ${linha.contrato_numero ?? ''}.`.trim());
       // RN-30 (art. 171, §§ 1º e 2º): cautelar suspensiva ativa impede gerar e assinar o contrato.
@@ -807,6 +816,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
         ]);
       }
       // RN-09 (art. 91, § 4º): sem impedimento/inidoneidade vigentes e com regularidade fiscal e trabalhista.
+      // Reavaliação na transação, com a consulta recém-registrada (sanção ou certidão alterada no intervalo).
       const regularidade = await avaliarRegularidade(tx, vencedor, c.hoje, c.agora);
       if (!regularidade.regular) {
         throw regraNegocio(
@@ -827,9 +837,9 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
           valorInicial: contrato.valorInicial,
           tarefas: contrato.tarefas,
           limiteDivulgacaoPncp: contrato.limiteDivulgacao,
-          regularidade: { consultadoEm: regularidade.consultadoEm, fontes: regularidade.fontes },
+          regularidade: { consultadoEm: regularidade.consultadoEm, fontes: regularidade.fontes, verificacaoId: verificacao?.id ?? null },
         },
       };
-    }),
-  );
+    });
+  });
 }

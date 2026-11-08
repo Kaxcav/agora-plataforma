@@ -116,11 +116,11 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     tipo: 'RN',
     titulo: 'Verificação de regularidade e sanções antes da assinatura ou prorrogação',
     descricao:
-      'Antes de formalizar ou prorrogar o contrato, a Administração verifica a regularidade fiscal do contratado, consulta o Cadastro Nacional de Empresas Inidôneas e Suspensas (CEIS) e o Cadastro Nacional de Empresas Punidas (CNEP), emite as certidões negativas de inidoneidade, de impedimento e de débitos trabalhistas e as junta ao processo. Na contratação (etapa 7), a Ágora bloqueia a assinatura quando o fornecedor tem impedimento ou inidoneidade vigentes ou pendência de regularidade nas bases que o servidor consulta: as sanções registradas na Ágora e a última sincronização de regularidade. No simulador de aditivo, a mesma verificação aparece antes de uma prorrogação. A consulta online ao CEIS/CNEP e às certidões depende da integração do órgão.',
+      'Antes de formalizar ou prorrogar o contrato, a Administração verifica a regularidade fiscal do contratado, consulta o Cadastro Nacional de Empresas Inidôneas e Suspensas (CEIS) e o Cadastro Nacional de Empresas Punidas (CNEP) e junta ao processo as certidões. Ao contratar (etapa 7) e ao registrar a prorrogação no contrato, o servidor da Ágora executa o checklist de regularidade (RF-20): consulta o CEIS e o CNEP pela API de dados do Portal da Transparência (ou pela base simulada no modo offline), confere as sanções impeditivas aplicadas pelo órgão e as certidões fiscal federal, do FGTS e trabalhista (CNDT) registradas pelo agente. Sanção impeditiva vigente, certidão ausente, vencida ou positiva, ou consulta indisponível bloqueiam a assinatura e a prorrogação. Cada verificação, inclusive a bloqueada, fica registrada com fonte, data e hash da consulta e entra na trilha de auditoria.',
     fundamento: 'Lei 14.133/2021, art. 91, § 4º',
     etapa: 7,
-    telas: ['jornada.detalhe', 'contratos.detalhe'],
-    implementacao: 'api: POST /processos/:id/contratar (consulta CEIS/CNEP e regularidade)',
+    telas: ['jornada.detalhe', 'contratos.detalhe', 'fornecedores'],
+    implementacao: 'avaliarChecklistRegularidade; api: POST /processos/:id/contratar; POST /contratos/:id/prorrogacoes',
   },
   {
     id: 'RN-10',
@@ -740,6 +740,39 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: ['jornada.detalhe'],
     implementacao:
       'avaliarSelecao; api: POST /processos/:id/selecao/adjudicacao; POST /processos/:id/selecao/homologacao; GET /publico/editais/:id/preparatorios/:tipo',
+  },
+  {
+    id: 'RN-23',
+    tipo: 'RN',
+    titulo: 'Recheque da regularidade antes do atesto e do pagamento',
+    descricao:
+      'O contratado deve manter, durante toda a execução, as condições exigidas na habilitação. Antes de cada atesto de nota fiscal, a Ágora consulta de novo o CEIS e o CNEP e confere as certidões fiscal federal, do FGTS e trabalhista; antes do pagamento, o financeiro repete a verificação. O resultado fica registrado com fonte e data. Havendo irregularidade, o atesto é registrado com a ressalva e a Ágora abre uma pendência para notificar o contratado; a irregularidade não autoriza, por si só, reter o pagamento do que já foi executado, e extinção do contrato ou sanção dependem de decisão da autoridade competente.',
+    fundamento: 'Lei 14.133/2021, art. 92, XVI, e art. 91, § 4º',
+    etapa: null,
+    telas: ['pagamentos', 'contratos.detalhe'],
+    implementacao: 'avaliarChecklistRegularidade, situacaoCertidao; api: POST /pagamentos/:id/atestar; POST /pagamentos/:id/regularidade',
+  },
+  {
+    id: 'RN-24',
+    tipo: 'RN',
+    titulo: 'Registro da sanção aplicada no CEIS/CNEP em até 15 dias úteis',
+    descricao:
+      'Aplicada a sanção, o órgão tem até 15 dias úteis, contados da aplicação, para informar e manter atualizados os dados no CEIS e no CNEP. Como não há API pública de escrita nesses cadastros, a Ágora controla a obrigação: cada sanção aplicada vira uma pendência de registro com prazo calculado em dias úteis, com alerta a partir de 5 dias úteis do vencimento e destaque quando vencida. O responsável informa o cadastro, o protocolo e a data do envio feito no sistema da CGU, e a Ágora registra quem informou e quando, na trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, art. 161',
+    etapa: null,
+    telas: ['sancoes'],
+    implementacao: 'situacaoRegistroCeisCnep, prazoRegistroCeisCnep; api: GET /sancoes/registro-ceis-cnep; POST /sancoes/:id/registro-ceis-cnep',
+  },
+  {
+    id: 'RF-20',
+    tipo: 'RF',
+    titulo: 'Consulta ao CEIS e ao CNEP e checklist de regularidade',
+    descricao:
+      'Consulta o CEIS e o CNEP no servidor, pela API de dados do Portal da Transparência (chave configurada pelo órgão), com tempo limite, novas tentativas e cache com proveniência (hora da consulta, fonte e hash do conteúdo); no modo offline, usa sanções simuladas da carga sintética. O checklist reúne a consulta, as sanções aplicadas pelo órgão e o registro das certidões fiscal federal, do FGTS e trabalhista (tipo, número, emissor, emissão, validade e resultado, conferidos pelo agente), avisa os vencimentos próximos e aparece no fornecedor, na contratação, na prorrogação e no atesto. Cada consulta e cada registro entram na trilha de auditoria.',
+    fundamento: 'Lei 14.133/2021, art. 91, § 4º, e art. 68, III a V',
+    etapa: 7,
+    telas: ['fornecedores', 'jornada.detalhe', 'contratos.detalhe'],
+    implementacao: 'avaliarChecklistRegularidade, classificarRegistroSancaoExterna, validarCertidao; api: GET /fornecedores/:id/regularidade; POST /fornecedores/:id/regularidade/consultar; POST /fornecedores/:id/certidoes',
   },
 ]);
 

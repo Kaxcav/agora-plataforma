@@ -2,8 +2,11 @@
   "allow": [
     {
       "rule": "db_uri",
-      "paths": ["apps/api/src/config.ts"],
-      "reason": "Mensagem de validação de AGORA_BANCO_URL com o formato de exemplo (postgres://usuario:senha@host:5432/banco); não há credencial real."
+      "paths": [
+        "apps/api/src/config.ts",
+        "deploy/docker-compose.yml"
+      ],
+      "reason": "Exemplos de formato de AGORA_BANCO_URL na validação e no compose (a senha do compose vem de variável de ambiente); não há credencial real."
     }
   ]
 }

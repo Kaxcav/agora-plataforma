@@ -459,7 +459,7 @@ export function regrasEtapa7(e: EntradaEtapa7): ResultadoRegras {
     r.bloquear('RN-08', 'Não há licitante vencedor registrado na disputa.', 'Lei 14.133/2021, art. 60');
   }
   for (const motivo of e.regularidadeVencedor?.motivos ?? []) {
-    r.bloquear('RN-09', `Regularidade do vencedor: ${motivo}.`, 'Lei 14.133/2021, art. 91, § 4º');
+    r.bloquear('RN-09', `Regularidade do vencedor: ${motivo.replace(/\.$/, '')}.`, 'Lei 14.133/2021, art. 91, § 4º');
   }
   return r.resultado;
 }

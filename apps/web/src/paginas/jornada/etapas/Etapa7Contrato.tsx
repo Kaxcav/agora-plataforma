@@ -3,15 +3,30 @@
  * contrato criado na carteira, com o plano de gestão de assinatura.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { FileSignature, FileText } from 'lucide-react';
 import { formatarMoeda } from '@agora/dominio';
 import { ehResultadoDesempate, useContratar } from '../../../api/jornada';
-import { Alerta, Botao, ConfirmarAcao, LinkBotao, ListaDefinicoes, Secao, useAvisos } from '../../../componentes';
+import { useRegularidadeFornecedor } from '../../../api/regularidade';
+import { Alerta, Botao, ConfirmarAcao, ConteudoConsulta, EsqueletoTabela, LinkBotao, ListaDefinicoes, Secao, useAvisos } from '../../../componentes';
+import { ChecklistRegularidade } from '../../regularidade/ChecklistRegularidade';
 import { ErroOperacao } from '../comum';
 import type { PropsEtapa } from './tipos';
 
+/** Checklist de regularidade do vencedor (RF-20), com a última consulta registrada; a trava refaz a consulta. */
+function ChecklistVencedor({ fornecedorId }: { fornecedorId: string | null }) {
+  const consulta = useRegularidadeFornecedor(fornecedorId, 'assinatura');
+  if (fornecedorId === null) return null;
+  return (
+    <ConteudoConsulta consulta={consulta} carregando={<EsqueletoTabela linhas={4} />} rotuloCarregando="Carregando a regularidade do vencedor">
+      {(dados) => <ChecklistRegularidade checklist={dados} titulo="Regularidade do vencedor" idTitulo="etapa7-regularidade-titulo" />}
+    </ConteudoConsulta>
+  );
+}
+
 export default function Etapa7Contrato({ processo, editavel }: PropsEtapa) {
   const { avisar } = useAvisos();
+  const cliente = useQueryClient();
   const contratar = useContratar(processo.id);
   const [confirmando, definirConfirmando] = useState(false);
   const [recemCriado, definirRecemCriado] = useState(false);
@@ -75,12 +90,13 @@ export default function Etapa7Contrato({ processo, editavel }: PropsEtapa) {
       <Secao titulo="Verificações antes da assinatura (RN-09)" id="etapa7-verificacoes" nivel={3} simples descricao="Lei 14.133/2021, art. 91, § 4º.">
         <ul className="jornada-lista-compacta">
           <li>Consulta ao CEIS e ao CNEP: o vencedor não pode ter impedimento de licitar e contratar nem declaração de inidoneidade vigentes.</li>
-          <li>Regularidade fiscal perante a Fazenda federal e o FGTS, e regularidade trabalhista (CNDT).</li>
+          <li>Regularidade fiscal perante a Fazenda federal e o FGTS, e regularidade trabalhista (CNDT), pelas certidões registradas.</li>
         </ul>
         <p className="texto-pequeno texto-secundario">
-          As consultas são feitas pelo servidor da Ágora no momento da contratação, com fonte e data registradas. Havendo restrição, a
-          contratação é bloqueada e a regra aparece abaixo.
+          Ao contratar, o servidor da Ágora consulta de novo o CEIS e o CNEP e confere as certidões, com fonte e data registradas. Havendo
+          restrição, a contratação é bloqueada e a regra aparece abaixo.
         </p>
+        <ChecklistVencedor fornecedorId={vencedor?.id ?? null} />
         {editavel ? (
           <div>
             <Botao
@@ -118,6 +134,8 @@ export default function Etapa7Contrato({ processo, editavel }: PropsEtapa) {
         rotuloConfirmar="Contratar"
         aoConfirmar={() =>
           contratar.mutate(undefined, {
+            // A tentativa bloqueada também registra uma consulta nova: o checklist mostra a fonte e a data atualizadas.
+            onSettled: () => void cliente.invalidateQueries({ queryKey: ['regularidade'] }),
             onSuccess: (atualizado) => {
               definirConfirmando(false);
               definirRecemCriado(true);

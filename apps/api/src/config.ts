@@ -32,6 +32,8 @@ export interface Config {
   notificacoes: ConfigNotificacoes;
   /** Dados abertos do Compras.gov.br (acompanhamento da sessão oficial na sala de disputa; só no modo online). */
   comprasGov: { url: string };
+  /** API de dados do Portal da Transparência (CGU) para consultar o CEIS e o CNEP (RF-20). Usada com `integracoes = 'online'`. */
+  transparencia: { url: string; chave: string | null; cacheMinutos: number };
 }
 
 export interface ConfigSmtp {
@@ -125,6 +127,7 @@ const esquemaAmbiente = z.object({
   AGORA_SMTP_REMETENTE: textoOpcional,
   AGORA_SMTP_TIMEOUT_MS: z.preprocess(vazioComoAusente, z.coerce.number().int().min(1000).max(120_000).default(15_000)),
   AGORA_COMPRAS_GOV_URL: z.string().trim().min(1).default('https://dadosabertos.compras.gov.br'),
+  AGORA_TRANSPARENCIA_CACHE_MINUTOS: z.coerce.number().int().min(0).max(1440).default(60),
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -265,5 +268,10 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       smtp,
     },
     comprasGov: { url: e.AGORA_COMPRAS_GOV_URL.replace(/\/+$/, '') },
+    transparencia: {
+      url: e.AGORA_TRANSPARENCIA_URL.replace(/\/+$/, ''),
+      chave: e.AGORA_TRANSPARENCIA_CHAVE,
+      cacheMinutos: e.AGORA_TRANSPARENCIA_CACHE_MINUTOS,
+    },
   };
 }

@@ -22,6 +22,7 @@ import { COLUNAS_CONTRATO } from '../compartilhado/colunasContrato';
 import { FAIXAS_IDC, PORTES, TIPOS_SANCAO } from '../compartilhado/rotulos';
 import { colunasSancao } from '../sancoes/colunasSancao';
 import { DocumentoFornecedor, formatarNotaIdc } from './idc';
+import { RegularidadeFornecedor } from './RegularidadeFornecedor';
 
 type ComponenteIdc = DadosFornecedor['idcDetalhe']['componentes'][number];
 type PenalidadeIdc = DadosFornecedor['idcDetalhe']['penalidades'][number];
@@ -127,7 +128,7 @@ function SecaoIdc({ fornecedor }: { fornecedor: DadosFornecedor }) {
 function SecaoRegularidade({ fornecedor }: { fornecedor: DadosFornecedor }) {
   const r = fornecedor.regularidade;
   return (
-    <Secao titulo="Regularidade" id="regularidade" descricao="Consulta exigida antes de assinar ou prorrogar contratos (RN-09; Lei 14.133/2021, art. 91, § 4º).">
+    <Secao titulo="Regularidade" id="regularidade" descricao="Consulta exigida antes de assinar ou prorrogar contratos (RN-09; Lei 14.133/2021, art. 91, § 4º). Detalhes na aba “Regularidade e certidões”.">
       <div className="linha">
         {r.regular ? (
           <Etiqueta tom="sucesso" icone={ShieldCheck}>
@@ -138,7 +139,7 @@ function SecaoRegularidade({ fornecedor }: { fornecedor: DadosFornecedor }) {
             Irregular
           </Etiqueta>
         )}
-        <span className="texto-pequeno texto-secundario">Consultado em {formatarInstante(r.consultadoEm)}</span>
+        <span className="texto-pequeno texto-secundario">CEIS/CNEP consultados em {formatarInstante(r.consultadoEm)}</span>
       </div>
       {r.motivos.length > 0 ? (
         <div className="pilha pilha--compacta">
@@ -247,6 +248,11 @@ function ConteudoFornecedor({ fornecedor }: { fornecedor: DadosFornecedor }) {
                 vazio={<EstadoVazio icone={ShieldCheck} titulo="Nenhum processo sancionatório" descricao="Não há processos sancionatórios registrados para este fornecedor." />}
               />
             ),
+          },
+          {
+            id: 'regularidade',
+            rotulo: 'Regularidade e certidões',
+            conteudo: () => <RegularidadeFornecedor fornecedor={fornecedor} />,
           },
         ]}
       />

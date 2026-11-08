@@ -1,6 +1,7 @@
-import { calcularIdc, formatarData, mascararDocumento, mascararNome, type IndicadoresDesempenho } from '@agora/dominio';
+import { calcularIdc, mascararDocumento, mascararNome, type IndicadoresDesempenho } from '@agora/dominio';
 import type { FornecedorResumo, Sancao, TipoSancao } from '@agora/contratos';
 import type { Executor } from '../../banco/tipos.ts';
+import { montarChecklist, obterFornecedorRegularidade } from '../regularidade/repositorio.ts';
 
 interface LinhaFornecedor {
   id: string;
@@ -127,29 +128,19 @@ export interface Regularidade {
 }
 
 /**
- * Regularidade do fornecedor (RN-09, art. 91, § 4º): certidões registradas no último snapshot cadastral
- * e sanções impeditivas vigentes (impedimento ou inidoneidade). Consulta antes de assinar ou prorrogar.
+ * Regularidade do fornecedor (RN-09, art. 91, § 4º) para exibição e para a trava dentro da transação: o checklist
+ * de @agora/dominio com a última consulta ao CEIS/CNEP em cache, as sanções impeditivas aplicadas pelo órgão e as
+ * certidões registradas (RF-20). Não chama a fonte externa: a consulta nova é feita pelas travas
+ * (`verificarRegularidade`) antes de assinar, prorrogar, atestar e pagar.
  */
 export async function avaliarRegularidade(executor: Executor, fornecedorId: string, hoje: string, agora: Date): Promise<Regularidade> {
-  const fornecedor = await executor.consultar<{ certidoes_irregulares: string[]; regularidade_consultada_em: string | null }>(
-    'SELECT certidoes_irregulares, regularidade_consultada_em FROM fornecedores WHERE id = $1',
-    [fornecedorId],
-  );
-  const sancoes = await executor.consultar<{ tipo: TipoSancao; fim_vigencia: string | null; situacao: Sancao['situacao'] }>(
-    `SELECT tipo, fim_vigencia, situacao FROM sancoes
-      WHERE fornecedor_id = $1 AND tipo IN ('impedimento_licitar', 'declaracao_inidoneidade')`,
-    [fornecedorId],
-  );
-  const motivos = [...(fornecedor[0]?.certidoes_irregulares ?? [])];
-  for (const s of sancoes) {
-    if (sancaoVigente(s, hoje)) {
-      motivos.push(`${rotuloSancao(s.tipo)} vigente${s.fim_vigencia ? ` até ${formatarData(s.fim_vigencia)}` : ''} (art. 156)`);
-    }
-  }
+  const fornecedor = await obterFornecedorRegularidade(executor, fornecedorId);
+  if (!fornecedor) return { regular: false, consultadoEm: agora.toISOString(), fontes: [], motivos: ['Fornecedor não encontrado no cadastro.'] };
+  const { checklist } = await montarChecklist(executor, fornecedor, 'assinatura', hoje, agora, { consultaObrigatoria: false });
   return {
-    regular: motivos.length === 0,
-    consultadoEm: fornecedor[0]?.regularidade_consultada_em ?? agora.toISOString(),
-    fontes: ['SICAF — snapshot cadastral', 'CEIS/CNEP — sanções registradas na Ágora'],
-    motivos,
+    regular: checklist.regular,
+    consultadoEm: checklist.consulta?.consultadoEm ?? agora.toISOString(),
+    fontes: checklist.itens.filter((i, indice, todos) => todos.findIndex((o) => o.fonte === i.fonte) === indice).map((i) => i.fonte),
+    motivos: checklist.motivos,
   };
 }

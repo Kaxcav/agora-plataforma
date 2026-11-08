@@ -115,7 +115,7 @@ describe('regrasPorTela', () => {
   it('lista as regras da tela por correspondência exata', () => {
     const ids = regrasPorTela('jornada.dfd').map((r) => r.id);
     for (const id of ['RN-01', 'RN-02', 'RN-14', 'RIA-01']) assert.ok(ids.includes(id), id);
-    assert.deepEqual(regrasPorTela('sancoes').map((r) => r.id).sort(), ['RF-14', 'RN-12', 'RN-13', 'RN-19']);
+    assert.deepEqual(regrasPorTela('sancoes').map((r) => r.id).sort(), ['RF-14', 'RN-12', 'RN-13', 'RN-19', 'RN-24']);
     assert.ok(regrasPorTela('contratos.detalhe').some((r) => r.id === 'RN-10'));
   });
 
@@ -193,5 +193,36 @@ describe('CATALOGO_REGRAS — jornada da contratação: PoC-01, prova de conceit
     assert.match(regra('RN-22').descricao, /3 dias úteis/);
     assert.match(regra('RN-22').descricao, /10 dias úteis/);
     assert.match(regra('RN-01').descricao, /redação por IA/);
+  });
+});
+
+describe('CATALOGO_REGRAS — frente C (CEIS, CNEP e certidões)', () => {
+  const casos: [string, number | null, string[], string, RegExp][] = [
+    ['RN-09', 7, ['jornada.detalhe', 'contratos.detalhe', 'fornecedores'], 'avaliarChecklistRegularidade', /art\. 91, § 4º/],
+    ['RN-23', null, ['pagamentos', 'contratos.detalhe'], 'avaliarChecklistRegularidade', /art\. 92, XVI/],
+    ['RN-24', null, ['sancoes'], 'situacaoRegistroCeisCnep', /art\. 161/],
+    ['RF-20', 7, ['fornecedores', 'jornada.detalhe', 'contratos.detalhe'], 'classificarRegistroSancaoExterna', /art\. 68, III a V/],
+  ];
+  for (const [id, etapa, telas, implementacao, fundamento] of casos) {
+    it(`${id}: etapa ${String(etapa)}, telas ${telas.join(', ')} e ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, etapa);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+    });
+  }
+
+  it('RN-09 descreve o bloqueio por sanção, certidão ausente ou vencida e consulta indisponível', () => {
+    const d = regra('RN-09').descricao;
+    assert.match(d, /CEIS/);
+    assert.match(d, /certidão ausente, vencida ou positiva/);
+    assert.match(d, /bloqueiam a assinatura e a prorrogação/);
+  });
+
+  it('RN-24 registra o equivalente lícito: sem API de escrita, pendência com prazo, alerta e protocolo', () => {
+    const d = regra('RN-24').descricao;
+    assert.match(d, /não há API pública de escrita/);
+    assert.match(d, /protocolo/);
   });
 });

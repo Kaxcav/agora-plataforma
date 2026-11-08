@@ -63,6 +63,8 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'controle_externo:registrar': 'Registrar medidas do controle externo e respostas',
   'riscos:revisar': 'Revisar a matriz de riscos dos contratos',
   'jornada:homologar': 'Decidir recursos, adjudicar e homologar (autoridade competente designada)',
+  'certidoes:registrar': 'Registrar certidões de regularidade',
+  'regularidade:consultar': 'Consultar o CEIS e o CNEP',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

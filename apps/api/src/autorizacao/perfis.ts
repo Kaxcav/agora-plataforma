@@ -38,6 +38,8 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'controle_externo:registrar',
   'riscos:revisar',
   'jornada:homologar',
+  'certidoes:registrar',
+  'regularidade:consultar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -77,6 +79,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'controle_externo:ler',
       'riscos:revisar',
       'jornada:homologar',
+      'certidoes:registrar',
+      'regularidade:consultar',
     ],
   },
   {
@@ -100,6 +104,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'controle:primeira_linha',
       'controle_externo:ler',
       'riscos:revisar',
+      'certidoes:registrar',
+      'regularidade:consultar',
     ],
   },
   {
@@ -118,6 +124,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'fornecedores:ler',
       'notificacoes:ler',
       'controle:primeira_linha',
+      'certidoes:registrar',
+      'regularidade:consultar',
     ],
   },
   {
@@ -143,6 +151,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'disputa:conduzir',
       'controle:primeira_linha',
       'controle_externo:ler',
+      'certidoes:registrar',
+      'regularidade:consultar',
     ],
   },
   {

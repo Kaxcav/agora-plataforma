@@ -474,3 +474,35 @@ export function validarAtoSelecao(e: EstadoSelecao, ato: AtoSelecao, hoje: DataI
 ```
 
 Regras novas no catálogo: RN-20 (prova de conceito ou amostra), RN-21 (sustentabilidade obrigatória), RN-22 (fase recursal única e prazos), RF-18 (adjudicação, homologação e divulgação dos documentos preparatórios). RN-01 passa a citar `avaliarBloqueioLuxoMinutas`.
+## lei14133/regularidade.ts — art. 91, § 4º; art. 92, XVI; art. 68, III a V; art. 161 (RF-20, RN-09, RN-23, RN-24)
+
+```ts
+CERTIDOES_REGULARIDADE: { tipo: 'fiscal_federal' | 'fgts' | 'trabalhista'; nome; sigla; emissor; validadeMaximaDias; fundamento }[]
+// CND federal 180 dias (art. 68, III); CRF do FGTS 30 dias (art. 68, IV); CNDT 180 dias (art. 68, V)
+
+validarCertidao(c: { tipo; numero; emitidaEm; validaAte; resultado }, hoje) → DefinicaoCertidao
+// CERTIDAO_INVALIDA: tipo desconhecido, número com menos de 3 ou mais de 80 caracteres, resultado desconhecido,
+// emissão depois de hoje, validade antes da emissão ou acima de validadeMaximaDias.
+
+situacaoCertidao(c, hoje, antecedenciaAvisoDias = 15) → { situacao: 'valida' | 'a_vencer' | 'vencida' | 'positiva'; diasRestantes; mensagem; fundamento }
+// positiva (com débitos) não comprova regularidade; vale até o último dia da validade (inclusive).
+
+classificarRegistroSancaoExterna(r: RegistroCadastroSancoes, hoje, esferaContratante = 'Federal') → { vigente; impeditivo; descricao; observacao }
+// vigente: iniciada e sem fim ou com fim ≥ hoje. Impeditivo: inidoneidade, proibição, decisão judicial (todos os entes);
+// impedimento/suspensão só se da mesma esfera (art. 156, § 4º; de outra esfera = atenção); demais CEIS impeditivos;
+// CNEP sem restrição de contratar (multa, leniência) = atenção. REGISTRO_SANCAO_INVALIDO para cadastro ou datas inválidos.
+
+avaliarChecklistRegularidade({ momento: 'assinatura' | 'prorrogacao' | 'atesto' | 'pagamento'; hoje; agora (instante);
+  consulta: { fonte; consultadoEm; registros } | null; falhaConsulta?; consultaObrigatoria; sancoesAgora; certidoes;
+  validadeConsultaHoras = 24; antecedenciaAvisoDias = 15; esferaContratante = 'Federal' })
+  → { momento; regular; bloqueia; itens[ceis_cnep, sancoes_agora, fiscal_federal, fgts, trabalhista]; motivos; avisos; providencias; fundamento; aviso }
+// Item 'impeditivo' em qualquer um → regular = false. bloqueia só em assinatura e prorrogação (art. 91, § 4º).
+// Consulta ausente/falha ou com mais de validadeConsultaHoras: impeditiva quando consultaObrigatoria; senão 'pendente'.
+// Atesto e pagamento (art. 92, XVI): não bloqueia; providências = notificar o contratado; extinção ou sanção só por
+// decisão da autoridade competente. CHECKLIST_INVALIDO para momento, instantes ou listas inválidos.
+
+situacaoRegistroCeisCnep({ aplicacao; enviadoEm: DataISO | null; hoje }, opcoes?) → { vencimento; situacao:
+  'pendente_no_prazo' | 'pendente_vencida' | 'registrada_no_prazo' | 'registrada_fora_do_prazo'; diasUteisRestantes; diasUteisAtraso; alerta; mensagem; fundamento }
+// vencimento = prazoRegistroCeisCnep (15 dias úteis, art. 161); alerta com até 5 dias úteis restantes ou vencido.
+// REGISTRO_CEIS_CNEP_INVALIDO: envio antes da aplicação, envio futuro ou datas inválidas.
+```
