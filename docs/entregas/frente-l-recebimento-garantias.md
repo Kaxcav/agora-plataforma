@@ -90,6 +90,7 @@ A frente K deixou estes dois pontos da F22 para esta parte (`docs/entregas/frent
 - **Comunicação ao controle (art. 141, § 1º).** O controle interno passa a ver a alteração no painel da 2ª linha assim que é registrada; o envio oficial ao controle interno e ao tribunal de contas é feito fora da Ágora e registrado com o protocolo.
 - **Índice da atualização.** A série disponível no servidor é o IPCA (frente I). Para outro índice no contrato (ex.: IPCA-E), a tela calcula só os juros e avisa que a série não está disponível.
 - **Assinatura dos termos.** O PDF é o termo gerado pela Ágora, com hash; a assinatura formal é feita no processo SEI do contrato.
+- **Reservas de cargos sem dado pessoal.** A condição de vítima de violência doméstica ou de egresso do sistema prisional é dado pessoal sensível (LGPD, art. 5º, II, e art. 11). A Ágora registra só as **quantidades** declaradas e a comprovação conferida pelo fiscal, nunca nomes ou documentos dessas pessoas; a documentação fica com a contratada e no processo.
 
 ## 4. Regras novas
 
