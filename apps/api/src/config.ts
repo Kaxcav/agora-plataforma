@@ -118,7 +118,7 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     problemas.push('AGORA_BANCO_URL: obrigatório em produção (PostgreSQL 16)');
   }
   if (e.AGORA_BANCO_URL !== null && !/^postgres(ql)?:\/\//.test(e.AGORA_BANCO_URL)) {
-    problemas.push('AGORA_BANCO_URL: use o formato postgres://usuario:senha@host:5432/banco');
+    problemas.push('AGORA_BANCO_URL: use uma URL postgres:// com usuário, senha, servidor, porta (5432) e nome do banco');
   }
 
   const camposGovbr = [e.AGORA_GOVBR_CLIENT_ID, e.AGORA_GOVBR_CLIENT_SECRET, e.AGORA_GOVBR_EMISSOR, e.AGORA_GOVBR_REDIRECT];
