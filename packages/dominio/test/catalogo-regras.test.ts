@@ -226,3 +226,27 @@ describe('CATALOGO_REGRAS — frente C (CEIS, CNEP e certidões)', () => {
     assert.match(d, /protocolo/);
   });
 });
+
+describe('CATALOGO_REGRAS — frente M (IMR e conferência da nota fiscal, F7)', () => {
+  const casos: [string, string[], string, RegExp][] = [
+    ['RN-36', ['pagamentos', 'pagamentos.conferencia', 'contratos.detalhe'], 'conferirNotaFiscal', /arts\. 117, 140 e 141/],
+    ['RF-29', ['contratos.detalhe', 'pagamentos.conferencia'], 'calcularAjustePagamento', /art\. 6º, XXIII, "g"/],
+  ];
+  for (const [id, telas, implementacao, fundamento] of casos) {
+    it(`${id}: telas ${telas.join(', ')} e ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, null);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+      assert.match(r.fundamento, /IN SEGES\/MP 5\/2017, anexo VIII-A/);
+    });
+  }
+
+  it('RN-36 bloqueia o atesto com divergência e diz que a glosa não é sanção', () => {
+    const d = regra('RN-36').descricao;
+    assert.match(d, /atesto fica bloqueado/);
+    assert.match(d, /não é sanção/);
+    assert.match(d, /decisão da autoridade competente/);
+  });
+});

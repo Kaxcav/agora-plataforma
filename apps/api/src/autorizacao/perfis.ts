@@ -48,6 +48,9 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'impedimentos:parecer',
   'impedimentos:decidir',
   'agentes:declarar',
+  'imr:configurar',
+  'imr:medir',
+  'pagamentos:conferir',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -94,6 +97,9 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'impedimentos:registrar',
       'impedimentos:decidir',
       'agentes:declarar',
+      'imr:configurar',
+      'imr:medir',
+      'pagamentos:conferir',
     ],
   },
   {
@@ -120,6 +126,8 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'certidoes:registrar',
       'regularidade:consultar',
       'agentes:declarar',
+      'imr:medir',
+      'pagamentos:conferir',
     ],
   },
   {
@@ -141,6 +149,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'certidoes:registrar',
       'regularidade:consultar',
       'agentes:declarar',
+      'pagamentos:conferir',
     ],
   },
   {

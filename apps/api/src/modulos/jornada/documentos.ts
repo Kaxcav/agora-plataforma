@@ -526,6 +526,27 @@ function modeloNotaTecnica(d: DadosDocumento): ModeloDocumento {
 
 // ───────────────────────── Termo de referência ─────────────────────────
 
+/**
+ * Estrutura do instrumento de medição de resultado no TR de serviços (F7, RF-29): indicador, meta, mecanismo de
+ * cálculo, periodicidade e fonte, e faixas de ajuste do pagamento. Os valores ficam a definir pela equipe; no contrato,
+ * o IMR é configurado na aba "IMR e medições" com a mesma estrutura.
+ */
+function blocoImrTermoReferencia(): string[] {
+  return [
+    '',
+    '### Instrumento de medição de resultado (IMR)',
+    '',
+    'O pagamento será ajustado pelos indicadores abaixo (art. 6º, XXIII, "g"), medidos pela fiscalização em cada período, com a evidência registrada (art. 117). A glosa ajusta o pagamento ao resultado medido e não é sanção; a faixa que prever processo sancionatório apenas encaminha o caso à autoridade competente, assegurados o contraditório e a ampla defesa.',
+    '',
+    tabela(
+      ['Indicador', 'Meta', 'Mecanismo de cálculo', 'Periodicidade e fonte da medição', 'Faixas de ajuste do pagamento (glosa)'],
+      [[pendente('indicador'), pendente('meta'), pendente('fórmula do resultado'), pendente('periodicidade e fonte'), pendente('faixas e percentuais de glosa')]],
+    ),
+    '',
+    'O valor devido de cada nota fiscal será o preço contratado multiplicado pela quantidade recebida, com o ajuste do IMR do período; divergência entre a nota e o valor devido deverá ser corrigida ou justificada antes do atesto.',
+  ];
+}
+
 function modeloTr(d: DadosDocumento): ModeloDocumento {
   const { linha } = d.carga;
   const { dfd, edital, etp } = linha;
@@ -582,6 +603,7 @@ function modeloTr(d: DadosDocumento): ModeloDocumento {
     bem
       ? 'O pagamento será efetuado após o recebimento definitivo e o atesto da nota fiscal, observada a ordem cronológica de exigibilidade por fonte de recursos (art. 141). A regularidade fiscal e trabalhista será conferida antes de cada pagamento.'
       : 'A medição será mensal, com base nos níveis de serviço e nos indicadores previstos, e o pagamento ocorrerá após o atesto, observada a ordem cronológica de exigibilidade por fonte de recursos (art. 141).',
+    ...(bem ? [] : blocoImrTermoReferencia()),
     'Em caso de atraso imputável à Administração, o valor devido será atualizado monetariamente pelo IPCA, de forma pro rata, entre o adimplemento e o pagamento (art. 92, V).',
     '',
     '## h) Forma e critérios de seleção do fornecedor',

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardCheck, ShieldCheck } from 'lucide-react';
+import { ClipboardCheck, Scale, ShieldCheck } from 'lucide-react';
 import type { FiltroPagamentos, Pagamento } from '@agora/contratos';
 import { formatarData, formatarMoeda } from '@agora/dominio';
 import { useAtestarPagamento, usePagamentos } from '../../api/financeiro';
@@ -11,6 +11,7 @@ import {
   ConfirmarAcao,
   EstadoVazio,
   FalhaConsulta,
+  LinkBotao,
   ListaDefinicoes,
   Pagina,
   Paginacao,
@@ -25,6 +26,8 @@ import { CampoUasg } from '../compartilhado/CampoUasg';
 import { COLUNAS_PAGAMENTO } from '../compartilhado/colunasFinanceiro';
 import { chavesDe, opcoesDe, SITUACOES_PAGAMENTO } from '../compartilhado/rotulos';
 import { DialogoVerificarPagamento, PreviaRegularidadeAtesto } from './RegularidadePagamento';
+import { useConferenciaNota } from '../../api/imr';
+import { ResumoConferenciaAtesto } from './ResumoConferenciaAtesto';
 
 const FILTROS = ['busca', 'situacao', 'uasg'] as const;
 
@@ -37,6 +40,8 @@ export default function Pagamentos() {
   const [verificando, definirVerificando] = useState<Pagamento | null>(null);
   const podeAtestar = temPermissao('pagamentos:atestar');
   const podeVerificar = temPermissao('regularidade:consultar');
+  const podeConferir = temPermissao('pagamentos:conferir');
+  const conferenciaAlvo = useConferenciaNota(alvo?.id ?? null);
 
   const filtro: FiltroPagamentos = {
     busca: p.texto('busca'),
@@ -118,11 +123,23 @@ export default function Pagamentos() {
             atualizando={consulta.isFetching && consulta.data !== undefined}
             destaque={(pg) => (pg.situacao === 'atrasado' ? 'erro' : undefined)}
             acoes={
-              podeAtestar || podeVerificar
+              podeAtestar || podeVerificar || podeConferir
                 ? {
                     cabecalho: 'Ações',
-                    celula: (pg) =>
-                      pg.situacao === 'previsto' && podeAtestar ? (
+                    celula: (pg) => (
+                      <div className="linha">
+                      {(pg.situacao === 'previsto' || pg.situacao === 'atrasado') && podeConferir ? (
+                        <LinkBotao
+                          to={`/financeiro/pagamentos/${pg.id}/conferencia`}
+                          variante="secundario"
+                          tamanho="compacto"
+                          icone={Scale}
+                          aria-label={`Conferir a nota fiscal ${pg.notaFiscal} do contrato ${pg.contrato.numero}`}
+                        >
+                          Conferir nota
+                        </LinkBotao>
+                      ) : null}
+                      {pg.situacao === 'previsto' && podeAtestar ? (
                         <Botao
                           variante="secundario"
                           tamanho="compacto"
@@ -145,9 +162,11 @@ export default function Pagamentos() {
                         >
                           Verificar regularidade
                         </Botao>
-                      ) : (
+                      ) : (pg.situacao === 'previsto' || pg.situacao === 'atrasado') && podeConferir ? null : (
                         <span className="texto-pequeno texto-secundario">—</span>
-                      ),
+                      )}
+                      </div>
+                    ),
                   }
                 : undefined
             }
@@ -200,6 +219,7 @@ export default function Pagamentos() {
         processando={atestar.isPending}
         erro={atestar.error}
         largura="ampla"
+        confirmarDesabilitado={conferenciaAlvo.data ? !conferenciaAlvo.data.atesto.liberado : conferenciaAlvo.isPending}
       >
         {alvo ? (
           <ListaDefinicoes
@@ -214,6 +234,7 @@ export default function Pagamentos() {
             ]}
           />
         ) : null}
+        {alvo ? <ResumoConferenciaAtesto consulta={conferenciaAlvo} /> : null}
         {alvo ? <PreviaRegularidadeAtesto pagamentoId={alvo.id} /> : null}
       </ConfirmarAcao>
       {podeVerificar ? <DialogoVerificarPagamento pagamento={verificando} aoFechar={() => definirVerificando(null)} /> : null}

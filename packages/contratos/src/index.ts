@@ -125,7 +125,10 @@ export type Permissao =
   | 'impedimentos:registrar'
   | 'impedimentos:parecer'
   | 'impedimentos:decidir'
-  | 'agentes:declarar';
+  | 'agentes:declarar'
+  | 'imr:configurar'
+  | 'imr:medir'
+  | 'pagamentos:conferir';
 
 export interface UsuarioSessao {
   id: Id;
@@ -2564,3 +2567,226 @@ export interface PublicacaoPncp {
 // GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
 // POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)
+
+// ───────────────────────── IMR e conferência da nota fiscal (F7: RF-29 e RN-36) ─────────────────────────
+
+/** `percentual_razao`: numerador ÷ denominador × 100. `valor_medido`: o valor aferido (horas, ocorrências...). */
+export type FormaCalculoImr = 'percentual_razao' | 'valor_medido';
+/** `maior_igual`: meta atingida com resultado ≥ meta. `menor_igual`: resultado ≤ meta. */
+export type SentidoMetaImr = 'maior_igual' | 'menor_igual';
+export type PeriodicidadeImr = 'mensal' | 'bimestral' | 'trimestral' | 'semestral';
+
+/** Faixa de ajuste do pagamento: vale quando o resultado passa do `limite` para o lado de fora da meta. */
+export interface FaixaAjusteImr {
+  limite: number;
+  /** Glosa fixa, em % da base do indicador. */
+  percentualGlosa: number;
+  /** Glosa adicional por unidade além do limite, em % da base (0 = não há). */
+  percentualPorUnidade: number;
+  /** Encaminha para avaliar a abertura de processo sancionatório (decisão humana). */
+  encaminharSancionatorio: boolean;
+}
+
+export interface IndicadorImrContrato {
+  id: Id;
+  codigo: string;
+  nome: string;
+  formaCalculo: FormaCalculoImr;
+  /** Mecanismo de cálculo descrito em palavras. */
+  descricaoCalculo: string;
+  rotuloNumerador: string | null;
+  rotuloDenominador: string | null;
+  unidade: string;
+  sentidoMeta: SentidoMetaImr;
+  meta: number;
+  periodicidade: PeriodicidadeImr;
+  /** Primeira competência medida (AAAA-MM). */
+  inicioCompetencia: string;
+  fonteMedicao: string;
+  /** Itens do contrato que formam a base da glosa; vazio = todos os itens da nota. */
+  itensAlcancados: { id: Id; numero: number; descricao: string }[];
+  /** Em ordem de severidade (1 = mais branda). */
+  faixas: FaixaAjusteImr[];
+  tetoPercentual: number | null;
+  situacao: 'ativo' | 'encerrado';
+  /** Última competência medida, quando encerrado. */
+  encerradoApos: string | null;
+  justificativaEncerramento: string | null;
+  /** Com medições registradas, o indicador não é mais editado (só encerrado). */
+  temMedicoes: boolean;
+  criadoPor: UsuarioResumo | null;
+  criadoEm: InstanteISO;
+}
+
+export interface MedicaoImr {
+  id: Id;
+  indicador: { id: Id; codigo: string; nome: string; unidade: string };
+  competencia: string;
+  numerador: number | null;
+  denominador: number | null;
+  valorInformado: number | null;
+  resultado: number;
+  atingiuMeta: boolean;
+  /** Faixa aplicada (1 = mais branda); null sem glosa. */
+  faixa: number | null;
+  percentualGlosa: number;
+  encaminharSancionatorio: boolean;
+  memoriaCalculo: string[];
+  evidencia: string;
+  referenciaEvidencia: string | null;
+  observacao: string | null;
+  /** Pendência aberta para o gestor avaliar o encaminhamento sancionatório. */
+  pendenciaId: Id | null;
+  registradaPor: UsuarioResumo | null;
+  registradaEm: InstanteISO;
+}
+
+export interface CompetenciaImr {
+  competencia: string;
+  /** Indicadores com medição devida na competência e ainda sem registro. */
+  pendentes: { id: Id; codigo: string; nome: string }[];
+  medicoes: number;
+  /** Soma dos percentuais de glosa dos indicadores medidos (cada um incide sobre a sua base). */
+  percentualGlosaSomado: number;
+  pagamento: { id: Id; notaFiscal: string; situacao: SituacaoPagamento; valor: Centavos } | null;
+  conferencia: { situacao: SituacaoConferenciaNota; valorDevido: Centavos; glosaImr: Centavos } | null;
+}
+
+export interface ImrContrato {
+  contrato: { id: Id; numero: string };
+  indicadores: IndicadorImrContrato[];
+  /** Mais recentes primeiro. */
+  medicoes: MedicaoImr[];
+  /** Competências encerradas com medição devida, mais recentes primeiro. */
+  competencias: CompetenciaImr[];
+  itensContrato: { id: Id; numero: number; descricao: string; unidade: string }[];
+  resumo: { medicoes: number; naMeta: number; comGlosa: number; percentualNaMeta: number | null };
+  fundamento: string;
+  aviso: string;
+}
+
+export interface EntradaIndicadorImr {
+  codigo: string;
+  nome: string;
+  formaCalculo: FormaCalculoImr;
+  descricaoCalculo: string;
+  rotuloNumerador: string | null;
+  rotuloDenominador: string | null;
+  unidade: string;
+  sentidoMeta: SentidoMetaImr;
+  meta: number;
+  periodicidade: PeriodicidadeImr;
+  inicioCompetencia: string;
+  fonteMedicao: string;
+  itensAlcancados: Id[];
+  faixas: FaixaAjusteImr[];
+  tetoPercentual: number | null;
+}
+export interface EntradaEncerrarIndicadorImr {
+  /** Última competência em que o indicador vale (AAAA-MM). */
+  ultimaCompetencia: string;
+  justificativa: string;
+}
+export interface EntradaMedicaoImr {
+  indicadorId: Id;
+  competencia: string;
+  numerador?: number | null;
+  denominador?: number | null;
+  valor?: number | null;
+  /** Evidência da medição: relatório, sistema ou documento de onde vêm os números. */
+  evidencia: string;
+  /** Referência do documento da evidência (ex.: número SEI). */
+  referenciaEvidencia?: string | null;
+  observacao?: string | null;
+}
+export interface RespostaMedicaoImr {
+  medicao: MedicaoImr;
+  /** true quando a faixa previa encaminhamento sancionatório e a pendência do gestor foi aberta. */
+  pendenciaAberta: boolean;
+  /** Conferências de nota da competência ainda não atestadas e recalculadas com a nova glosa. */
+  conferenciasRecalculadas: number;
+}
+// GET /contratos/:id/imr (contratos:ler) → ImrContrato
+// POST /contratos/:id/imr/indicadores (imr:configurar) → ImrContrato (201)
+// PUT /contratos/:id/imr/indicadores/:indicadorId (imr:configurar; só sem medições) → ImrContrato
+// POST /contratos/:id/imr/indicadores/:indicadorId/encerrar (imr:configurar) → ImrContrato
+// POST /contratos/:id/imr/medicoes (imr:medir; competência já encerrada) → RespostaMedicaoImr (201)
+
+export type SituacaoConferenciaNota = 'conforme' | 'divergente' | 'justificada';
+export type TipoDivergenciaNota =
+  | 'preco_acima_contratado'
+  | 'quantidade_faturada_maior_que_recebida'
+  | 'quantidade_acima_do_saldo'
+  | 'soma_itens_diferente_do_total'
+  | 'medicao_imr_pendente'
+  | 'valor_nota_diferente_do_devido';
+
+export interface ItemConferenciaNota {
+  itemContratoId: Id;
+  numero: number;
+  descricao: string;
+  quantidadeRecebida: number;
+  quantidadeFaturada: number;
+  valorUnitarioContratado: Centavos;
+  valorUnitarioFaturado: Centavos;
+  /** Preço contratado × quantidade recebida. */
+  valorDevido: Centavos;
+  /** Preço cobrado × quantidade cobrada. */
+  valorFaturado: Centavos;
+}
+
+export interface ConferenciaNotaFiscal {
+  id: Id;
+  pagamentoId: Id;
+  competencia: string;
+  numeroNota: string;
+  emitidaEm: DataISO;
+  valorNota: Centavos;
+  itens: ItemConferenciaNota[];
+  valorBruto: Centavos;
+  glosas: { codigo: string; nome: string; percentual: number; base: Centavos; valor: Centavos }[];
+  glosaImr: Centavos;
+  valorDevido: Centavos;
+  /** Valor da nota menos o valor devido. */
+  diferenca: Centavos;
+  /** O menor entre o valor da nota e o valor devido. */
+  valorALiquidar: Centavos;
+  divergencias: { tipo: TipoDivergenciaNota; mensagem: string; itemContratoId: Id | null }[];
+  situacao: SituacaoConferenciaNota;
+  justificativa: string | null;
+  justificadaPor: UsuarioResumo | null;
+  justificadaEm: InstanteISO | null;
+  memoriaCalculo: string[];
+  fundamento: string;
+  aviso: string;
+  /** Cada novo registro (correção da nota) ou recálculo pela medição aumenta a versão. */
+  versao: number;
+  conferidaPor: UsuarioResumo | null;
+  conferidaEm: InstanteISO;
+}
+
+export interface ContextoConferenciaNota {
+  pagamento: Pagamento;
+  contrato: { id: Id; numero: string; objeto: string; temImr: boolean };
+  itensContrato: { id: Id; numero: number; descricao: string; unidade: string; quantidade: number; valorUnitario: Centavos; saldoQuantidade: number }[];
+  /** Glosas e medições pendentes do IMR na competência do pagamento. */
+  imr: { competencia: string; glosas: { codigo: string; nome: string; percentual: number; itensAlcancados: Id[] }[]; pendentes: { codigo: string; nome: string }[] };
+  conferencia: ConferenciaNotaFiscal | null;
+  /** Situação do atesto quanto à conferência (RN-36); a regularidade do contratado (RN-23) é verificada no próprio atesto. */
+  atesto: { liberado: boolean; motivo: string | null; /** A parcela ainda não foi atestada: a nota pode ser conferida, corrigida ou justificada. */ parcelaEmAberto: boolean };
+  /** O registro do recebimento definitivo (art. 140) entra aqui quando o módulo de recebimentos estiver disponível; hoje, a quantidade recebida é informada na conferência. */
+  recebimentoDefinitivo: null;
+}
+export interface EntradaConferenciaNota {
+  numeroNota: string;
+  emitidaEm: DataISO;
+  valorNota: Centavos;
+  itens: { itemContratoId: Id; quantidadeRecebida: number; quantidadeFaturada: number; valorUnitarioFaturado: Centavos }[];
+}
+export interface EntradaJustificativaConferencia {
+  justificativa: string;
+}
+// GET /pagamentos/:id/conferencia (pagamentos:ler) → ContextoConferenciaNota
+// POST /pagamentos/:id/conferencia (pagamentos:conferir; só pagamento previsto) → ContextoConferenciaNota: registra ou corrige a nota
+// POST /pagamentos/:id/conferencia/justificativa (pagamentos:conferir; só conferência divergente) → ContextoConferenciaNota
+// POST /pagamentos/:id/atestar: 422 enquanto a conferência estiver divergente sem justificativa ou, em contrato com IMR, sem conferência.

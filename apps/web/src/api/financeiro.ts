@@ -52,6 +52,8 @@ export function useAtestarPagamento() {
       void cliente.invalidateQueries({ queryKey: ['contratos', 'detalhe'] });
       void cliente.invalidateQueries({ queryKey: ['pendencias'] });
       void cliente.invalidateQueries({ queryKey: ['regularidade'] });
+      void cliente.invalidateQueries({ queryKey: ['conferencia-nota'] });
+      void cliente.invalidateQueries({ queryKey: ['imr'] });
     },
   });
 }
