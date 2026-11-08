@@ -1,9 +1,10 @@
 import type { Sincronizacao } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { exigir, sessaoDe } from '../../autorizacao/exigir.ts';
+import { exigir } from '../../autorizacao/exigir.ts';
 import { FONTES_EXECUTAVEIS } from '../../integracoes/conector.ts';
-import { executarSincronizacao, listarSincronizacoes } from '../../integracoes/servico.ts';
+import { listarSincronizacoes } from '../../integracoes/servico.ts';
+import { situacaoAposPedido, solicitarSincronizacao } from '../fila/sincronizacao.ts';
 
 const esquemaFonte = z.object({ fonte: z.enum(FONTES_EXECUTAVEIS) });
 
@@ -14,8 +15,13 @@ export async function rotasSincronizacoes(app: FastifyInstance): Promise<void> {
     listarSincronizacoes(ctx.banco, ctx.config.integracoes),
   );
 
-  app.post('/sincronizacoes/:fonte/executar', { preHandler: exigir('integracoes:executar') }, async (request): Promise<Sincronizacao> => {
+  // A API só publica a tarefa na fila (RNF-07); o trabalhador executa o conector. Com o trabalhador embutido, a
+  // resposta espera a execução (200); com o trabalhador à parte, volta 202 com a sincronização "executando".
+  app.post('/sincronizacoes/:fonte/executar', { preHandler: exigir('integracoes:executar') }, async (request, reply): Promise<Sincronizacao> => {
     const { fonte } = esquemaFonte.parse(request.params);
-    return executarSincronizacao(ctx, fonte, { usuarioId: sessaoDe(request).usuario.id, ipHash: request.ipHash });
+    const tarefa = await solicitarSincronizacao(ctx, app.fila, fonte, request);
+    const { pendente, sincronizacao } = await situacaoAposPedido(ctx, fonte, await app.fila.aguardar(tarefa.id));
+    if (pendente) reply.code(202);
+    return sincronizacao;
   });
 }

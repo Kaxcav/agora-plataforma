@@ -22,6 +22,7 @@ import {
 } from '../../componentes';
 import { useSessao } from '../../sessao/ContextoSessao';
 import { abreviarHash, contar, formatarInstante, formatarNumero } from '../../utilitarios/formatacao';
+import FilaIntegracoes from './FilaIntegracoes';
 
 const SITUACOES: Record<Sincronizacao['situacao'], { rotulo: string; tom: TomEtiqueta }> = {
   ok: { rotulo: 'Concluída', tom: 'sucesso' },
@@ -236,6 +237,7 @@ export default function Integracoes() {
           );
         }}
       </ConteudoConsulta>
+      <FilaIntegracoes podeExecutar={podeExecutar} />
       {podeExecutar ? (
         <ConfirmarAcao
           aberto={alvo !== null}

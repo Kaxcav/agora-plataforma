@@ -2491,3 +2491,76 @@ export interface VinculosFornecedor {
   extensoes: ExtensaoSancao[];
 }
 // GET /impedimentos/sucessoes (impedimentos:ler) → SinalVinculo[] (possíveis sucessões de empresas impedidas ou inidôneas)
+// ───────────────────────── Fila de integrações (RNF-07) ─────────────────────────
+
+/** Tarefa da fila durável de integrações (RabbitMQ ou PostgreSQL), executada pelo serviço trabalhador. */
+export type TipoTarefaFila = 'sincronizacao' | 'pncp.compra' | 'pncp.arquivo' | 'pncp.contrato';
+/** 'pendente' inclui a espera de nova tentativa (`tentativas` > 0 e `proximaTentativaEm`); 'erro' é a fila de erro (dead letter). */
+export type SituacaoTarefaFila = 'pendente' | 'executando' | 'concluida' | 'erro';
+export interface TarefaFila {
+  id: Id;
+  tipo: TipoTarefaFila;
+  descricao: string;
+  situacao: SituacaoTarefaFila;
+  tentativas: number;
+  maximoTentativas: number;
+  proximaTentativaEm: InstanteISO | null;
+  ultimoErro: string | null;
+  chaveIdempotencia: string;
+  recurso: { tipo: 'processo' | 'contrato' | 'sincronizacao'; id: string } | null;
+  uasg: string | null;
+  criadaEm: InstanteISO;
+  atualizadaEm: InstanteISO;
+  concluidaEm: InstanteISO | null;
+}
+export interface ResumoFila {
+  transporte: 'rabbitmq' | 'postgres';
+  trabalhador: 'embutido' | 'separado';
+  pendentes: number;
+  executando: number;
+  comErro: number;
+  concluidasUltimas24h: number;
+  politica: { maximoTentativas: number; esperaBaseMs: number; esperaMaximaMs: number };
+}
+// GET /fila/resumo → ResumoFila ; GET /fila/tarefas?situacao&pagina&tamanhoPagina → Pagina<TarefaFila> (integracoes:executar ou admin:usuarios; escopo de UASG)
+// POST /fila/tarefas/:id/reprocessar → TarefaFila (integracoes:executar; só tarefas na fila de erro; auditado)
+// POST /sincronizacoes/:fonte/executar publica a tarefa: 200 com o resultado quando o trabalhador é embutido; 202 (situação 'executando') quando roda à parte.
+
+// ───────────────────────── Publicação no PNCP (RF-19) ─────────────────────────
+
+export type SituacaoEnvioPncp = 'na_fila' | 'nova_tentativa' | 'enviando' | 'publicado' | 'erro';
+export interface EnvioPncp {
+  id: Id;
+  tarefaId: Id;
+  objeto: 'compra' | 'arquivo' | 'contrato';
+  titulo: string;
+  /** Código da tabela "Tipo de documento" do PNCP (2 = Edital, 3 = Minuta do contrato, 4 = Termo de referência). */
+  tipoDocumentoPncp: number | null;
+  situacao: SituacaoEnvioPncp;
+  /** 'online' = PNCP real (treinamento ou produção); 'offline' = simulação determinística. */
+  modo: 'offline' | 'online';
+  tentativas: number;
+  maximoTentativas: number;
+  proximaTentativaEm: InstanteISO | null;
+  ultimoErro: string | null;
+  /** Endereço devolvido pelo PNCP no 201 (`location`) ou protocolo simulado. */
+  protocolo: string | null;
+  numeroControle: string | null;
+  /** SHA-256 do arquivo enviado (proveniência). */
+  hashArquivo: string | null;
+  enviadoEm: InstanteISO | null;
+}
+export interface PublicacaoPncp {
+  processoId: Id;
+  numeroControle: string | null;
+  /** Registro oficial no portal do PNCP — só quando a publicação foi feita no PNCP real. */
+  linkPncp: string | null;
+  /** Página pública da Ágora com o inteiro teor, sem cadastro nem login (art. 25, § 3º). */
+  linkPublico: string | null;
+  envios: EnvioPncp[];
+  /** Divulgação do contrato (art. 94), quando já solicitada. */
+  contrato: EnvioPncp | null;
+}
+// GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
+// POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
+// POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)

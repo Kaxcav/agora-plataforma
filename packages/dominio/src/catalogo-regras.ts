@@ -841,6 +841,30 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: ['jornada.equipe', 'impedimentos.declaracao', 'impedimentos.processo'],
     implementacao: 'verificarDeclaracaoAgente, verificarDeclaracoesEquipe; api: POST /impedimentos/declaracoes; PUT /processos/:id/equipe',
   },
+  {
+    id: 'RNF-07',
+    tipo: 'RNF',
+    titulo: 'Fila de integrações com novas tentativas e fila de erro',
+    descricao:
+      'As integrações com sistemas externos (publicação no PNCP e sincronizações) passam por uma fila durável, em RabbitMQ ou no próprio PostgreSQL, consumida por um serviço trabalhador separado da API. Cada tarefa tem chave de idempotência, para que a mesma operação nunca seja feita duas vezes. Falhas transitórias (indisponibilidade, manutenção programada, limite de requisições) geram novas tentativas automáticas com espera exponencial e limite; falhas definitivas e tarefas que esgotam as tentativas vão para a fila de erro, visível na tela de integrações, onde podem ser reprocessadas com registro na trilha de auditoria. Assim a janela de manutenção do PNCP não faz perder transações.',
+    fundamento: 'Caderno do cliente, RNF-04 e matriz de riscos (R04); Lei 14.133/2021, art. 174, § 2º',
+    etapa: null,
+    telas: ['admin'],
+    implementacao:
+      'esperaNovaTentativa, decidirDestinoFalha, classificarRespostaHttp, chaveIdempotencia; api: GET /fila/resumo; GET /fila/tarefas; POST /fila/tarefas/:id/reprocessar; trabalhador (apps/api/src/trabalhador.ts)',
+  },
+  {
+    id: 'RF-19',
+    tipo: 'RF',
+    titulo: 'Publicação no PNCP pela fila de integrações',
+    descricao:
+      'Publica no PNCP a contratação com o edital, depois os anexos aprovados (termo de referência e minuta do contrato) e, na etapa do contrato, o próprio contrato, sempre pela fila de integrações e com o login do sistema credenciado no PNCP. O servidor grava o protocolo devolvido pelo PNCP, o número de controle, o hash de cada arquivo enviado e o modo (real ou simulado), e a situação de cada envio aparece na etapa de publicação da jornada, com o link público do edital. Recusas do PNCP não são repetidas automaticamente e ficam na fila de erro para correção; indisponibilidades são reenviadas sozinhas.',
+    fundamento: 'Lei 14.133/2021, art. 54, art. 94 e art. 174, § 2º; Manual de Integração PNCP 2.2.x',
+    etapa: 5,
+    telas: ['jornada.detalhe'],
+    implementacao:
+      'interpretarLocalizacaoPncp, numeroControlePncp, codigosContratacaoPncp, tituloDocumentoPncp, prazoDivulgacaoContratoPncp; api: POST /processos/:id/publicar; GET /processos/:id/publicacao-pncp; POST /processos/:id/contrato/publicar-pncp',
+  },
 ]);
 
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

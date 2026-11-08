@@ -42,6 +42,15 @@ export interface Config {
   ocr: { url: string | null; timeoutMs: number };
   /** Conector do quadro societário (QSA) e do cadastro do CNPJ: espelho dos dados abertos da Receita Federal no órgão. */
   qsa: { url: string | null; chave: string | null };
+  /** Fila de integrações (RNF-07): RabbitMQ quando `url` existe; senão a fila durável em PostgreSQL. */
+  fila: {
+    url: string | null;
+    trabalhador: 'embutido' | 'separado';
+    trabalhadorPorta: number;
+    politica: { maximoTentativas: number; esperaBaseMs: number; esperaMaximaMs: number };
+  };
+  /** Publicação no PNCP (RF-19): API de manutenção e login do sistema credenciado. */
+  pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
 }
 
 export interface ConfigSmtp {
@@ -143,6 +152,15 @@ const esquemaAmbiente = z.object({
   AGORA_OCR_TIMEOUT_SEGUNDOS: z.coerce.number().int().min(5).max(900).default(120),
   AGORA_QSA_URL: textoOpcional,
   AGORA_QSA_CHAVE: textoOpcional,
+  AGORA_FILA_URL: textoOpcional,
+  AGORA_TRABALHADOR: z.enum(['embutido', 'separado']).optional(),
+  AGORA_TRABALHADOR_PORTA: z.coerce.number().int().min(1).max(65535).default(3001),
+  AGORA_FILA_TENTATIVAS: z.coerce.number().int().min(1).max(100).default(10),
+  AGORA_FILA_ESPERA_MS: z.coerce.number().int().min(0).max(86_400_000).default(30_000),
+  AGORA_FILA_ESPERA_MAXIMA_MS: z.coerce.number().int().min(0).max(86_400_000).default(3_600_000),
+  AGORA_PNCP_PUBLICACAO_URL: textoOpcional,
+  AGORA_PNCP_USUARIO: textoOpcional,
+  AGORA_PNCP_SENHA: textoOpcional,
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -251,6 +269,18 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_QSA_URL !== null && !urlValida(e.AGORA_QSA_URL)) {
     problemas.push('AGORA_QSA_URL: URL inválida (use http:// ou https://)');
   }
+  if (e.AGORA_FILA_URL !== null && !/^amqps?:\/\/[^\s]+$/.test(e.AGORA_FILA_URL)) {
+    problemas.push('AGORA_FILA_URL: use uma URL amqp:// ou amqps:// do RabbitMQ, com usuário, senha, servidor, porta (5672) e vhost');
+  }
+  if (e.AGORA_FILA_ESPERA_MAXIMA_MS < e.AGORA_FILA_ESPERA_MS) {
+    problemas.push('AGORA_FILA_ESPERA_MAXIMA_MS: deve ser maior ou igual a AGORA_FILA_ESPERA_MS');
+  }
+  if (e.AGORA_PNCP_PUBLICACAO_URL !== null && !urlValida(e.AGORA_PNCP_PUBLICACAO_URL)) {
+    problemas.push('AGORA_PNCP_PUBLICACAO_URL: URL inválida (ex.: https://treina.pncp.gov.br/api/pncp)');
+  }
+  if ((e.AGORA_PNCP_USUARIO === null) !== (e.AGORA_PNCP_SENHA === null)) {
+    problemas.push('AGORA_PNCP_USUARIO e AGORA_PNCP_SENHA: defina os dois juntos (ou nenhum)');
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -305,5 +335,19 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     antivirusUrl: e.AGORA_ANTIVIRUS_URL,
     ocr: { url: e.AGORA_OCR_URL === null ? null : e.AGORA_OCR_URL.replace(/\/+$/, ''), timeoutMs: e.AGORA_OCR_TIMEOUT_SEGUNDOS * 1000 },
     qsa: { url: e.AGORA_QSA_URL === null ? null : e.AGORA_QSA_URL.replace(/\/+$/, ''), chave: e.AGORA_QSA_CHAVE },
+    fila: {
+      url: e.AGORA_FILA_URL,
+      // Os manifestos de deploy/ (compose e Kubernetes) rodam o trabalhador à parte (AGORA_TRABALHADOR=separado).
+      // Sem a variável, ele roda embutido na API: um contêiner único nunca fica com tarefas sem quem as execute.
+      trabalhador: e.AGORA_TRABALHADOR ?? 'embutido',
+      trabalhadorPorta: e.AGORA_TRABALHADOR_PORTA,
+      politica: { maximoTentativas: e.AGORA_FILA_TENTATIVAS, esperaBaseMs: e.AGORA_FILA_ESPERA_MS, esperaMaximaMs: e.AGORA_FILA_ESPERA_MAXIMA_MS },
+    },
+    pncpPublicacao: {
+      // Sem URL explícita: ambiente de treinamento do PNCP, salvo em produção.
+      url: (e.AGORA_PNCP_PUBLICACAO_URL ?? (producao ? 'https://pncp.gov.br/api/pncp' : 'https://treina.pncp.gov.br/api/pncp')).replace(/\/+$/, ''),
+      usuario: e.AGORA_PNCP_USUARIO,
+      senha: e.AGORA_PNCP_SENHA,
+    },
   };
 }

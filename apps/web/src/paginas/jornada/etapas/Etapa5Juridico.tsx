@@ -12,6 +12,7 @@ import { calcular, ErroOperacao, mesmoConteudo, Requisitos, textoOuNulo, type Re
 import { DocumentosEtapa } from '../Documentos';
 import { CONCLUSOES_PARECER, CRITERIOS_JULGAMENTO, REGIMES_EXECUCAO, SITUACOES_PUBLICACAO, TIPOS_OBJETO, type ConclusaoParecer } from '../rotulos';
 import type { PropsEtapa } from './tipos';
+import EnviosPncp from './EnviosPncp';
 
 type SituacaoItem = 'atendido' | 'nao_atendido' | 'nao_verificado';
 
@@ -275,6 +276,7 @@ export default function Etapa5Juridico({ processo, atual }: PropsEtapa) {
             { termo: 'Identificador PNCP', valor: pub.idPncp ? <span className="mono">{pub.idPncp}</span> : 'Atribuído após a publicação' },
           ]}
         />
+        <EnviosPncp processo={processo} />
         <div className="jornada-prazo" aria-live="polite">
           {pub.dataMinimaPropostas ? (
             <>

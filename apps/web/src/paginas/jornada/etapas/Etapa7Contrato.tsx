@@ -12,6 +12,7 @@ import { Alerta, Botao, ConfirmarAcao, ConteudoConsulta, EsqueletoTabela, LinkBo
 import { ChecklistRegularidade } from '../../regularidade/ChecklistRegularidade';
 import { ErroOperacao } from '../comum';
 import type { PropsEtapa } from './tipos';
+import DivulgacaoContratoPncp from './DivulgacaoContratoPncp';
 
 /** Checklist de regularidade do vencedor (RF-20), com a última consulta registrada; a trava refaz a consulta. */
 function ChecklistVencedor({ fornecedorId }: { fornecedorId: string | null }) {
@@ -62,6 +63,7 @@ export default function Etapa7Contrato({ processo, editavel }: PropsEtapa) {
             </p>
           </Alerta>
         </div>
+        <DivulgacaoContratoPncp processo={processo} />
         <p className="texto-secundario">
           A partir daqui, a execução é acompanhada no detalhe do contrato: plano de gestão, empenhos, pagamentos em ordem cronológica e
           aditivos (art. 125).

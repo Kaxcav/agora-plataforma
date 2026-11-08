@@ -1,6 +1,8 @@
-# Ágora + PostgreSQL 16 na infraestrutura do órgão.
-#   cp .env.exemplo .env   (defina AGORA_SEGREDO_SESSAO e POSTGRES_PASSWORD)
+# Ágora + PostgreSQL 16 + RabbitMQ (fila de integrações) na infraestrutura do órgão.
+#   cp .env.exemplo .env   (defina AGORA_SEGREDO_SESSAO, POSTGRES_PASSWORD e RABBITMQ_PASSWORD)
 #   docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
+# Serviços: banco (PostgreSQL), fila (RabbitMQ), agora (API + front-end; só publica as tarefas) e
+# trabalhador (consome a fila e executa os conectores e a publicação no PNCP — RNF-07).
 name: agora
 
 services:
@@ -29,9 +31,13 @@ services:
     depends_on:
       banco:
         condition: service_healthy
+      fila:
+        condition: service_healthy
     environment:
+      AGORA_FILA_URL: amqp://agora:${RABBITMQ_PASSWORD}@fila:5672/agora
+      AGORA_TRABALHADOR: separado
       AGORA_AMBIENTE: ${AGORA_AMBIENTE:-demonstracao}
-      AGORA_BANCO_URL: postgres://agora:${POSTGRES_PASSWORD}@banco:5432/agora
+      AGORA_BANCO_URL: &banco_url postgres://agora:${POSTGRES_PASSWORD}@banco:5432/agora
       AGORA_SEGREDO_SESSAO: ${AGORA_SEGREDO_SESSAO:?defina AGORA_SEGREDO_SESSAO no .env}
       AGORA_COOKIE_SEGURO: ${AGORA_COOKIE_SEGURO:-false}
       AGORA_SEED_DEMONSTRACAO: ${AGORA_SEED_DEMONSTRACAO:-true}
@@ -86,9 +92,71 @@ services:
     cap_drop: [ALL]
     networks: [interna]
 
+  # Fila de integrações (RNF-07): filas duráveis, esperas de nova tentativa por TTL e fila de erro.
+  fila:
+    image: rabbitmq:3.13-alpine
+    restart: unless-stopped
+    hostname: fila
+    environment:
+      RABBITMQ_DEFAULT_USER: agora
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?defina RABBITMQ_PASSWORD no .env}
+      RABBITMQ_DEFAULT_VHOST: agora
+    volumes:
+      - dados_fila:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks: [interna]
+
+  # Serviço trabalhador: mesma imagem, entrada própria. Consome a fila e executa os conectores e a publicação no PNCP.
+  trabalhador:
+    image: agora:1.0.0
+    restart: unless-stopped
+    command: ["node", "apps/api/dist/trabalhador.js"]
+    depends_on:
+      banco:
+        condition: service_healthy
+      fila:
+        condition: service_healthy
+      agora:
+        condition: service_started
+    environment:
+      AGORA_AMBIENTE: ${AGORA_AMBIENTE:-demonstracao}
+      AGORA_BANCO_URL: *banco_url
+      AGORA_SEGREDO_SESSAO: ${AGORA_SEGREDO_SESSAO:?defina AGORA_SEGREDO_SESSAO no .env}
+      AGORA_FILA_URL: amqp://agora:${RABBITMQ_PASSWORD}@fila:5672/agora
+      AGORA_TRABALHADOR_PORTA: "3001"
+      AGORA_INTEGRACOES: ${AGORA_INTEGRACOES:-offline}
+      AGORA_ORGAO_CNPJ: ${AGORA_ORGAO_CNPJ:-}
+      AGORA_PNCP_PUBLICACAO_URL: ${AGORA_PNCP_PUBLICACAO_URL:-}
+      AGORA_PNCP_USUARIO: ${AGORA_PNCP_USUARIO:-}
+      AGORA_PNCP_SENHA: ${AGORA_PNCP_SENHA:-}
+      AGORA_ORGAO_NOME: ${AGORA_ORGAO_NOME:-Ministério da Justiça e Segurança Pública}
+      AGORA_ORGAO_SIGLA: ${AGORA_ORGAO_SIGLA:-MJSP}
+      AGORA_LOG_NIVEL: ${AGORA_LOG_NIVEL:-info}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/saude/pronto').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks: [interna]
+
 volumes:
   dados_banco:
   arquivos_agora:
+  dados_fila:
 
 networks:
   interna:

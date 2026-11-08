@@ -69,6 +69,12 @@ Regras de camada: `apps/web` só importa `@agora/contratos`, `@agora/dominio` e 
 | `AGORA_LIMITE_REQUISICOES_MINUTO` | `300` | limite global por IP na API |
 | `AGORA_WEB_DIR` | `apps/web/dist` | diretório do front-end compilado |
 | `AGORA_QSA_URL`, `AGORA_QSA_CHAVE` | vazio | espelho dos dados abertos do CNPJ no órgão (quadro societário e cadastro, RIA-10); só com `AGORA_INTEGRACOES=online` |
+| `AGORA_FILA_URL` | vazio | `amqp://…` usa RabbitMQ na fila de integrações (RNF-07); vazio usa a fila durável no PostgreSQL |
+| `AGORA_TRABALHADOR` | `embutido` | `embutido` (o trabalhador da fila roda na API) \| `separado` (a API só publica; `node apps/api/dist/trabalhador.js` executa) |
+| `AGORA_TRABALHADOR_PORTA` | `3001` | sondas `/saude/vivo` e `/saude/pronto` do serviço trabalhador |
+| `AGORA_FILA_TENTATIVAS`, `AGORA_FILA_ESPERA_MS`, `AGORA_FILA_ESPERA_MAXIMA_MS` | `10`, `30000`, `3600000` | novas tentativas com espera exponencial e teto |
+| `AGORA_PNCP_PUBLICACAO_URL` | treinamento (produção: `https://pncp.gov.br/api/pncp`) | API de manutenção do PNCP (publicação, RF-19) |
+| `AGORA_PNCP_USUARIO`, `AGORA_PNCP_SENHA` | vazio | login do sistema credenciado no PNCP (os dois juntos) |
 
 Configuração validada com zod na inicialização; falha → o processo encerra com mensagem clara.
 
@@ -148,6 +154,13 @@ Interface `Conector { fonte: FonteDados; conjunto: string; executar(ctx): Promis
 - `offline`: regenera o snapshot sintético do conjunto (idempotente) e registra proveniência.
 - `online`: PNCP — API pública de consulta (`https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=AAAAMMDD&dataFinal=AAAAMMDD&cnpjOrgao=…&pagina=N`), timeout 15 s, 2 novas tentativas com espera exponencial, limite de páginas, gravação em staging e *upsert* idempotente que nunca sobrescreve campos editados por usuários. Proveniência: fonte, horário, hash SHA-256 do conteúdo recebido, quantidade.
 - Nunca há proxy aberto: o navegador não chama nem repassa requisições para APIs externas.
+- Fila de integrações (RNF-07; `apps/api/src/fila/`):
+  - a API só publica tarefas, na transação da ação de negócio, com chave de idempotência;
+  - o serviço trabalhador (`src/trabalhador.ts`, ou embutido na API) executa as sincronizações e a publicação no PNCP (RF-19);
+  - falhas transitórias geram novas tentativas com espera exponencial;
+  - recusas e tentativas esgotadas vão para a fila de erro, reprocessável na tela de integrações;
+  - transportes: RabbitMQ ou a tabela `fila_tarefas`.
+  - Detalhes em `docs/entregas/frente-b-integracoes.md`.
 
 ## 7. IA (opcional)
 

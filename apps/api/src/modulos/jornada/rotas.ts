@@ -46,7 +46,6 @@ import {
   assinarNaArvore,
   avancarEtapa,
   carregarDesignaveis,
-  cnpjDoOrgao,
   criarContratoDoProcesso,
   definirModalidade,
   exigirEtapa,
@@ -61,11 +60,12 @@ import {
   montarDisputa,
   obterDocumentoParaAprovar,
   prepararDocumento,
-  publicarOffline,
   tipoDocumentoDaArvore,
   type ContextoJornada,
 } from './servico.ts';
 import type { CestaArmazenada, CotacaoArmazenada, LinhaProcesso, ParametrosEdital, TipoDocumento } from './tipos.ts';
+import type { LinhaTarefa } from '../../fila/tipos.ts';
+import { solicitarPublicacaoEdital } from '../publicacao-pncp/servico.ts';
 
 // ───────────────────────── esquemas ─────────────────────────
 
@@ -281,6 +281,8 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
   async function alterar(
     request: FastifyRequest,
     acao: (tx: Transacao, linha: LinhaProcesso, c: ContextoJornada) => Promise<EventoProcesso>,
+    /** Depois da confirmação da transação (ex.: avisar a fila de integrações e esperar o trabalhador). */
+    aposConfirmar?: () => Promise<void>,
   ): Promise<ProcessoDetalhe> {
     const id = idDaRota(request.params);
     const escopo = escopoUasgs(sessaoDe(request));
@@ -297,6 +299,7 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
         dados: { numeroSei: linha.numero_sei, etapa: linha.etapa_atual, ...evento.dados },
       });
     });
+    await aposConfirmar?.();
     return responder(request, id);
   }
 
@@ -727,23 +730,44 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // Publicação no PNCP pela fila de integrações (RF-19, RNF-07): a rota grava o pedido; o trabalhador envia a compra
+  // com o edital, grava o protocolo e o número de controle e fixa a data mínima das propostas (art. 55).
   app.post('/processos/:id/publicar', publicacao, async (request) => {
-    const cnpj = await cnpjDoOrgao(ctx.banco, ctx.config.orgao.cnpj);
-    return alterar(request, async (tx, linha, c) => {
-      exigirEtapa(linha, 5, 'A publicação do edital');
-      if (linha.publicacao.pncp === 'publicado') throw regraNegocio('O edital já foi publicado no PNCP.');
-      const conclusao = linha.parecer.conclusao;
-      if (conclusao !== 'favoravel' && conclusao !== 'favoravel_com_ressalvas') {
-        throw regraNegocio('O edital só pode ser publicado após o parecer jurídico favorável (art. 53).', [{ campo: 'RF-15', mensagem: 'Parecer jurídico favorável pendente' }]);
-      }
-      const resultado = publicarOffline(linha, cnpj, c);
-      await gravarJson(tx, linha.id, 'publicacao', resultado.publicacao, c.agora);
-      return {
-        acao: 'publicar',
-        resumo: `Publicou o edital no PNCP e o extrato no DOU (fila offline); propostas a partir de ${resultado.publicacao.dataMinimaPropostas ?? '—'}`,
-        dados: { fila: 'offline', ...resultado.publicacao, diasUteis: resultado.diasUteis, fundamento: resultado.fundamento },
-      };
-    });
+    const sessao = sessaoDe(request);
+    const enviadas: LinhaTarefa[] = [];
+    return alterar(
+      request,
+      async (tx, linha, c) => {
+        exigirEtapa(linha, 5, 'A publicação do edital');
+        if (linha.publicacao.pncp === 'publicado') throw regraNegocio('O edital já foi publicado no PNCP.');
+        const conclusao = linha.parecer.conclusao;
+        if (conclusao !== 'favoravel' && conclusao !== 'favoravel_com_ressalvas') {
+          throw regraNegocio('O edital só pode ser publicado após o parecer jurídico favorável (art. 53).', [{ campo: 'RF-15', mensagem: 'Parecer jurídico favorável pendente' }]);
+        }
+        const pedido = await solicitarPublicacaoEdital(tx, app.fila, linha, sessao.usuario.id, ctx.config.integracoes, c.agora);
+        if (!pedido.nova && !pedido.reaberta) throw regraNegocio('O edital já está na fila de publicação do PNCP.');
+        enviadas.push(pedido.tarefa);
+        await gravarJson(tx, linha.id, 'publicacao', { ...linha.publicacao, pncp: 'na_fila', dou: 'na_fila' }, c.agora);
+        return {
+          acao: 'publicar',
+          resumo: pedido.reaberta
+            ? 'Reenviou o edital ao PNCP: a publicação que estava na fila de erro voltou para a fila de integrações'
+            : 'Enviou o edital e os anexos aprovados para publicação no PNCP pela fila de integrações (extrato no DOU simulado)',
+          dados: {
+            fila: app.fila.driver.transporte,
+            tarefaId: pedido.tarefa.id,
+            chaveIdempotencia: pedido.tarefa.chave_idempotencia,
+            modo: ctx.config.integracoes,
+            reprocessada: pedido.reaberta,
+          },
+        };
+      },
+      async () => {
+        await app.fila.despachar(enviadas);
+        const [tarefa] = enviadas;
+        if (tarefa) await app.fila.aguardar(tarefa.id);
+      },
+    );
   });
 
   // ───────── etapa 6 ─────────

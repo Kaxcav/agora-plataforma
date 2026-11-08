@@ -1,0 +1,185 @@
+# Fila de integrações (RNF-07) em Kubernetes: RabbitMQ e o serviço trabalhador da Ágora.
+# A API (agora.yaml) só publica as tarefas; o trabalhador consome a fila e executa os conectores e a publicação no PNCP.
+#
+# 1) Segredos (fora do repositório, de preferência a partir do cofre do órgão; use senhas só com letras e números):
+#      kubectl -n agora create secret generic agora-fila \
+#        --from-literal=RABBITMQ_DEFAULT_USER=agora \
+#        --from-literal=RABBITMQ_DEFAULT_PASS="<senha do RabbitMQ>"
+#    e acrescente ao segredo da aplicação (agora-segredos) a URL da fila e o login do sistema credenciado no PNCP:
+#      AGORA_FILA_URL="amqp://agora:<senha do RabbitMQ>@agora-fila:5672/agora"
+#      AGORA_PNCP_USUARIO="<login do sistema no PNCP>"   AGORA_PNCP_SENHA="<senha do sistema no PNCP>"
+# 2) kubectl apply -f deploy/k8s/agora.yaml -f deploy/k8s/fila-trabalhador.yaml
+# Para alta disponibilidade do próprio RabbitMQ (cluster de 3 nós, filas de quórum), prefira o RabbitMQ Cluster
+# Operator do órgão; este StatefulSet de um nó atende à homologação e a órgãos de menor porte.
+apiVersion: v1
+kind: Service
+metadata:
+  name: agora-fila
+  namespace: agora
+spec:
+  selector: { app: agora-fila }
+  ports:
+    - { name: amqp, port: 5672, targetPort: amqp }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: agora-fila
+  namespace: agora
+spec:
+  serviceName: agora-fila
+  replicas: 1
+  selector:
+    matchLabels: { app: agora-fila }
+  template:
+    metadata:
+      labels: { app: agora-fila }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3.13-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: amqp, containerPort: 5672 }
+          env:
+            - { name: RABBITMQ_DEFAULT_VHOST, value: agora }
+          envFrom:
+            - secretRef: { name: agora-fila }
+          readinessProbe:
+            exec: { command: ["rabbitmq-diagnostics", "-q", "check_port_connectivity"] }
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 20
+          livenessProbe:
+            exec: { command: ["rabbitmq-diagnostics", "-q", "ping"] }
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 20
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: dados, mountPath: /var/lib/rabbitmq }
+  volumeClaimTemplates:
+    - metadata:
+        name: dados
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: { storage: 5Gi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agora-trabalhador
+  namespace: agora
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: agora-trabalhador }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels: { app: agora-trabalhador }
+    spec:
+      automountServiceAccountToken: false
+      # Termina as tarefas em execução antes de sair (SIGTERM → até 30 s).
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: trabalhador
+          image: registro.orgao.gov.br/agora:1.0.0
+          imagePullPolicy: IfNotPresent
+          command: ["node", "apps/api/dist/trabalhador.js"]
+          ports:
+            - { name: sondas, containerPort: 3001 }
+          env:
+            - { name: AGORA_TRABALHADOR_PORTA, value: "3001" }
+          envFrom:
+            - configMapRef: { name: agora-config }
+            - secretRef: { name: agora-segredos }
+          readinessProbe:
+            httpGet: { path: /saude/pronto, port: sondas }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /saude/vivo, port: sondas }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agora-trabalhador
+  namespace: agora
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: agora-trabalhador }
+---
+# O trabalhador sai só para DNS, o banco, o RabbitMQ e HTTPS (PNCP e demais APIs públicas do governo).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agora-trabalhador-saida
+  namespace: agora
+spec:
+  podSelector:
+    matchLabels: { app: agora-trabalhador }
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - ports:
+        - { protocol: TCP, port: 5432 }
+    - ports:
+        - { protocol: TCP, port: 5672 }
+    - ports:
+        - { protocol: TCP, port: 443 }
+---
+# O RabbitMQ só aceita conexões da API e do trabalhador.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agora-fila-entrada
+  namespace: agora
+spec:
+  podSelector:
+    matchLabels: { app: agora-fila }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: agora } }
+        - podSelector: { matchLabels: { app: agora-trabalhador } }
+      ports:
+        - { protocol: TCP, port: 5672 }
