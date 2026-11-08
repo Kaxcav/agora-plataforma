@@ -47,6 +47,10 @@
 - **Alteração justificada da ordem cronológica** (art. 141, § 1º): hipótese (incisos I a V), justificativa, autoridade, ato e data; decisão posterior ao pagamento é recusada (não é prévia); comunicação posterior ao **controle interno** e ao **tribunal de contas**, com protocolo.
 - **Ligação com a 2ª linha da frente H**: a alteração registrada aparece como **exceção justificada**; a nota preterida cujas notas pagas antes dela estão todas justificadas deixa de ser achado de risco e, sem as comunicações, vira achado de **atenção**.
 
+### Registro de desempenho (art. 88, § 3º)
+
+- Os atos da fiscalização alimentam os indicadores do IDC (RN-02, tabela `fornecedores_indicadores`): cada recebimento definitivo conta, e conta como aprovado quando a entrega não teve ressalva nem rejeição; cada ocorrência registrada conta, e a regularizada até o prazo conta como resolvida no prazo.
+
 ### Telas (RF-28)
 
 - Contrato: abas **Fiscalização**, **Recebimentos** e **Garantias**.
@@ -57,7 +61,7 @@
 | Linhas | Pedido | Onde |
 |---|---|---|
 | 67 e 208 | Termos de recebimento provisório e definitivo; controle de garantias | Abas Recebimentos e Garantias; RN-34 e RN-35 |
-| 401 e 661 | Módulo 4: controle de vigências e garantias | Garantias e alerta pela central J |
+| 401 e 661 | Módulo 4: controle de vigências e garantias; registro de desempenho (art. 88, § 3º) | Garantias e alerta pela central J; recebimentos e ocorrências alimentam os indicadores do IDC (o certificado de atesto é de outra frente) |
 | 715–725 | Gestor, fiscais técnico, requisitante e administrativo, com segregação | Aba Fiscalização; designações |
 | 732 e 958 | Pagamento em ordem cronológica, contado do recebimento definitivo; prazo de liquidação | Prazos do contrato e tela Prazos de pagamento |
 | 950 | Atualização monetária por atraso imputável à Administração | Atualização estimada (art. 92, V) |

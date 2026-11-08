@@ -131,6 +131,29 @@ export async function espelharGarantiaNoContrato(tx: Transacao, contratoId: stri
   );
 }
 
+/**
+ * Registro de desempenho do contratado (art. 88, § 3º): os atos da fiscalização alimentam os indicadores do IDC
+ * (RN-02) — recebimentos definitivos, os sem ressalva, ocorrências registradas e as regularizadas no prazo.
+ */
+export async function registrarDesempenho(
+  tx: Transacao,
+  fornecedorId: string,
+  d: { recebimentos?: number; recebimentosAprovados?: number; ocorrencias?: number; ocorrenciasNoPrazo?: number },
+): Promise<void> {
+  await tx.executar(
+    `INSERT INTO fornecedores_indicadores (fornecedor_id, recebimentos_total, recebimentos_aprovados, ocorrencias_fiscalizacao,
+                                           ocorrencias_resolvidas_no_prazo, atualizado_em)
+     VALUES ($1, $2::integer, $3::integer, $4::integer, $5::integer, now())
+     ON CONFLICT (fornecedor_id) DO UPDATE SET
+       recebimentos_total = fornecedores_indicadores.recebimentos_total + EXCLUDED.recebimentos_total,
+       recebimentos_aprovados = fornecedores_indicadores.recebimentos_aprovados + EXCLUDED.recebimentos_aprovados,
+       ocorrencias_fiscalizacao = fornecedores_indicadores.ocorrencias_fiscalizacao + EXCLUDED.ocorrencias_fiscalizacao,
+       ocorrencias_resolvidas_no_prazo = fornecedores_indicadores.ocorrencias_resolvidas_no_prazo + EXCLUDED.ocorrencias_resolvidas_no_prazo,
+       atualizado_em = now()`,
+    [fornecedorId, d.recebimentos ?? 0, d.recebimentosAprovados ?? 0, d.ocorrencias ?? 0, d.ocorrenciasNoPrazo ?? 0],
+  );
+}
+
 /** Espelha o gestor e o fiscal técnico titulares ativos nas colunas do contrato (notificações, painel, achados). */
 export async function espelharDesignacoesNoContrato(tx: Transacao, contratoId: string, hoje: string): Promise<void> {
   const ativos = await tx.consultar<{ papel: string; usuario_id: string }>(

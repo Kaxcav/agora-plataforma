@@ -124,7 +124,19 @@ describe('execução contratual: fiscalização, recebimentos, garantias e prazo
     assert.equal(comissao.statusCode, 201, comissao.body);
   });
 
+  const indicadores = async () => {
+    const [linha] = await app.agora.banco.consultar<{ recebimentos_total: number; recebimentos_aprovados: number; ocorrencias_fiscalizacao: number; ocorrencias_resolvidas_no_prazo: number }>(
+      `SELECT COALESCE(i.recebimentos_total, 0) AS recebimentos_total, COALESCE(i.recebimentos_aprovados, 0) AS recebimentos_aprovados,
+              COALESCE(i.ocorrencias_fiscalizacao, 0) AS ocorrencias_fiscalizacao, COALESCE(i.ocorrencias_resolvidas_no_prazo, 0) AS ocorrencias_resolvidas_no_prazo
+         FROM contratos c LEFT JOIN fornecedores_indicadores i ON i.fornecedor_id = c.fornecedor_id WHERE c.id = $1`,
+      [contratoId],
+    );
+    assert.ok(linha);
+    return linha;
+  };
+
   test('ocorrência com prazo de regularização notifica a contratada pela central', async () => {
+    const antes = await indicadores();
     const r = await chamar(app, fiscalTecnico, 'POST', `/api/v1/contratos/${contratoId}/ocorrencias`, {
       tipo: 'falha_execucao',
       dataFato: hoje,
@@ -141,9 +153,14 @@ describe('execução contratual: fiscalização, recebimentos, garantias e prazo
     assert.ok(notificacao.envios.some((e) => e.papel === 'contratada'));
     const regularizada = await chamar(app, fiscalTecnico, 'POST', `/api/v1/ocorrencias/${ocorrencia.id}/regularizar`, { data: hoje, observacao: 'Equipamentos apresentados e conferidos.' });
     assert.equal(regularizada.statusCode, 200, regularizada.body);
+    // registro de desempenho (art. 88, § 3º): ocorrência registrada e resolvida no prazo
+    const depois = await indicadores();
+    assert.equal(depois.ocorrencias_fiscalizacao, antes.ocorrencias_fiscalizacao + 1);
+    assert.equal(depois.ocorrencias_resolvidas_no_prazo, antes.ocorrencias_resolvidas_no_prazo + 1);
   });
 
   test('recebimento provisório e definitivo: o definitivo atesta a nota, conta o prazo de pagamento e gera o termo em PDF', async () => {
+    const desempenhoAntes = await indicadores();
     const entrega = await chamar(app, gestor, 'POST', `/api/v1/contratos/${contratoId}/recebimentos`, {
       descricao: 'Parcela mensal dos serviços do período',
       valor: 1_000_000,
@@ -179,6 +196,9 @@ describe('execução contratual: fiscalização, recebimentos, garantias e prazo
     assert.ok(resposta.recebimento.garantiaObjetoAte, 'garantia técnica do objeto de 12 meses');
     const [nota] = await app.agora.banco.consultar<{ situacao: string }>('SELECT situacao FROM pagamentos WHERE id = $1', [notaPrevista.id]);
     assert.equal(nota?.situacao, 'atestado');
+    const desempenhoDepois = await indicadores();
+    assert.equal(desempenhoDepois.recebimentos_total, desempenhoAntes.recebimentos_total + 1);
+    assert.equal(desempenhoDepois.recebimentos_aprovados, desempenhoAntes.recebimentos_aprovados + 1, 'recebido sem ressalva conta como aprovado');
 
     const pdf = await chamar(app, consulta, 'GET', `/api/v1/recebimentos/termos/${resposta.termo.id}/termo.pdf`);
     assert.ok(pdf.statusCode === 200 || pdf.statusCode === 404, 'consulta só vê as UASGs do seu escopo');

@@ -53,7 +53,7 @@ import { centavos, dataIso, idDaRota, uuid } from '../../http/validacao.ts';
 import { registrarAtesto } from '../financeiro/atesto.ts';
 import { processarFila } from '../notificacoes/servico.ts';
 import { verificarRegularidade } from '../regularidade/servico.ts';
-import { avisarVencimentoGarantia, espelharDesignacoesNoContrato, espelharGarantiaNoContrato, notificarContratada } from './avisos.ts';
+import { avisarVencimentoGarantia, espelharDesignacoesNoContrato, espelharGarantiaNoContrato, notificarContratada, registrarDesempenho } from './avisos.ts';
 import {
   carregarDescontos,
   carregarDesignacoes,
@@ -435,6 +435,7 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
         [contrato.id, numero, entrada.tipo, entrada.dataFato, entrada.relato, entrada.providencia, entrada.prazoRegularizacao, notificacaoId, sessao.usuario.id, ctx.relogio().toISOString()],
       );
       if (!criada) throw new Error('Falha ao registrar a ocorrência');
+      await registrarDesempenho(tx, contrato.fornecedor_id, { ocorrencias: 1 });
       await auditar(tx, request, {
         acao: 'contrato.ocorrencia',
         recurso: 'contrato',
@@ -474,12 +475,14 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
         `UPDATE contratos_ocorrencias SET situacao = 'regularizada', regularizada_em = $2, observacao_regularizacao = $3, regularizada_por = $4 WHERE id = $1`,
         [id, entrada.data, entrada.observacao, sessao.usuario.id],
       );
+      const noPrazo = ocorrencia.prazoRegularizacao === null || entrada.data <= ocorrencia.prazoRegularizacao;
+      if (noPrazo) await registrarDesempenho(tx, contrato.fornecedor_id, { ocorrenciasNoPrazo: 1 });
       await auditar(tx, request, {
         acao: 'contrato.ocorrencia_regularizar',
         recurso: 'contrato',
         recursoId: contrato.id,
         resumo: `Registrou a regularização da ocorrência nº ${ocorrencia.numero}`,
-        dados: { ocorrenciaId: id, data: entrada.data },
+        dados: { ocorrenciaId: id, data: entrada.data, noPrazo },
       });
       return contrato.id;
     });
@@ -693,6 +696,14 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
            VALUES ($1, $2, 'inconformidade', $3, $4, $5, $6, $7, $8, $9)`,
           [contrato.id, numero, entrada.data, relato, resultado.prazoCorrecao, id, notificacaoId, sessao.usuario.id, instante],
         );
+        await registrarDesempenho(tx, contrato.fornecedor_id, { ocorrencias: 1 });
+      }
+      if (resultado.liberaLiquidacao) {
+        const [ressalvas] = await tx.consultar<{ total: number }>(
+          `SELECT COUNT(*)::integer AS total FROM recebimentos_termos WHERE recebimento_id = $1 AND resultado <> 'aceito'`,
+          [id],
+        );
+        await registrarDesempenho(tx, contrato.fornecedor_id, { recebimentos: 1, recebimentosAprovados: (ressalvas?.total ?? 0) === 0 ? 1 : 0 });
       }
 
       let atesto: RespostaTermoRecebimento['atesto'] = null;
