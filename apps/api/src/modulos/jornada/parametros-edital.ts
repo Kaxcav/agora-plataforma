@@ -12,9 +12,13 @@ export const DOCUMENTOS_DO_PACOTE_DO_EDITAL: readonly TipoDocumento[] = ['tr', '
 /**
  * Hash determinístico (SHA-256) dos parâmetros do edital de que o documento depende: os campos entram em ordem
  * fixa, independentemente da ordem das chaves no JSON armazenado. `null` para documentos fora do pacote do edital.
+ * A prova de conceito ou amostra (RN-20) e a inversão de fases entram só quando adotadas, de modo que os documentos
+ * gerados sem elas mantêm o hash anterior.
  */
 export function hashParametrosDocumento(tipo: TipoDocumento, edital: ParametrosEdital): string | null {
   if (!DOCUMENTOS_DO_PACOTE_DO_EDITAL.includes(tipo)) return null;
+  const prova = edital.provaConceito;
+  const inversao = edital.inversaoFases;
   const canonico = JSON.stringify([
     'parametros-edital/v1',
     edital.criterioJulgamento,
@@ -22,6 +26,8 @@ export function hashParametrosDocumento(tipo: TipoDocumento, edital: ParametrosE
     edital.exigeFaturamentoMinimo,
     edital.patrimonioLiquidoMinimoPercentual,
     edital.exigeRegistroCadastralComplementar,
+    ...(prova && prova.exigencia !== 'nenhuma' ? ['prova-conceito/v1', prova.exigencia, prova.roteiro, prova.justificativa, prova.prazoDiasUteis] : []),
+    ...(inversao?.adotada ? ['inversao-fases/v1', inversao.motivacao] : []),
   ]);
   return sha256Hex(canonico);
 }

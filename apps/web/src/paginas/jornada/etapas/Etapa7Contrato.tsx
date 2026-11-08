@@ -17,7 +17,9 @@ export default function Etapa7Contrato({ processo, editavel }: PropsEtapa) {
   const [recemCriado, definirRecemCriado] = useState(false);
   const alertaContrato = useRef<HTMLDivElement>(null);
   const resultado = ehResultadoDesempate(processo.disputa.resultado) ? processo.disputa.resultado : null;
-  const vencedor = resultado?.classificacao.find((c) => c.posicao === 1) ?? null;
+  // O contrato é celebrado com o adjudicatário (art. 71, IV), que pode não ser o primeiro classificado (RN-20, RN-22).
+  const adjudicatario = processo.selecao.adjudicacao?.licitante.id ?? null;
+  const vencedor = resultado?.classificacao.find((c) => (adjudicatario ? c.id === adjudicatario : c.posicao === 1)) ?? null;
   const contrato = processo.contratoGerado;
 
   useEffect(() => {

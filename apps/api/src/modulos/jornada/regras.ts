@@ -5,13 +5,18 @@ import {
   limiteDispensaVigente,
   sinalizarArtigoLuxo,
   validarEtp,
+  validarInversaoFases,
+  validarProvaConceito,
   verificarSegregacao,
+  type AvaliacaoSelecao,
   type ConteudoEtp,
   type Designacao,
   type TipoObjetoDispensa,
+  type verificarSustentabilidade,
 } from '@agora/dominio';
 import type { Bloqueio, EtapaJornada, Sinal } from '@agora/contratos';
 import { LIMITE_PATRIMONIO_LIQUIDO_PERCENTUAL, MINIMO_CARACTERES_TEXTO, TITULOS_DOCUMENTO } from './constantes.ts';
+import { documentoTrazSustentabilidade } from './sustentabilidade.ts';
 import type {
   AnaliseCesta,
   CestaArmazenada,
@@ -226,7 +231,11 @@ export interface EntradaEtapa3 {
   riscos: RiscoProcesso[];
   cesta: CestaArmazenada;
   analise: AnaliseCesta | null;
+  /** RN-21 para o ETP (`verificarSustentabilidade`); ausente nos chamadores anteriores à regra. */
+  sustentabilidade?: VerificacaoSustentabilidade;
 }
+
+export type VerificacaoSustentabilidade = ReturnType<typeof verificarSustentabilidade>;
 
 export function regrasEtapa3(e: EntradaEtapa3): ResultadoRegras {
   const r = criarResultado(3);
@@ -264,6 +273,7 @@ export function regrasEtapa3(e: EntradaEtapa3): ResultadoRegras {
   if (e.cesta.orcamentoSigiloso && !textoSuficiente(e.cesta.motivoSigilo)) {
     r.bloquear('RF-15', `O orçamento é sigiloso: registre o motivo do sigilo (mínimo de ${MINIMO_CARACTERES_TEXTO} caracteres).`, 'Lei 14.133/2021, art. 24');
   }
+  for (const p of e.sustentabilidade?.pendencias ?? []) r.bloquear('RN-21', p.mensagem, e.sustentabilidade?.fundamento ?? '');
   return r.resultado;
 }
 
@@ -274,6 +284,31 @@ const DOCUMENTOS_ETAPA_4: readonly TipoDocumento[] = ['tr', 'edital', 'minuta_co
 export interface EntradaEtapa4 {
   documentos: DocumentoCarregado[];
   edital: ParametrosEdital;
+  /** RN-21 para o TR (`verificarSustentabilidade`); ausente nos chamadores anteriores à regra. */
+  sustentabilidade?: VerificacaoSustentabilidade;
+}
+
+/** RN-20 e RN-22 nos parâmetros do edital: prova de conceito ou amostra e inversão de fases bem instruídas. */
+function regrasParametrosSelecao(r: ReturnType<typeof criarResultado>, edital: ParametrosEdital): void {
+  if (edital.provaConceito) {
+    const prova = validarProvaConceito(edital.provaConceito, MINIMO_CARACTERES_TEXTO);
+    for (const p of prova.pendencias) r.bloquear('RN-20', p.mensagem, prova.fundamento);
+  }
+  if (edital.inversaoFases) {
+    const inversao = validarInversaoFases(edital.inversaoFases, MINIMO_CARACTERES_TEXTO);
+    for (const p of inversao.pendencias) r.bloquear('RN-22', p, inversao.fundamento);
+  }
+}
+
+/** RN-21 no TR: critérios preenchidos e a versão atual do TR gerada com a seção completa. */
+function regrasSustentabilidadeTr(r: ReturnType<typeof criarResultado>, e: EntradaEtapa4): void {
+  const s = e.sustentabilidade;
+  if (!s?.exigida) return;
+  for (const p of s.pendencias) r.bloquear('RN-21', p.mensagem, s.fundamento);
+  const tr = e.documentos.find((d) => d.tipo === 'tr');
+  if (s.pendencias.length === 0 && tr && !documentoTrazSustentabilidade(tr.conteudo)) {
+    r.bloquear('RN-21', `A versão ${tr.versao} do termo de referência não traz os critérios de sustentabilidade e de logística reversa: gere nova versão e aprove.`, s.fundamento);
+  }
 }
 
 export function regrasEtapa4(e: EntradaEtapa4): ResultadoRegras {
@@ -319,6 +354,8 @@ export function regrasEtapa4(e: EntradaEtapa4): ResultadoRegras {
       'Lei 14.133/2021, art. 87, § 2º',
     );
   }
+  regrasParametrosSelecao(r, e.edital);
+  regrasSustentabilidadeTr(r, e);
   return r.resultado;
 }
 
@@ -358,10 +395,12 @@ export function regrasEtapa5(e: EntradaEtapa5): ResultadoRegras {
 
 export interface EntradaEtapa6 {
   disputa: DisputaArmazenada;
-  /** Sanções impeditivas vigentes do primeiro classificado. */
+  /** Sanções impeditivas vigentes do licitante provisoriamente vencedor. */
   sancoesVencedor: string[];
   /** Sinais de sócio em comum entre licitantes (RIA-06). */
   vinculosLicitantes: string[];
+  /** Atos da seleção por `avaliarSelecao` (RN-20, RN-22, RF-18); ausente nos chamadores anteriores à regra. */
+  selecao?: AvaliacaoSelecao;
 }
 
 export function regrasEtapa6(e: EntradaEtapa6): ResultadoRegras {
@@ -378,8 +417,16 @@ export function regrasEtapa6(e: EntradaEtapa6): ResultadoRegras {
       );
     }
     for (const motivo of e.sancoesVencedor) {
-      r.bloquear('RN-09', `O primeiro classificado tem sanção impeditiva vigente: ${motivo}.`, 'Lei 14.133/2021, art. 14, III, e art. 156, §§ 4º e 5º');
+      r.bloquear(
+        'RN-09',
+        `O licitante provisoriamente vencedor tem sanção impeditiva vigente: ${motivo}. Registre a inabilitação para convocar o próximo colocado.`,
+        'Lei 14.133/2021, art. 14, III, e art. 156, §§ 4º e 5º',
+      );
     }
+    // Atos seguintes (prova de conceito, habilitação, recursos, adjudicação e homologação), um de cada vez.
+    const pendencia = e.selecao?.pendencia;
+    if (r.resultado.bloqueios.length === 0 && pendencia) r.bloquear(pendencia.regra, pendencia.mensagem, pendencia.fundamento);
+    for (const alerta of e.selecao?.alertas ?? []) r.sinalizar(alerta.regra, 'atencao', alerta.mensagem, alerta.fundamento);
   }
   for (const vinculo of e.vinculosLicitantes) {
     r.sinalizar('RIA-06', 'risco', vinculo, 'Lei 14.133/2021, art. 14, IV; sinal para análise, não constitui acusação');

@@ -74,6 +74,9 @@ function mapear(l: LinhaEdital, documentos: LinhaDocumento[], pncpReal: boolean)
     idPncp: l.publicacao.idPncp,
     linkPncp: pncpReal ? linkPncpCompra(l.publicacao.idPncp) : null,
     documentos: docs,
+    // Preenchidos após a homologação por `comDocumentosPreparatorios` (preparatorios.ts; art. 54, § 3º).
+    homologadoEm: null,
+    documentosPreparatorios: [],
   };
 }
 

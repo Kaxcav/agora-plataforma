@@ -14,6 +14,7 @@ import {
   History,
   KeyRound,
   LayoutDashboard,
+  Leaf,
   Link2,
   ListChecks,
   Network,
@@ -97,6 +98,7 @@ export const MENU: readonly SecaoMenu[] = [
       { rotulo: 'Unidades internas', caminho: '/ajustes/unidades', icone: Workflow, permissao: 'ajustes:editar' },
       { rotulo: 'Grupos de UASG', caminho: '/ajustes/grupos-uasg', icone: Network, permissao: 'ajustes:editar' },
       { rotulo: 'Feriados', caminho: '/ajustes/feriados', icone: CalendarDays, permissao: 'ajustes:editar' },
+      { rotulo: 'Políticas do órgão', caminho: '/ajustes/politicas', icone: Leaf, permissao: 'ajustes:editar' },
     ],
   },
   {

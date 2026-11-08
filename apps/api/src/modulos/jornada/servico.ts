@@ -1,6 +1,7 @@
 import {
   adicionarDias,
   aplicarDesempate,
+  avaliarBloqueioLuxoMinutas,
   dataMinimaAberturaPropostas,
   formatarData,
   prazoDivulgacaoContratoPncp,
@@ -18,11 +19,11 @@ import { identificadorInstrumento, normalizarBusca } from '../../compartilhado/t
 import { regraNegocio } from '../../http/erros.ts';
 import { ErroIa, restaurarTrechosProtegidos, type ProvedorIa } from '../../ia/provedor.ts';
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
-import { CONDICOES_REFERENCIA, DOCUMENTOS_SEM_IA, ETAPA_DOCUMENTO, TITULOS_DOCUMENTO, TITULOS_ETAPA } from './constantes.ts';
+import { CONDICOES_REFERENCIA, DOCUMENTOS_SEM_IA, ETAPA_DOCUMENTO, MINIMO_CARACTERES_TEXTO, TITULOS_DOCUMENTO, TITULOS_ETAPA } from './constantes.ts';
 import { gerarModelo, marcarAprovado, montarConteudo, montarPromptIa, type Autoria, type DadosDocumento } from './documentos.ts';
 import { hashParametrosDocumento } from './parametros-edital.ts';
-import { primeiroClassificado } from './repositorio.ts';
 import { analisarCesta, valorEstimadoProcesso } from './regras.ts';
+import { vencedorDoProcesso } from './selecao.ts';
 import type {
   CargaProcesso,
   CestaArmazenada,
@@ -42,6 +43,8 @@ export interface ContextoJornada {
   hoje: string;
   agora: Date;
   calendario: OpcoesCalendario;
+  /** Política de sustentabilidade do órgão (RN-21); ausente = ligada (padrão). */
+  politicaSustentabilidade?: boolean;
 }
 
 // ───────────────────────── numeração ─────────────────────────
@@ -125,8 +128,19 @@ export async function inserirProcesso(tx: Transacao, p: NovoProcesso): Promise<{
 }
 
 /** Colunas jsonb do processo que as rotas atualizam (lista fechada; nunca vem do cliente). */
-export type ColunaJson = 'dfd' | 'etp' | 'riscos' | 'cesta' | 'edital' | 'parecer' | 'publicacao' | 'disputa';
-const COLUNAS_JSON: ReadonlySet<ColunaJson> = new Set<ColunaJson>(['dfd', 'etp', 'riscos', 'cesta', 'edital', 'parecer', 'publicacao', 'disputa']);
+export type ColunaJson = 'dfd' | 'etp' | 'riscos' | 'cesta' | 'edital' | 'parecer' | 'publicacao' | 'disputa' | 'selecao' | 'sustentabilidade';
+const COLUNAS_JSON: ReadonlySet<ColunaJson> = new Set<ColunaJson>([
+  'dfd',
+  'etp',
+  'riscos',
+  'cesta',
+  'edital',
+  'parecer',
+  'publicacao',
+  'disputa',
+  'selecao',
+  'sustentabilidade',
+]);
 
 export async function gravarJson(tx: Transacao, processoId: string, coluna: ColunaJson, valor: unknown, agora: Date): Promise<void> {
   if (!COLUNAS_JSON.has(coluna)) throw new Error(`Coluna não permitida: ${coluna}`);
@@ -243,7 +257,25 @@ function descreverFalhaIa(erro: unknown): string {
 
 export function dadosDocumento(carga: CargaProcesso, ctx: ContextoJornada): DadosDocumento {
   const analise = analisarCesta(carga.linha.cesta, ctx.hoje);
-  return { carga, analise, valorEstimado: valorEstimadoProcesso(carga.linha.dfd, analise), dataGeracao: ctx.hoje, calendario: ctx.calendario };
+  return {
+    carga,
+    analise,
+    valorEstimado: valorEstimadoProcesso(carga.linha.dfd, analise),
+    dataGeracao: ctx.hoje,
+    calendario: ctx.calendario,
+    politicaSustentabilidade: ctx.politicaSustentabilidade ?? true,
+  };
+}
+
+/**
+ * Trava do roteiro PoC-01 (RN-01, art. 20): com item do DFD com indício de artigo de luxo sem justificativa aceita,
+ * nenhuma minuta é gerada — a verificação acontece antes de qualquer chamada ao provedor de IA.
+ */
+export function exigirSemArtigoLuxoPendente(linha: Pick<LinhaProcesso, 'dfd'>): void {
+  const avaliacao = avaliarBloqueioLuxoMinutas(linha.dfd.itens, linha.dfd.justificativaArtigoLuxo, MINIMO_CARACTERES_TEXTO);
+  if (avaliacao.bloqueado) {
+    throw regraNegocio(avaliacao.mensagem, [{ campo: 'RN-01', mensagem: `${avaliacao.mensagem} (${avaliacao.fundamento})` }]);
+  }
 }
 
 /**
@@ -257,6 +289,7 @@ export async function prepararDocumento(
   provedor: ProvedorIa,
   ctx: ContextoJornada,
 ): Promise<DocumentoPreparado> {
+  exigirSemArtigoLuxoPendente(carga.linha);
   const dados = dadosDocumento(carga, ctx);
   const modelo = gerarModelo(tipo, dados);
   let corpo = modelo.corpo;
@@ -534,7 +567,7 @@ export async function criarContratoDoProcesso(
   novoId: () => string,
 ): Promise<ContratoCriado> {
   const { linha } = carga;
-  const vencedorId = primeiroClassificado(linha.disputa);
+  const vencedorId = vencedorDoProcesso(linha);
   const vencedor = linha.disputa.licitantes.find((l) => l.fornecedorId === vencedorId);
   if (!vencedorId || !vencedor) throw regraNegocio('Não há licitante vencedor registrado na disputa.');
   const [fornecedor] = await tx.consultar<{ documento: string; tipo_pessoa: 'PJ' | 'PF'; razao_social: string }>(

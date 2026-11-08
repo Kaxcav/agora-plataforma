@@ -9,6 +9,7 @@ import { naoEncontrado } from '../../http/erros.ts';
 import { camposPaginacao, deslocamento, idDaRota, pagina, textoBusca, uuid } from '../../http/validacao.ts';
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
 import { consultarEditais, DOCUMENTOS_PUBLICOS, pdfDocumentoPublico } from './editais.ts';
+import { comDocumentosPreparatorios, DOCUMENTOS_PREPARATORIOS, pdfPreparatorio } from './preparatorios.ts';
 
 interface LinhaPublica {
   id: string;
@@ -96,13 +97,13 @@ export async function rotasPublico(app: FastifyInstance): Promise<void> {
       inicio: deslocamento(f.pagina, f.tamanhoPagina),
       pncpReal: pncpReal(),
     });
-    return pagina(itens, total, f.pagina, f.tamanhoPagina);
+    return pagina(await comDocumentosPreparatorios(ctx.banco, itens), total, f.pagina, f.tamanhoPagina);
   });
 
   app.get('/publico/editais/:id', async (request): Promise<EditalPublico> => {
     const id = idDaRota(request.params);
     const { itens } = await consultarEditais(ctx.banco, { busca: null, id, limite: 1, inicio: 0, pncpReal: pncpReal() });
-    const edital = itens[0];
+    const [edital] = await comDocumentosPreparatorios(ctx.banco, itens);
     if (!edital) throw naoEncontrado('Edital não encontrado ou ainda não publicado.');
     return edital;
   });
@@ -111,6 +112,17 @@ export async function rotasPublico(app: FastifyInstance): Promise<void> {
     const { id, tipo } = z.object({ id: uuid, tipo: z.enum(DOCUMENTOS_PUBLICOS) }).parse(request.params);
     const arquivo = await pdfDocumentoPublico(ctx.banco, id, tipo);
     if (!arquivo) throw naoEncontrado('Documento não encontrado ou edital não publicado.');
+    return reply
+      .header('content-type', 'application/pdf')
+      .header('content-disposition', `inline; filename="${arquivo.nomeArquivo}"`)
+      .send(arquivo.pdf);
+  });
+
+  // Documentos da fase preparatória divulgados após a homologação (art. 54, § 3º; RF-18), sem login.
+  app.get('/publico/editais/:id/preparatorios/:tipo', async (request, reply) => {
+    const { id, tipo } = z.object({ id: uuid, tipo: z.enum(DOCUMENTOS_PREPARATORIOS) }).parse(request.params);
+    const arquivo = await pdfPreparatorio(ctx.banco, id, tipo);
+    if (!arquivo) throw naoEncontrado('Documento não encontrado ou licitação ainda não homologada.');
     return reply
       .header('content-type', 'application/pdf')
       .header('content-disposition', `inline; filename="${arquivo.nomeArquivo}"`)

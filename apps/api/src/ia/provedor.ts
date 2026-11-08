@@ -46,7 +46,7 @@ export const INSTRUCOES_SISTEMA_IA = [
   'Escreva em português do Brasil, em linguagem administrativa formal, clara e objetiva.',
   'Use somente os dados do processo e o rascunho fornecidos: não invente fatos, valores, datas, normas, números de processo nem jurisprudência.',
   'Mantenha a estrutura de seções, as tabelas, os valores, as datas e as referências legais do rascunho.',
-  'Não altere, não preencha e não remova os trechos delimitados por <!-- protegido:... --> e <!-- /protegido:... -->: eles tratam de conclusões jurídicas, sanções e habilitação, que são decisão humana.',
+  'Não altere, não preencha e não remova os trechos delimitados por <!-- protegido:... --> e <!-- /protegido:... -->: eles tratam de conclusões jurídicas, sanções e habilitação, que são decisão humana, e de critérios obrigatórios definidos pelo órgão.',
   'Responda apenas com o corpo do documento em Markdown, sem comentários antes ou depois.',
 ].join('\n');
 

@@ -170,3 +170,28 @@ describe('CATALOGO_REGRAS — sala de disputa (RF-22, RN-26 e RIA-09)', () => {
     assert.ok(regra('RF-22').implementacao.includes('redigirAtaSessaoDisputa'));
   });
 });
+
+describe('CATALOGO_REGRAS — jornada da contratação: PoC-01, prova de conceito, sustentabilidade e atos da seleção', () => {
+  const casos: [string, number, string[], string, RegExp][] = [
+    ['RN-01', 1, ['jornada.dfd'], 'avaliarBloqueioLuxoMinutas', /art\. 20/],
+    ['RN-20', 6, ['jornada.detalhe'], 'validarProvaConceito', /art\. 17, § 3º, e art\. 41, II/],
+    ['RN-21', 3, ['jornada.detalhe', 'ajustes'], 'verificarSustentabilidade', /art\. 18, § 1º, XII/],
+    ['RN-22', 6, ['jornada.detalhe'], 'prazosRecursoSelecao', /art\. 165/],
+    ['RF-18', 6, ['jornada.detalhe'], 'POST /processos/:id/selecao/homologacao', /art\. 71, IV, e art\. 54, § 3º/],
+  ];
+  for (const [id, etapa, telas, implementacao, fundamento] of casos) {
+    it(`${id}: etapa ${etapa}, ${implementacao}`, () => {
+      const r = regra(id);
+      assert.equal(r.etapa, etapa);
+      for (const tela of telas) assert.ok(r.telas.includes(tela), `${id} sem tela ${tela}`);
+      assert.ok(r.implementacao.includes(implementacao), `${id} implementacao`);
+      assert.match(r.fundamento, fundamento);
+    });
+  }
+
+  it('RN-22 traz os prazos de 3 e de 10 dias úteis; RN-01 recusa minutas inclusive com IA', () => {
+    assert.match(regra('RN-22').descricao, /3 dias úteis/);
+    assert.match(regra('RN-22').descricao, /10 dias úteis/);
+    assert.match(regra('RN-01').descricao, /redação por IA/);
+  });
+});

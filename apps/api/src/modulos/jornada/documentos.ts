@@ -3,6 +3,7 @@ import {
   formatarMoeda,
   INCISOS_ETP,
   prazoMinimoPropostas,
+  rotuloExigenciaProvaConceito,
   validarEtp,
   type ConteudoEtp,
   type IncisoEtp,
@@ -20,6 +21,8 @@ import {
   TITULOS_DOCUMENTO,
 } from './constantes.ts';
 import { avaliarSegregacao, indiciosArtigoLuxo } from './regras.ts';
+import { editalCompleto } from './selecao.ts';
+import { criteriosDoProcesso, SECAO_SUSTENTABILIDADE, sustentabilidadeDoProcesso } from './sustentabilidade.ts';
 import type { AnaliseCesta, CargaProcesso, CotacaoArmazenada, DocumentoCarregado, TipoDocumento } from './tipos.ts';
 
 /**
@@ -34,6 +37,8 @@ export interface DadosDocumento {
   /** Data de geração (DataISO), impressa no documento. */
   dataGeracao: string;
   calendario: OpcoesCalendario;
+  /** Política de sustentabilidade do órgão ligada (RN-21); padrão: ligada. */
+  politicaSustentabilidade?: boolean;
 }
 
 export interface ModeloDocumento {
@@ -168,6 +173,37 @@ function ano(d: DadosDocumento): string {
   return d.dataGeracao.slice(0, 4);
 }
 
+// ───────────────────────── Sustentabilidade (RN-21) e prova de conceito (RN-20) ─────────────────────────
+
+/** Critérios ambientais e logística reversa (seção protegida: a IA não pode omiti-la nem reescrevê-la). */
+function blocoSustentabilidade(d: DadosDocumento, documento: 'etp' | 'tr'): string {
+  const verificacao = sustentabilidadeDoProcesso(d.carga.linha, d.politicaSustentabilidade ?? true, documento);
+  const criterios = criteriosDoProcesso(d.carga.linha);
+  const conteudo = [
+    `**Critérios de sustentabilidade ambiental:** ${texto(criterios.criteriosAmbientais, 'critérios de sustentabilidade ambiental do objeto e da execução')}`,
+    '',
+    `**Logística reversa (desfazimento e reciclagem de bens e refugos):** ${texto(criterios.logisticaReversa, 'logística reversa, com recolhimento, reciclagem e destinação final ambientalmente adequada')}`,
+    '',
+    `*${verificacao.orientacao} Fundamento: ${verificacao.fundamento}.*`,
+  ].join('\n');
+  return protegido(verificacao.completa ? SECAO_SUSTENTABILIDADE : `${SECAO_SUSTENTABILIDADE}_pendente`, conteudo);
+}
+
+/** Cláusula da prova de conceito ou da amostra (art. 17, § 3º, e art. 41, II), vazia quando não exigida. */
+function clausulaProvaConceito(d: DadosDocumento, numero: string): string[] {
+  const { provaConceito } = editalCompleto(d.carga.linha.edital);
+  if (provaConceito.exigencia === 'nenhuma') return [];
+  const rotulo = rotuloExigenciaProvaConceito(provaConceito.exigencia);
+  return [
+    `${numero} Na fase de julgamento, o licitante provisoriamente vencedor será convocado para a ${rotulo} (art. 17, § 3º, e art. 41, II), a realizar em até ${provaConceito.prazoDiasUteis ?? pendente('prazo em dias úteis')} dias úteis contados da convocação, em sessão pública transmitida e gravada em áudio e vídeo, cujo registro integra o processo. Reprovado o licitante, será convocado o próximo colocado.`,
+    '',
+    `Roteiro e critérios de aprovação: ${texto(provaConceito.roteiro, 'roteiro de testes e critérios objetivos de aprovação')}`,
+    '',
+    `Justificativa da exigência: ${texto(provaConceito.justificativa, 'justificativa da necessidade (art. 41, II)')}`,
+    '',
+  ];
+}
+
 // ───────────────────────── DFD ─────────────────────────
 
 function modeloDfd(d: DadosDocumento): ModeloDocumento {
@@ -271,6 +307,7 @@ function modeloEtp(d: DadosDocumento): ModeloDocumento {
     VI: d.analise
       ? `*Dado do processo:* valor estimado de ${formatarMoeda(d.valorEstimado ?? 0)}, apurado na pesquisa de preços (${d.analise.estatisticasSaneadas.n} preços válidos, metodologia da ${d.analise.metodologiaRecomendada}).`
       : '*Dado do processo:* pesquisa de preços ainda não registrada.',
+    XII: blocoSustentabilidade(d, 'etp'),
   };
   const secoes = INCISOS_ETP.map((inciso) => {
     const conteudo = linha.etp[inciso.inciso];
@@ -526,6 +563,10 @@ function modeloTr(d: DadosDocumento): ModeloDocumento {
       ? 'Os bens devem ser novos, de primeiro uso, entregues em embalagem original e acompanhados de manual em português e do certificado de garantia do fabricante. Aplicam-se os critérios de sustentabilidade do Guia Nacional de Contratações Sustentáveis, no que couber.'
       : 'Os serviços devem ser prestados por profissionais qualificados, com observância das normas técnicas aplicáveis e dos critérios de sustentabilidade do Guia Nacional de Contratações Sustentáveis, no que couber.',
     '',
+    '### Sustentabilidade ambiental e logística reversa',
+    '',
+    blocoSustentabilidade(d, 'tr'),
+    '',
     '## e) Modelo de execução do objeto',
     '',
     bem
@@ -547,6 +588,7 @@ function modeloTr(d: DadosDocumento): ModeloDocumento {
     '',
     `Modalidade prevista: **${linha.modalidade_prevista ?? 'Pregão eletrônico'}**, na forma eletrônica, com critério de julgamento de **${ROTULOS_CRITERIO[edital.criterioJulgamento] ?? edital.criterioJulgamento}** e modo de disputa aberto (arts. 33 e 56), ${ROTULOS_REGIME[edital.regimeExecucao]}. Prazo mínimo para apresentação de propostas: ${prazo.diasUteis} dias úteis (${prazo.fundamento}). As exigências de habilitação constarão do edital, limitadas às dos arts. 62 a 70.`,
     'Aplicam-se os benefícios da Lei Complementar 123/2006 às microempresas e empresas de pequeno porte (art. 4º da Lei 14.133/2021).',
+    ...clausulaProvaConceito(d, '').map((l) => l.trimStart()),
     ...(itensMeEpp.length > 0
       ? [`O(s) item(ns) ${itensMeEpp.map((i) => i.indice).join(', ')} têm valor estimado de até R$ 80.000,00: avaliar a participação exclusiva de ME/EPP (LC 123/2006, art. 48, I), ressalvadas as hipóteses do art. 49.`]
       : []),
@@ -569,6 +611,7 @@ function modeloTr(d: DadosDocumento): ModeloDocumento {
       `Parâmetros do edital: critério ${ROTULOS_CRITERIO[edital.criterioJulgamento] ?? edital.criterioJulgamento}, ${ROTULOS_REGIME[edital.regimeExecucao]}; condições de referência: vigência de ${vigenciaMeses} meses${bem ? `, entrega em ${prazoEntregaDias} dias` : ''}.`,
       `Prazo mínimo de propostas por prazoMinimoPropostas (@agora/dominio): ${prazo.diasUteis} dias úteis.`,
       'Gestor e fiscais conforme as designações registradas na equipe do processo.',
+      `Critérios de sustentabilidade e logística reversa do processo, conferidos por verificarSustentabilidade (@agora/dominio); política do órgão ${(d.politicaSustentabilidade ?? true) ? 'ligada' : 'desligada'}.`,
     ],
     fontes: [
       'Lei 14.133/2021, art. 6º, XXIII, alíneas a a j',
@@ -630,6 +673,7 @@ function modeloEdital(d: DadosDocumento): ModeloDocumento {
   const { edital, publicacao } = linha;
   const modalidade = linha.modalidade_prevista ?? 'Pregão eletrônico';
   const prazo = prazoPropostas(d);
+  const { inversaoFases: inversao, provaConceito } = editalCompleto(edital);
   const prazosTexto =
     publicacao.publicadoEm && publicacao.dataMinimaPropostas
       ? `3.1. Edital divulgado no PNCP em ${formatarData(publicacao.publicadoEm)}. As propostas poderão ser abertas a partir de ${formatarData(publicacao.dataMinimaPropostas)}, observado o prazo mínimo de ${prazo.diasUteis} dias úteis (${prazo.fundamento}).`
@@ -673,11 +717,22 @@ function modeloEdital(d: DadosDocumento): ModeloDocumento {
     '',
     '5.2. Em caso de empate, será assegurada a preferência das microempresas e empresas de pequeno porte (LC 123/2006, arts. 44 e 45) e, persistindo o empate, serão aplicados sucessivamente os critérios do art. 60: I — disputa final entre os empatados; II — avaliação do desempenho contratual prévio; III — desenvolvimento de ações de equidade entre homens e mulheres no ambiente de trabalho; IV — desenvolvimento de programa de integridade; e, em igualdade de condições, as preferências do art. 60, § 1º.',
     '',
+    ...clausulaProvaConceito(d, '5.3.'),
+    ...(inversao.adotada
+      ? [
+          `5.4. Por ato motivado (art. 17, § 1º), a fase de habilitação antecederá as de apresentação de propostas e de julgamento. Motivação: ${texto(inversao.motivacao, 'motivação e benefícios da inversão de fases')}`,
+          '',
+        ]
+      : []),
     secaoHabilitacao(d),
     '',
     '## 7. Dos recursos',
     '',
     '7.1. A intenção de recorrer deverá ser manifestada imediatamente após o ato, sob pena de preclusão, e as razões serão apresentadas em 3 dias úteis, contados da intimação ou da lavratura da ata (art. 165, I e § 1º). Os demais licitantes poderão apresentar contrarrazões em igual prazo (art. 165, § 4º).',
+    '',
+    `7.2. A fase recursal é única e ocorre após a ${inversao.adotada ? 'fase de julgamento, em razão da inversão de fases' : 'habilitação'} (art. 165, § 1º, II). O recurso será dirigido a quem praticou o ato, que poderá reconsiderá-lo em 3 dias úteis; mantido o ato, o recurso será encaminhado à autoridade superior, que decidirá em até 10 dias úteis do recebimento dos autos (art. 165, § 2º).`,
+    '',
+    '7.3. Exauridos os recursos, a autoridade superior adjudicará o objeto e homologará a licitação (art. 71, IV). Após a homologação, os documentos elaborados na fase preparatória que não integraram este edital serão divulgados no PNCP e no sítio eletrônico oficial (art. 54, § 3º).',
     '',
     secaoSancoes(),
     '',
@@ -702,6 +757,7 @@ function modeloEdital(d: DadosDocumento): ModeloDocumento {
       `Modalidade ${modalidade}; critério ${ROTULOS_CRITERIO[edital.criterioJulgamento] ?? edital.criterioJulgamento}; ${ROTULOS_REGIME[edital.regimeExecucao]}.`,
       `Habilitação econômico-financeira: faturamento mínimo ${edital.exigeFaturamentoMinimo ? 'exigido' : 'não exigido'}; patrimônio líquido mínimo ${descreverPatrimonio(edital.patrimonioLiquidoMinimoPercentual)}; registro cadastral complementar ${edital.exigeRegistroCadastralComplementar ? 'exigido' : 'não exigido'}.`,
       `Prazo mínimo de propostas por prazoMinimoPropostas (@agora/dominio): ${prazo.diasUteis} dias úteis.`,
+      `Prova de conceito ou amostra: ${provaConceito.exigencia === 'nenhuma' ? 'não exigida' : `${rotuloExigenciaProvaConceito(provaConceito.exigencia)} em ${provaConceito.prazoDiasUteis ?? '—'} dias úteis da convocação`}; inversão de fases ${inversao.adotada ? 'adotada' : 'não adotada'}.`,
       'As seções de habilitação e de sanções seguem o texto-padrão da Ágora e não são redigidas por IA.',
     ],
     fontes: [

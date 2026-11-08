@@ -175,6 +175,8 @@ export function DocumentosEtapa({ processo, tipos, editavel, titulo, descricao, 
   const [revisado, definirRevisado] = useState(false);
 
   const selecionado = processo.documentos.find((d) => d.id === selecionadoId) ?? null;
+  // RN-01 (roteiro PoC-01): o servidor recusa qualquer minuta enquanto houver indício de luxo sem justificativa.
+  const bloqueioLuxo = processo.bloqueiosDetalhe.find((b) => b.regra === 'RN-01');
 
   const gerarDocumento = (tipo: TipoDocumento) => {
     definirGerando(tipo);
@@ -206,6 +208,14 @@ export function DocumentosEtapa({ processo, tipos, editavel, titulo, descricao, 
         </h3>
         {descricao ? <div className="secao__descricao">{descricao}</div> : null}
       </div>
+      {editavel && bloqueioLuxo ? (
+        <Alerta tipo="aviso" compacto titulo="Geração de minutas bloqueada: indício de artigo de luxo sem justificativa (RN-01)">
+          <p>
+            Enquanto houver item com indício de artigo de luxo sem justificativa aceita, o servidor não gera nenhuma minuta — nem com a
+            redação por IA. Justifique no DFD que o bem é de qualidade comum, ou remova o item, e salve antes de gerar.
+          </p>
+        </Alerta>
+      ) : null}
       <ul className="jornada-docs__lista">
         {tipos.map((tipo) => {
           const doc = ultimaVersao(processo.documentos, tipo);

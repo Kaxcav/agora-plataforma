@@ -269,7 +269,7 @@ test.describe('jornada completa na interface', () => {
     erros.verificar();
   });
 
-  test('etapa 6 — coletes: desempate visível, licitante incluído pelo cadastro, registro no servidor e avanço', async ({ page }) => {
+  test('etapa 6 — coletes: desempate visível, licitante incluído pelo cadastro, registro no servidor e atos da seleção pendentes', async ({ page }) => {
     const erros = monitorarErros(page);
     await entrar(page, 'agente');
     await abrirProcesso(page, 'coletes', /coletes balísticos/i);
@@ -318,7 +318,12 @@ test.describe('jornada completa na interface', () => {
     await expect(passos.getByRole('listitem')).toHaveCount(3);
     await verificarAcessibilidade(page, 'etapa 6 após o registro (coletes)');
 
-    await avancar(page, 7, 'Contrato e gestão');
+    // Depois do registro das propostas, o avanço depende dos atos da seleção (amostra exigida no edital — RN-20);
+    // o fluxo completo até a homologação está em selecao-atos.spec.ts.
+    const atos = page.getByRole('region', { name: 'Atos da seleção' });
+    await expect(atos.getByRole('heading', { level: 4, name: 'Painel da amostra (RN-20)' })).toBeVisible();
+    await expect(atos.getByRole('button', { name: /^Convocar Escudo Forte/ })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Bloqueios' })).toContainText('RN-20');
     erros.verificar();
   });
 

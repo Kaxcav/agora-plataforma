@@ -21,6 +21,7 @@ import { gerarCpf } from '../src/seed/documentos.ts';
 import { Prng } from '../src/seed/prng.ts';
 import { USUARIOS_DEMONSTRACAO_ADICIONAIS } from '../src/seed/usuarios-demonstracao.ts';
 import { chamar, criarAppTeste, entrar, INICIO_TESTES, obterJson, relogioManual, type Credenciais } from './apoio.ts';
+import { concluirSelecao } from './apoio-selecao.ts';
 
 const SEM_LIMITE = { AGORA_LIMITE_REQUISICOES_MINUTO: '100000' };
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -582,6 +583,8 @@ describe('jornada da contratação: processos sintéticos, regras de avanço e c
         { id: vigilant, valorProposta: 790_000_000 },
       ],
     });
+    // Antes do avanço, os atos da seleção até a homologação (RN-22 e RF-18).
+    await concluirSelecao(app, radios, agente, gestor);
     assert.equal((await chamar(app, agente, 'POST', `/api/v1/processos/${radios}/avancar`)).statusCode, 200);
     const irregular = await chamar(app, agente, 'POST', `/api/v1/processos/${radios}/contratar`);
     assert.equal(irregular.statusCode, 422);
@@ -590,6 +593,7 @@ describe('jornada da contratação: processos sintéticos, regras de avanço e c
 
     // Sanção impeditiva aplicada depois do avanço também barra a contratação.
     const coletesId = processo('coletes').id;
+    await concluirSelecao(app, coletesId, agente, gestor);
     assert.equal((await chamar(app, agente, 'POST', `/api/v1/processos/${coletesId}/avancar`)).statusCode, 200);
     const hoje = hojeISO(new Date(INICIO_TESTES));
     await app.agora.banco.executar(
@@ -690,7 +694,7 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
     let agente = await entrar(app, 'agente@agora.demo');
     let juridico = await entrar(app, 'juridico@agora.demo');
     const planejamento = await entrar(app, 'planejamento@agora.demo');
-    const gestor = await entrar(app, 'gestor@agora.demo');
+    let gestor = await entrar(app, 'gestor@agora.demo');
     const fornecedores = await app.agora.banco.consultar<{ id: string; razao_social: string }>(
       "SELECT id, razao_social FROM fornecedores WHERE razao_social LIKE 'Planalto%' OR razao_social LIKE 'Guardião%' OR razao_social LIKE 'Tupã%'",
     );
@@ -703,7 +707,15 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
     let p = await ok(planejamento, 'POST', '/api/v1/processos', { titulo: 'Aquisição de kits de primeiros socorros táticos', orgao: 'SENASP' });
     const base = `/api/v1/processos/${p.id}`;
     assert.equal(p.parametrosEdital.criterioJulgamento, 'menor_preco');
-    assert.deepEqual(p.parametrosEdital, { criterioJulgamento: 'menor_preco', regimeExecucao: 'outro', exigeFaturamentoMinimo: false, patrimonioLiquidoMinimoPercentual: null, exigeRegistroCadastralComplementar: false });
+    assert.deepEqual(p.parametrosEdital, {
+      criterioJulgamento: 'menor_preco',
+      regimeExecucao: 'outro',
+      exigeFaturamentoMinimo: false,
+      patrimonioLiquidoMinimoPercentual: null,
+      exigeRegistroCadastralComplementar: false,
+      provaConceito: { exigencia: 'nenhuma', roteiro: null, justificativa: null, prazoDiasUteis: null },
+      inversaoFases: { adotada: false, motivacao: null },
+    });
     await ok(planejamento, 'PUT', `${base}/dfd`, {
       descricaoNecessidade: 'Equipar as equipes de pronta resposta com kits de atendimento pré-hospitalar tático padronizados.',
       justificativa: 'Os kits atuais estão vencidos e incompletos, o que compromete o atendimento a feridos em operações.',
@@ -759,6 +771,12 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
         { fonte: 'midia_especializada', descricaoFonte: 'Catálogo de fornecedor especializado', valorUnitario: 61_400, dataCotacao: adicionarDias(hoje, -5) },
       ],
     });
+    // RN-21: com a política do órgão ligada (padrão), o ETP não se conclui sem os critérios de sustentabilidade.
+    assert.deepEqual(regras(await chamar(app, planejamento, 'POST', `${base}/avancar`)), ['RN-21', 'RN-21']);
+    await ok(planejamento, 'PUT', `${base}/sustentabilidade`, {
+      criteriosAmbientais: 'Kits com embalagem reciclável e componentes sem látex, com validade mínima de 24 meses na entrega.',
+      logisticaReversa: 'O fornecedor recolhe os kits e os componentes vencidos para descarte ambientalmente adequado.',
+    });
     for (const tipo of ['etp', 'matriz_riscos', 'nota_tecnica_precos']) await aprovarEAssinar(planejamento, tipo);
     p = await ok(planejamento, 'POST', `${base}/avancar`);
     assert.equal(p.etapaAtual, 4);
@@ -778,6 +796,7 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
     tempo.avancar(20 * DIA_MS);
     agente = await entrar(app, 'agente@agora.demo');
     juridico = await entrar(app, 'juridico@agora.demo');
+    gestor = await entrar(app, 'gestor@agora.demo');
     p = await ok(agente, 'POST', `${base}/avancar`);
     assert.equal(p.etapaAtual, 6);
 
@@ -789,6 +808,9 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
         { id: segundo.id, valorProposta: 24_100_000, notaDesempenhoPrevio: 90 },
       ],
     });
+    // Atos da seleção: habilitação, preclusão sem intenção de recurso, adjudicação e homologação (RN-22, RF-18).
+    assert.deepEqual(regras(await chamar(app, agente, 'POST', `${base}/avancar`)), ['RN-22']);
+    await concluirSelecao(app, p.id, agente, gestor);
     p = await ok(agente, 'POST', `${base}/avancar`);
     assert.equal(p.etapaAtual, 7);
     p = await ok(agente, 'POST', `${base}/contratar`);
@@ -800,7 +822,25 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
     const auditor = await entrar(app, 'auditor@agora.demo');
     const trilha = await obterJson<Pagina<{ acao: string; recursoId: string | null }>>(app, auditor, `/api/v1/auditoria?recurso=processo&tamanhoPagina=100`);
     const doProcesso = trilha.itens.filter((e) => e.recursoId === p.id).map((e) => e.acao);
-    for (const acao of ['processo.criar', 'processo.dfd.atualizar', 'processo.equipe.designar', 'processo.documento.gerar', 'processo.documento.aprovar', 'processo.sei.assinar', 'processo.avancar', 'processo.parecer.registrar', 'processo.publicar', 'processo.disputa.registrar', 'processo.contratar']) {
+    for (const acao of [
+      'processo.criar',
+      'processo.dfd.atualizar',
+      'processo.equipe.designar',
+      'processo.documento.gerar',
+      'processo.documento.aprovar',
+      'processo.sei.assinar',
+      'processo.avancar',
+      'processo.parecer.registrar',
+      'processo.publicar',
+      'processo.disputa.registrar',
+      'processo.sustentabilidade.atualizar',
+      'processo.selecao.habilitacao.registrar',
+      'processo.selecao.recurso.encerrar_intencao',
+      'processo.selecao.adjudicar',
+      'processo.selecao.homologar',
+      'processo.selecao.divulgar_preparatorios',
+      'processo.contratar',
+    ]) {
       assert.ok(doProcesso.includes(acao), `trilha sem ${acao}`);
     }
     const verificacao = await obterJson<VerificacaoAuditoria>(app, auditor, '/api/v1/auditoria/verificacao');

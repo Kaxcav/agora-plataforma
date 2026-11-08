@@ -1,4 +1,4 @@
-import type { aplicarDesempate, analisarCestaPrecos, FonteCotacao, PapelProcesso } from '@agora/dominio';
+import type { aplicarDesempate, analisarCestaPrecos, EfeitoReforma, FonteCotacao, PapelProcesso } from '@agora/dominio';
 import type { DocumentoGerado, EtapaJornada, OrgaoRequisitante, ParametrosEdital, ProcessoDetalhe } from '@agora/contratos';
 
 export type { ParametrosEdital };
@@ -96,6 +96,90 @@ export interface LinhaProcesso {
   parecerista_nome: string | null;
   criado_em: string;
   atualizado_em: string;
+  selecao: SelecaoArmazenada;
+  sustentabilidade: SustentabilidadeArmazenada;
+}
+
+// ───────────────────────── Atos da seleção (RN-20, RN-22, RF-18) e sustentabilidade (RN-21) ─────────────────────────
+
+/** Servidor que praticou o ato (nome de servidor público, sem CPF, e-mail ou telefone). */
+export interface AutorAto {
+  id: string;
+  nome: string;
+}
+
+export interface ConvocacaoArmazenada {
+  fornecedorId: string;
+  convocadoEm: string;
+  /** Último dia do prazo (convocação + dias úteis do edital), fixado na convocação. */
+  limite: string;
+  convocacaoAutomatica: boolean;
+  resultado: 'aprovado' | 'reprovado' | null;
+  realizadaEm: string | null;
+  motivacao: string | null;
+  linkGravacao: string | null;
+  por: AutorAto;
+  registradoPor: AutorAto | null;
+}
+
+export interface HabilitacaoArmazenada {
+  fornecedorId: string;
+  resultado: 'habilitado' | 'inabilitado';
+  data: string;
+  motivacao: string;
+  por: AutorAto;
+}
+
+export interface ManifestacaoArmazenada {
+  fornecedorId: string;
+  data: string;
+  texto: string;
+}
+
+export interface DecisaoArmazenada<D extends string> {
+  decisao: D;
+  data: string;
+  motivacao: string;
+  efeito: EfeitoReforma | null;
+  por: AutorAto;
+}
+
+export interface RecursoArmazenado {
+  vencedorId: string;
+  dataAto: string;
+  intencoes: ManifestacaoArmazenada[];
+  intencaoEncerradaEm: string | null;
+  razoes: ManifestacaoArmazenada[];
+  contrarrazoes: ManifestacaoArmazenada[];
+  reconsideracao: DecisaoArmazenada<'reconsiderada' | 'mantida'> | null;
+  decisaoSuperior: DecisaoArmazenada<'provido' | 'nao_provido'> | null;
+}
+
+export interface AtoAutoridadeArmazenado {
+  data: string;
+  fornecedorId: string;
+  motivacao: string | null;
+  por: AutorAto;
+}
+
+/**
+ * Coluna `processos.selecao`. Vazia (`{}`) até o primeiro ato; `legado` marca processos que já estavam na etapa 7
+ * antes do registro dos atos (migração 011): a contratação segue a regra anterior.
+ */
+export interface SelecaoArmazenada {
+  legado?: boolean;
+  convocacoes?: ConvocacaoArmazenada[];
+  habilitacoes?: HabilitacaoArmazenada[];
+  recursos?: RecursoArmazenado[];
+  adjudicacao?: AtoAutoridadeArmazenado | null;
+  homologacao?: AtoAutoridadeArmazenado | null;
+  preparatoriosDivulgadosEm?: string | null;
+}
+
+/** Coluna `processos.sustentabilidade` (`{}` até o primeiro registro). */
+export interface SustentabilidadeArmazenada {
+  criteriosAmbientais?: string | null;
+  logisticaReversa?: string | null;
 }
 
 export interface MembroEquipe {

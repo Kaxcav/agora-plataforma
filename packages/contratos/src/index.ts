@@ -114,7 +114,8 @@ export type Permissao =
   | 'controle:terceira_linha'
   | 'controle_externo:ler'
   | 'controle_externo:registrar'
-  | 'riscos:revisar';
+  | 'riscos:revisar'
+  | 'jornada:homologar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -834,6 +835,10 @@ export interface ParametrosEdital {
   exigeFaturamentoMinimo: boolean; // vedado (art. 69, § 2º) → bloqueio RN-06
   patrimonioLiquidoMinimoPercentual: number | null; // máximo 10% do valor estimado (art. 69, § 4º) → bloqueio RN-06 acima disso
   exigeRegistroCadastralComplementar: boolean; // vedado para acesso ao edital (art. 87, § 2º) → bloqueio RN-06/RN-07
+  /** Prova de conceito ou amostra do licitante provisoriamente vencedor (RN-20). No PUT, ausente = não exigida; o GET sempre devolve. */
+  provaConceito?: ProvaConceitoEdital;
+  /** Inversão de fases (art. 17, § 1º; RN-22). No PUT, ausente = não adotada; o GET sempre devolve. */
+  inversaoFases?: InversaoFasesEdital;
 }
 export interface EntradaNovoProcesso {
   titulo: string;
@@ -943,6 +948,10 @@ export interface ProcessoDetalhe extends ProcessoResumo {
   contratoGerado: { id: Id; numero: string } | null;
   bloqueiosDetalhe: Bloqueio[];
   sinais: Sinal[];
+  /** Atos da seleção (etapa 6): prova de conceito, habilitação, fase recursal, adjudicação e homologação. */
+  selecao: SelecaoProcesso;
+  /** Critérios de sustentabilidade do ETP e do TR e a política do órgão (RN-21). */
+  sustentabilidade: SustentabilidadeProcesso;
 }
 // PUT /processos/:id/dfd        body ProcessoDetalhe['dfd']             → ProcessoDetalhe
 // PUT /processos/:id/equipe     body { designacoes: {papel, usuarioId}[] } → ProcessoDetalhe (422 com conflitos se RN-03 violar)
@@ -1021,6 +1030,10 @@ export interface EditalPublico {
   idPncp: string | null;
   linkPncp: string | null; // só quando a publicação foi feita no PNCP real
   documentos: DocumentoEditalPublico[];
+  /** Data da homologação (art. 71, IV); `null` antes dela. */
+  homologadoEm: DataISO | null;
+  /** Documentos da fase preparatória divulgados após a homologação (art. 54, § 3º; RF-18). Vazio antes dela. */
+  documentosPreparatorios: DocumentoPreparatorioPublico[];
 }
 // GET /publico/editais?busca&pagina → Pagina<EditalPublico> ; GET /publico/editais/:id → EditalPublico
 // GET /publico/editais/:id/documentos/:tipo → application/pdf (inteiro teor, sem login)
@@ -1794,3 +1807,171 @@ export interface PainelTerceiraLinha {
   fontes: string[];
 }
 // GET /controle/relatorio.pdf?uasg&de&ate → application/pdf (controle:terceira_linha): relatório executivo de auditoria com fontes, data e período
+// ───────────────────────── Jornada: prova de conceito, sustentabilidade e atos da seleção ─────────────────────────
+
+export type ExigenciaProvaConceito = 'nenhuma' | 'prova_conceito' | 'amostra';
+/** Prova de conceito ou amostra prevista no edital (art. 17, § 3º; art. 41, II) — RN-20. */
+export interface ProvaConceitoEdital {
+  exigencia: ExigenciaProvaConceito;
+  roteiro: string | null; // testes e critérios objetivos de aprovação
+  justificativa: string | null; // necessidade (art. 41, II)
+  prazoDiasUteis: number | null; // contados da convocação (1 a 30)
+}
+/** Inversão de fases (art. 17, § 1º): a habilitação antecede o julgamento, por ato motivado. */
+export interface InversaoFasesEdital {
+  adotada: boolean;
+  motivacao: string | null;
+}
+
+export type ProximoAtoSelecao =
+  | 'registrar_disputa'
+  | 'convocar_prova_conceito'
+  | 'registrar_resultado_prova_conceito'
+  | 'registrar_habilitacao'
+  | 'registrar_intencao_recurso'
+  | 'aguardar_razoes'
+  | 'aguardar_contrarrazoes'
+  | 'decidir_reconsideracao'
+  | 'decidir_recurso'
+  | 'adjudicar'
+  | 'homologar'
+  | 'concluida'
+  | 'fracassada';
+export type SituacaoFaseRecursal =
+  | 'intencao'
+  | 'razoes'
+  | 'contrarrazoes'
+  | 'reconsideracao'
+  | 'decisao_superior'
+  | 'preclusa'
+  | 'deserta'
+  | 'improvida'
+  | 'decidida_em_recurso';
+export interface LicitanteReferencia {
+  id: Id;
+  nome: string;
+}
+/** Efeito da reforma do ato recorrido, escolhido por quem decide. */
+export type EfeitoReforma = { tipo: 'desclassificar_vencedor' } | { tipo: 'reintegrar_licitante'; fornecedorId: Id };
+export interface ManifestacaoRecursalProcesso {
+  licitante: LicitanteReferencia;
+  data: DataISO;
+  texto: string;
+}
+export interface DecisaoRecursalProcesso<D extends string> {
+  decisao: D;
+  data: DataISO;
+  motivacao: string;
+  efeito: EfeitoReforma | null;
+  por: UsuarioResumo | null;
+}
+export interface FaseRecursalProcesso {
+  vencedor: LicitanteReferencia;
+  atoRecorrivel: 'habilitacao' | 'julgamento';
+  dataAto: DataISO;
+  situacao: SituacaoFaseRecursal;
+  intencaoAberta: boolean;
+  prazos: { razoes: DataISO; contrarrazoes: DataISO; reconsideracao: DataISO; decisaoSuperior: DataISO | null };
+  intencoes: ManifestacaoRecursalProcesso[];
+  intencaoEncerradaEm: DataISO | null;
+  razoes: ManifestacaoRecursalProcesso[];
+  contrarrazoes: ManifestacaoRecursalProcesso[];
+  reconsideracao: DecisaoRecursalProcesso<'reconsiderada' | 'mantida'> | null;
+  decisaoSuperior: DecisaoRecursalProcesso<'provido' | 'nao_provido'> | null;
+}
+export interface ProvaConceitoProcesso {
+  licitante: LicitanteReferencia;
+  convocadoEm: DataISO;
+  limite: DataISO;
+  convocacaoAutomatica: boolean; // próximo colocado convocado após reprovação, inabilitação ou recurso
+  resultado: 'aprovado' | 'reprovado' | null;
+  realizadaEm: DataISO | null;
+  motivacao: string | null;
+  linkGravacao: string | null; // sessão pública gravada (art. 17, § 2º)
+  registradoPor: UsuarioResumo | null;
+}
+export interface HabilitacaoProcesso {
+  licitante: LicitanteReferencia;
+  resultado: 'habilitado' | 'inabilitado';
+  data: DataISO;
+  motivacao: string;
+  registradoPor: UsuarioResumo | null;
+}
+/** Atos da seleção (etapa 6): RN-20, RN-22 e RF-18. A ordem e os prazos vêm de `avaliarSelecao` (@agora/dominio). */
+export interface SelecaoProcesso {
+  proximoAto: ProximoAtoSelecao;
+  vencedorProvisorio: LicitanteReferencia | null;
+  excluidos: { licitante: LicitanteReferencia; motivo: 'prova_conceito' | 'habilitacao' | 'recurso' }[];
+  reintegrados: Id[];
+  provasConceito: ProvaConceitoProcesso[];
+  habilitacoes: HabilitacaoProcesso[];
+  faseRecursal: FaseRecursalProcesso | null; // a do vencedor provisório
+  fasesRecursaisAnteriores: FaseRecursalProcesso[]; // de vencedores anteriores, desfeitos em recurso
+  recursosExauridos: boolean;
+  adjudicacao: { data: DataISO; licitante: LicitanteReferencia; motivacao: string | null; por: UsuarioResumo | null } | null;
+  homologacao: { data: DataISO; motivacao: string | null; por: UsuarioResumo | null } | null;
+  documentosPreparatoriosDivulgadosEm: InstanteISO | null;
+  pendencia: { regra: string; mensagem: string; fundamento: string } | null;
+}
+// POST /processos/:id/selecao/prova-conceito/convocacao                                 → ProcessoDetalhe (jornada:editar; RN-20)
+// POST /processos/:id/selecao/prova-conceito/resultado  body EntradaResultadoProvaConceito → ProcessoDetalhe (reprovado → próximo convocado)
+// POST /processos/:id/selecao/habilitacao               body EntradaHabilitacao         → ProcessoDetalhe (jornada:editar)
+// POST /processos/:id/selecao/recurso/manifestacao      body EntradaManifestacaoRecursal → ProcessoDetalhe (intenção, razões, contrarrazões)
+// POST /processos/:id/selecao/recurso/encerrar-intencao                                  → ProcessoDetalhe (encerra o registro das intenções)
+// POST /processos/:id/selecao/recurso/reconsideracao    body EntradaDecisaoRecursal<'reconsiderada' | 'mantida'> (jornada:editar)
+// POST /processos/:id/selecao/recurso/decisao           body EntradaDecisaoRecursal<'provido' | 'nao_provido'>   (jornada:homologar + autoridade designada)
+// POST /processos/:id/selecao/adjudicacao               body EntradaAtoAutoridade (jornada:homologar + autoridade competente designada; art. 71)
+// POST /processos/:id/selecao/homologacao               body EntradaAtoAutoridade (idem; divulga os documentos preparatórios — art. 54, § 3º)
+export interface EntradaResultadoProvaConceito {
+  resultado: 'aprovado' | 'reprovado';
+  motivacao: string;
+  linkGravacao: string | null; // http(s); obrigatório quando aprovado
+}
+export interface EntradaHabilitacao {
+  resultado: 'habilitado' | 'inabilitado';
+  motivacao: string;
+}
+export interface EntradaManifestacaoRecursal {
+  tipo: 'intencao' | 'razoes' | 'contrarrazoes';
+  fornecedorId: Id;
+  texto: string;
+}
+export interface EntradaDecisaoRecursal<D extends string> {
+  decisao: D;
+  motivacao: string;
+  efeito: EfeitoReforma | null; // obrigatório quando o ato é reformado
+}
+export interface EntradaAtoAutoridade {
+  motivacao: string | null;
+}
+
+/** Critérios de sustentabilidade do processo e a política do órgão (RN-21). */
+export interface SustentabilidadeProcesso {
+  criteriosAmbientais: string | null;
+  logisticaReversa: string | null;
+  politicaObrigatoria: boolean; // política do órgão ligada: ETP e TR não se concluem sem os dois critérios
+}
+export type EntradaSustentabilidade = Pick<SustentabilidadeProcesso, 'criteriosAmbientais' | 'logisticaReversa'>;
+// PUT /processos/:id/sustentabilidade body EntradaSustentabilidade → ProcessoDetalhe (jornada:editar; até a etapa 4)
+
+/** Política de sustentabilidade do órgão: ligada por padrão; só o administrador altera, com justificativa auditada. */
+export interface PoliticaSustentabilidade {
+  ativa: boolean;
+  justificativa: string | null;
+  alteradaEm: InstanteISO | null;
+  alteradaPor: UsuarioResumo | null;
+}
+export interface EntradaPoliticaSustentabilidade {
+  ativa: boolean;
+  justificativa: string; // mínimo de 20 caracteres
+}
+// GET /politicas-orgao/sustentabilidade (sessão) → PoliticaSustentabilidade ; PUT idem body EntradaPoliticaSustentabilidade (ajustes:editar)
+
+/** Documento da fase preparatória divulgado após a homologação (art. 54, § 3º). */
+export interface DocumentoPreparatorioPublico {
+  tipo: 'dfd' | 'etp' | 'matriz_riscos' | 'nota_tecnica_precos' | 'parecer_checklist';
+  titulo: string;
+  versao: number;
+  url: string; // PDF gerado no servidor, com dados pessoais tarjados
+}
+// GET /publico/editais/:id/preparatorios/:tipo → application/pdf (sem login; só após a homologação)

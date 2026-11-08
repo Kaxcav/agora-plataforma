@@ -30,6 +30,21 @@ const COLUNAS: ColunaTabela<EditalPublico>[] = [
   },
   { id: 'documentos', cabecalho: 'Documentos', alinhamento: 'fim', celula: (e) => <span className="numero">{e.documentos.length}</span> },
   {
+    id: 'homologacao',
+    cabecalho: 'Homologação',
+    celula: (e) =>
+      e.homologadoEm ? (
+        <span className="pilha pilha--compacta">
+          <span className="numero sem-quebra">{formatarData(e.homologadoEm)}</span>
+          <span className="texto-pequeno texto-secundario">
+            {e.documentosPreparatorios.length} {e.documentosPreparatorios.length === 1 ? 'documento preparatório' : 'documentos preparatórios'}
+          </span>
+        </span>
+      ) : (
+        <span className="texto-secundario">Não homologado</span>
+      ),
+  },
+  {
     id: 'pncp',
     cabecalho: 'PNCP',
     celula: (e) => (e.linkPncp ? <LinkExterno href={e.linkPncp}>Ver no PNCP</LinkExterno> : <span className="texto-secundario">Inteiro teor nesta página</span>),
@@ -51,7 +66,8 @@ export default function TransparenciaEditais() {
       tela="transparencia"
     >
       <p className="texto-secundario">
-        Os documentos são a última versão aprovada, em PDF, com os dados pessoais tarjados. Os contratos assinados estão em{' '}
+        Os documentos são a última versão aprovada, em PDF, com os dados pessoais tarjados. Depois da homologação, os documentos da fase
+        preparatória também ficam disponíveis no edital (art. 54, § 3º). Os contratos assinados estão em{' '}
         <Link to="/transparencia">Transparência: contratos</Link>.
       </p>
       {consulta.isError && consulta.data === undefined ? (

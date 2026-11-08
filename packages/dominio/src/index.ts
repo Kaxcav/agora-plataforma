@@ -25,3 +25,5 @@ export * from './lei14133/simulador-disputa.ts';
 export * from './lei14133/padroes-lances.ts';
 export * from './lei14133/ata-disputa.ts';
 export * from './lei14133/controle.ts';
+export * from './lei14133/selecao.ts';
+export * from './lei14133/sustentabilidade.ts';

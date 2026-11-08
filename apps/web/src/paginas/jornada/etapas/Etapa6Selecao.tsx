@@ -12,6 +12,7 @@ import { ehResultadoDesempate, useSalvarDisputa, type ResultadoDesempate } from 
 import { Alerta, Botao, CampoBusca, CampoMoeda, Etiqueta, LinkBotao, Selecao, useAvisos } from '../../../componentes';
 import { PORTES } from '../../compartilhado/rotulos';
 import { calcular, EntradaMoeda, ErroOperacao, mesmoConteudo, Requisitos, type Requisito } from '../comum';
+import { AtosSelecao } from './AtosSelecao';
 import type { PropsEtapa } from './tipos';
 
 type CriterioBooleano = 'acoesEquidadeGenero' | 'programaIntegridade' | 'empresaBrasileira' | 'investePesquisaDesenvolvimentoNoPais' | 'praticaMitigacaoClimatica';
@@ -295,6 +296,9 @@ function PassoAPasso({ resultado }: { resultado: ResultadoDesempate }) {
 
 export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa) {
   const base = useId();
+  // Depois do primeiro ato da seleção, o resultado da disputa fica fixo (o servidor recusa a alteração).
+  const selecao = processo.selecao;
+  const disputaEditavel = editavel && selecao.provasConceito.length === 0 && selecao.habilitacoes.length === 0 && selecao.faseRecursal === null && selecao.adjudicacao === null;
   const { avisar } = useAvisos();
   const salvar = useSalvarDisputa(processo.id);
   const [licitantes, definirLicitantes] = useState<LicitanteDisputa[]>(() => processo.disputa.licitantes);
@@ -373,6 +377,11 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
       rotulo: 'Sem empate pendente de sorteio (art. 60)',
       atendido: resultadoServidor !== null && !resultadoServidor.sorteioNecessario,
     },
+    {
+      id: 'atos',
+      rotulo: 'Prova de conceito (se exigida), habilitação, recursos exauridos, adjudicação e homologação (RN-20, RN-22, RF-18)',
+      atendido: processo.selecao.proximoAto === 'concluida',
+    },
   ];
   const vencedor = resultado?.classificacao.find((c) => c.posicao === 1) ?? null;
 
@@ -413,7 +422,7 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
                 <th scope="col" className="tabela__alinhar--fim">
                   Desempenho prévio (0–100)
                 </th>
-                {editavel ? (
+                {disputaEditavel ? (
                   <th scope="col">
                     <span className="sr-only">Ações</span>
                   </th>
@@ -426,7 +435,7 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
               {licitantes.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="texto-secundario">
-                    {editavel ? 'Nenhum licitante. Busque o fornecedor no cadastro e use “Incluir”.' : 'Nenhuma proposta registrada.'}
+                    {disputaEditavel ? 'Nenhum licitante. Busque o fornecedor no cadastro e use “Incluir”.' : 'Nenhuma proposta registrada.'}
                   </td>
                 </tr>
               ) : (
@@ -436,7 +445,7 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
                       {i + 1}
                     </th>
                     <td>{l.nome}</td>
-                    {editavel ? (
+                    {disputaEditavel ? (
                       <>
                         <td className="tabela__alinhar--fim">
                           <EntradaMoeda
@@ -478,7 +487,7 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
             </tbody>
           </table>
         </div>
-        {editavel ? (
+        {disputaEditavel ? (
           <>
             <SeletorFornecedor incluidos={incluidos} aoIncluir={incluir} />
             {licitantes.length > 0 ? (
@@ -619,6 +628,8 @@ export default function Etapa6Selecao({ processo, atual, editavel }: PropsEtapa)
           </Alerta>
         ))}
       </section>
+
+      <AtosSelecao processo={processo} atual={atual} editavel={editavel} />
 
       {atual && processo.contratoGerado === null ? (
         <>

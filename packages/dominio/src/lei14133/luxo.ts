@@ -55,3 +55,32 @@ export function sinalizarArtigoLuxo(
     fundamento: 'Lei 14.133/2021, art. 20; Decreto 10.818/2021',
   };
 }
+
+/**
+ * Trava da geração de minutas (roteiro PoC-01; Lei 14.133/2021, art. 20): enquanto algum item do DFD tiver indício de
+ * artigo de luxo sem justificativa aceita, nenhuma minuta é gerada (DFD, ETP, matriz de riscos, nota técnica, TR,
+ * edital, contrato), inclusive com a redação por IA ligada. A justificativa é aceita quando demonstra, com pelo menos
+ * `minimoCaracteres`, que o bem é de qualidade comum ou se enquadra em exceção do Decreto 10.818/2021 — o mesmo
+ * critério que libera o avanço da etapa 1. A trava não classifica o bem: só impede a redação até a decisão humana.
+ */
+export function avaliarBloqueioLuxoMinutas(
+  itens: readonly { descricao: string }[],
+  justificativa: string | null,
+  minimoCaracteres = 30,
+): { bloqueado: boolean; itens: { item: number; termos: string[] }[]; mensagem: string; fundamento: string } {
+  if (!Array.isArray(itens)) throw new ErroDominio('ITENS_INVALIDOS', 'Informe a lista de itens do DFD.');
+  const comIndicio = itens.flatMap((item, indice) => {
+    const sinal = sinalizarArtigoLuxo(item.descricao);
+    return sinal.sinal === 'possivel_artigo_luxo' ? [{ item: indice + 1, termos: sinal.termosEncontrados }] : [];
+  });
+  const aceita = (justificativa ?? '').trim().length >= minimoCaracteres;
+  const bloqueado = comIndicio.length > 0 && !aceita;
+  const descricaoItens = comIndicio.map((x) => `item ${x.item} (${x.termos.map((t) => `"${t}"`).join(', ')})`).join('; ');
+  let mensagem = 'Nenhum indício de artigo de luxo nos itens do DFD.';
+  if (bloqueado) {
+    mensagem = `Geração de minutas bloqueada: indício de artigo de luxo sem justificativa aceita no ${descricaoItens}. Justifique no DFD que o bem é de qualidade comum ou se enquadra em exceção do Decreto 10.818/2021 (mínimo de ${minimoCaracteres} caracteres), ou remova o item, e gere a minuta novamente.`;
+  } else if (comIndicio.length > 0) {
+    mensagem = `Indício de artigo de luxo no ${descricaoItens}, com justificativa registrada: a geração de minutas está liberada.`;
+  }
+  return { bloqueado, itens: comIndicio, mensagem, fundamento: 'Lei 14.133/2021, art. 20; Decreto 10.818/2021' };
+}
