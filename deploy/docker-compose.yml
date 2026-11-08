@@ -42,8 +42,32 @@ services:
       AGORA_ORGAO_UNIDADE: ${AGORA_ORGAO_UNIDADE:-Secretaria Nacional de Segurança Pública}
       AGORA_ENCARREGADO_NOME: ${AGORA_ENCARREGADO_NOME:-Encarregado pelo Tratamento de Dados Pessoais}
       AGORA_ENCARREGADO_EMAIL: ${AGORA_ENCARREGADO_EMAIL:-encarregado@orgao.exemplo.gov.br}
+      # Documentos do processo (RF-21), OCR (RIA-08) e antivírus opcional do órgão (clamd: tcp://clamav:3310)
+      AGORA_ARQUIVOS_DIR: /var/lib/agora/arquivos
+      AGORA_OCR_URL: http://ocr:8080
+      AGORA_ANTIVIRUS_URL: ${AGORA_ANTIVIRUS_URL:-}
     ports:
       - "${AGORA_PORTA_PUBLICA:-3000}:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - arquivos_agora:/var/lib/agora/arquivos
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks: [interna]
+
+  # Serviço de OCR (Tesseract por + pdftoppm): só a API fala com ele; sem portas publicadas e sem internet.
+  ocr:
+    build:
+      context: ../apps/ocr
+      dockerfile: Dockerfile
+    image: agora-ocr:1.0.0
+    restart: unless-stopped
+    environment:
+      OCR_TAMANHO_MAXIMO_MB: ${AGORA_ARQUIVOS_TAMANHO_MAXIMO_MB:-20}
+      OCR_MAXIMO_PAGINAS: ${OCR_MAXIMO_PAGINAS:-30}
     read_only: true
     tmpfs:
       - /tmp
@@ -54,6 +78,7 @@ services:
 
 volumes:
   dados_banco:
+  arquivos_agora:
 
 networks:
   interna:

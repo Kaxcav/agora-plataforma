@@ -48,6 +48,8 @@ COPY --from=build --chown=node:node /app/apps/api/package.json ./apps/api/packag
 COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /app/apps/api/migracoes ./apps/api/migracoes
 COPY --from=build --chown=node:node /app/apps/web/dist ./apps/web/dist
+# Ponto de montagem dos documentos do processo (AGORA_ARQUIVOS_DIR), gravável pelo usuário sem privilégios.
+RUN mkdir -p /var/lib/agora/arquivos && chown -R node:node /var/lib/agora
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \

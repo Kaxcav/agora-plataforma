@@ -19,6 +19,12 @@ export interface Config {
   webDir: string | null;
   confiarProxy: boolean;
   limiteRequisicoesPorMinuto: number;
+  /** Documentos do processo (RF-21): diretório no servidor (`memory://` em testes); `null` desliga o envio. */
+  arquivos: { dir: string | null; tamanhoMaximoBytes: number };
+  /** Antivírus do órgão (clamd por TCP, `tcp://host:3310`); `null` = desligado. */
+  antivirusUrl: string | null;
+  /** Serviço de OCR auto-hospedado (apps/ocr); `null` = PDF digitalizado não é lido. */
+  ocr: { url: string | null; timeoutMs: number };
 }
 
 export class ErroConfiguracao extends Error {
@@ -75,6 +81,11 @@ const esquemaAmbiente = z.object({
   AGORA_WEB_DIR: textoOpcional,
   AGORA_CONFIAR_PROXY: booleanoOpcional,
   AGORA_LIMITE_REQUISICOES_MINUTO: z.coerce.number().int().min(10).max(100_000).default(300),
+  AGORA_ARQUIVOS_DIR: textoOpcional,
+  AGORA_ARQUIVOS_TAMANHO_MAXIMO_MB: z.coerce.number().int().min(1).max(200).default(20),
+  AGORA_ANTIVIRUS_URL: textoOpcional,
+  AGORA_OCR_URL: textoOpcional,
+  AGORA_OCR_TIMEOUT_SEGUNDOS: z.coerce.number().int().min(5).max(900).default(120),
 });
 
 function urlValida(valor: string): boolean {
@@ -133,6 +144,12 @@ export function carregarConfig(env: Record<string, string | undefined> = process
   if (e.AGORA_ORGAO_CNPJ !== null && !/^\d{14}$/.test(e.AGORA_ORGAO_CNPJ.replace(/\D/g, ''))) {
     problemas.push('AGORA_ORGAO_CNPJ: informe os 14 dígitos do CNPJ do órgão');
   }
+  if (e.AGORA_ANTIVIRUS_URL !== null && !/^tcp:\/\/[^\s/:]+:\d{1,5}$/.test(e.AGORA_ANTIVIRUS_URL)) {
+    problemas.push('AGORA_ANTIVIRUS_URL: use o formato tcp://host:3310 (clamd do órgão)');
+  }
+  if (e.AGORA_OCR_URL !== null && !urlValida(e.AGORA_OCR_URL)) {
+    problemas.push('AGORA_OCR_URL: URL inválida (ex.: http://ocr:8080)');
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -158,5 +175,12 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     webDir: e.AGORA_WEB_DIR,
     confiarProxy: e.AGORA_CONFIAR_PROXY ?? false,
     limiteRequisicoesPorMinuto: e.AGORA_LIMITE_REQUISICOES_MINUTO,
+    arquivos: {
+      // Sem AGORA_ARQUIVOS_DIR: junto dos dados locais em demonstração/homologação; desligado em produção.
+      dir: e.AGORA_ARQUIVOS_DIR ?? (producao ? null : e.AGORA_DADOS_DIR.startsWith('memory://') ? 'memory://' : `${e.AGORA_DADOS_DIR.replace(/[\\/]+$/, '')}/arquivos`),
+      tamanhoMaximoBytes: e.AGORA_ARQUIVOS_TAMANHO_MAXIMO_MB * 1024 * 1024,
+    },
+    antivirusUrl: e.AGORA_ANTIVIRUS_URL,
+    ocr: { url: e.AGORA_OCR_URL === null ? null : e.AGORA_OCR_URL.replace(/\/+$/, ''), timeoutMs: e.AGORA_OCR_TIMEOUT_SEGUNDOS * 1000 },
   };
 }

@@ -1,0 +1,113 @@
+# Documentos do processo (RF-21) e serviço de OCR da leitura assistida de atestados (RIA-08).
+# Aplique junto com agora.yaml:  kubectl apply -f deploy/k8s/
+#
+# - agora-arquivos: volume compartilhado pelas réplicas da API (ReadWriteMany, ex.: NFS ou CephFS do órgão), montado
+#   em AGORA_ARQUIVOS_DIR. Os arquivos são endereçados pelo SHA-256; a troca por armazenamento de objetos
+#   auto-hospedado só exige outra implementação de ArmazenamentoArquivos (apps/api/src/armazenamento/arquivos.ts).
+# - agora-ocr: Tesseract (por) + pdftoppm, sem internet, acessível só pelos pods da API (AGORA_OCR_URL).
+# - Antivírus (opcional): aponte AGORA_ANTIVIRUS_URL para o clamd do órgão e libere a saída TCP 3310 abaixo.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agora-arquivos
+  namespace: agora
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests: { storage: 50Gi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agora-ocr
+  namespace: agora
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: agora-ocr }
+  template:
+    metadata:
+      labels: { app: agora-ocr }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: ocr
+          image: registro.orgao.gov.br/agora-ocr:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: OCR_TAMANHO_MAXIMO_MB, value: "20" }
+            - { name: OCR_MAXIMO_PAGINAS, value: "30" }
+            - { name: OCR_SIMULTANEOS, value: "1" }
+          readinessProbe:
+            httpGet: { path: /saude, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /saude, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 500m, memory: 512Mi }
+            limits: { cpu: "2", memory: 2Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 2Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agora-ocr
+  namespace: agora
+spec:
+  selector: { app: agora-ocr }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+# OCR: entra só tráfego da API; não sai nada (nem DNS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agora-ocr-isolado
+  namespace: agora
+spec:
+  podSelector:
+    matchLabels: { app: agora-ocr }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app: agora }
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress: []
+---
+# API → OCR (8080) e, se configurado, → clamd do órgão (3310). Soma-se à política agora-saida.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agora-saida-documentos
+  namespace: agora
+spec:
+  podSelector:
+    matchLabels: { app: agora }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app: agora-ocr }
+      ports:
+        - { protocol: TCP, port: 8080 }
+    - ports:
+        - { protocol: TCP, port: 3310 }

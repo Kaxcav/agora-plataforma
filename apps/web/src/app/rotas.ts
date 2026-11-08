@@ -56,6 +56,9 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/admin/integracoes', permissao: ['integracoes:executar', 'admin:usuarios'], pagina: lazy(() => import('../paginas/admin/Integracoes')) },
   { caminho: '/auditoria', permissao: 'auditoria:ler', pagina: lazy(() => import('../paginas/auditoria/TrilhaAuditoria')) },
   { caminho: '/auditoria/lgpd', permissao: 'lgpd:relatorio', pagina: lazy(() => import('../paginas/auditoria/AcessosLgpd')) },
+
+  // Documentos do processo e leitura assistida de atestados (RF-21, RIA-08, RN-25)
+  { caminho: '/jornada/:id/documentos', permissao: 'documentos:ler', pagina: lazy(() => import('../paginas/documentos/DocumentosProcesso')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

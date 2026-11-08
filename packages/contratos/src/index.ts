@@ -103,7 +103,10 @@ export type Permissao =
   | 'admin:usuarios'
   | 'auditoria:ler'
   | 'lgpd:revelar'
-  | 'lgpd:relatorio';
+  | 'lgpd:relatorio'
+  | 'documentos:ler'
+  | 'documentos:enviar'
+  | 'documentos:analisar';
 
 export interface UsuarioSessao {
   id: Id;
@@ -1017,3 +1020,154 @@ export interface EditalPublico {
 
 // ───────────────────────── Saúde ─────────────────────────
 // GET /saude/vivo → { situacao: 'ok' }   GET /saude/pronto → { situacao: 'ok' | 'indisponivel', banco: boolean, versao: string }
+
+// ───────────────────────── Documentos do processo e leitura assistida de atestados (RF-21, RIA-08, RN-25) ─────────────────────────
+
+export type CategoriaArquivoProcesso = 'processo' | 'habilitacao';
+export type TipoArquivoProcesso = 'atestado_capacidade_tecnica' | 'balanco_patrimonial' | 'certidao' | 'proposta' | 'documento_processo' | 'outro';
+/** Formato identificado pelo conteúdo do arquivo (assinatura inicial), nunca pela extensão. */
+export type FormatoArquivo = 'pdf' | 'png' | 'jpeg';
+
+/** Quantitativo localizado num atestado (RIA-08), com o trecho-fonte. */
+export interface MencaoQuantitativoAtestado {
+  indice: number;
+  parcelaId: Id | null; // parcela do edital; null = sem correspondência ou ambígua
+  quantidade: number;
+  unidade: string;
+  pagina: number;
+  linha: number;
+  trecho: string; // linha do documento, com CPF, e-mail e telefone tarjados
+  confianca: 'alta' | 'media' | 'baixa';
+  linhaDeTotal: boolean;
+  quantidadePorExtenso: number | null;
+  observacao: string | null;
+}
+
+/** Última leitura assistida de um atestado. As menções são recalculadas com as parcelas atuais do edital. */
+export interface LeituraAtestado {
+  id: Id;
+  metodo: 'camada_texto' | 'ocr';
+  situacao: 'concluida' | 'sem_texto' | 'ocr_indisponivel' | 'falhou';
+  mensagem: string | null;
+  paginas: number;
+  linhas: number;
+  confiancaOcr: number | null; // média de 0 a 100 informada pelo OCR
+  motor: string | null; // "camada de texto do PDF" ou o motor de OCR
+  hashTexto: string | null; // SHA-256 do texto lido (proveniência)
+  mencoes: MencaoQuantitativoAtestado[];
+  lidaEm: InstanteISO;
+  lidaPor: UsuarioResumo;
+  aviso: string; // "requer revisão humana"
+}
+
+export interface ArquivoProcesso {
+  id: Id;
+  processoId: Id;
+  categoria: CategoriaArquivoProcesso;
+  tipo: TipoArquivoProcesso;
+  titulo: string;
+  nomeOriginal: string;
+  formato: FormatoArquivo;
+  tamanhoBytes: number;
+  sha256: string;
+  contemDadoPessoal: boolean;
+  antivirus: 'nao_verificado' | 'limpo';
+  fornecedor: { id: Id; nome: string } | null; // licitante (documentos de habilitação)
+  exercicio: number | null; // balanço patrimonial: exercício social
+  dataConstituicao: DataISO | null; // balanço: constituição da empresa (art. 69, § 6º)
+  enviadoPor: UsuarioResumo;
+  enviadoEm: InstanteISO;
+  leitura: LeituraAtestado | null;
+}
+
+export interface ArquivosProcesso {
+  itens: ArquivoProcesso[];
+  armazenamentoDisponivel: boolean;
+  tamanhoMaximoBytes: number;
+  formatosAceitos: FormatoArquivo[];
+  ocrDisponivel: boolean;
+  antivirusAtivo: boolean;
+}
+export interface EntradaBaixarArquivo {
+  finalidade?: string; // obrigatória (10 a 300 caracteres) para documento com dado pessoal (LGPD, art. 37)
+}
+// GET  /processos/:id/arquivos → ArquivosProcesso (documentos:ler; escopo de UASG do processo)
+// POST /processos/:id/arquivos?categoria&tipo&titulo&fornecedorId&contemDadoPessoal&exercicio&dataConstituicao
+//      corpo binário (application/octet-stream) e cabeçalho X-Agora-Nome-Arquivo (URI-encoded) → 201 ArquivoProcesso (documentos:enviar)
+// POST /processos/:id/arquivos/:arquivoId/baixar body EntradaBaixarArquivo → conteúdo do arquivo como anexo (documentos:ler)
+// POST /processos/:id/arquivos/:arquivoId/leitura → ArquivoProcesso (documentos:analisar; só atestados)
+
+/** Parcela de maior relevância exigida no edital (art. 67, §§ 1º e 2º), com a avaliação da RN-25. */
+export interface ParcelaQualificacaoTecnica {
+  id: Id;
+  descricao: string;
+  unidade: string;
+  quantidadeObjeto: number;
+  valorEstimado: Centavos;
+  quantidadeMinima: number;
+  termos: string[]; // palavras que identificam a parcela nos atestados
+  percentualDoTotal: number;
+  maiorRelevancia: boolean;
+  percentualMinimo: number;
+  limiteQuantidadeMinima: number;
+}
+export interface EntradaParcelaQualificacao {
+  id?: Id;
+  descricao: string;
+  unidade: string;
+  quantidadeObjeto: number;
+  valorEstimado: Centavos;
+  quantidadeMinima: number;
+  termos: string[];
+}
+export interface EntradaQualificacaoTecnica {
+  parcelas: EntradaParcelaQualificacao[];
+}
+
+export interface ContribuicaoAtestado {
+  arquivoId: Id;
+  titulo: string;
+  quantidade: number;
+  criterio: 'total_declarado' | 'soma_mencoes';
+  observacao: string | null;
+  evidencias: MencaoQuantitativoAtestado[];
+}
+
+/** Sinal da leitura assistida por licitante (RIA-08) e conferência dos balanços (art. 69, § 6º). Nunca é decisão. */
+export interface AnaliseHabilitacaoLicitante {
+  fornecedor: { id: Id; nome: string };
+  atestados: number;
+  atestadosLidos: number;
+  sinal: 'indica_atendimento' | 'indica_insuficiencia' | 'inconclusivo';
+  mensagem: string;
+  parcelas: {
+    parcelaId: Id;
+    descricao: string;
+    unidade: string;
+    exigido: number;
+    somado: number;
+    atende: boolean | null;
+    contribuicoes: ContribuicaoAtestado[];
+  }[];
+  balancos: { exigidos: 1 | 2 | null; apresentados: number[]; suficiente: boolean | null; mensagem: string };
+}
+
+export interface QualificacaoTecnica {
+  processoId: Id;
+  etapaAtual: EtapaJornada;
+  editavel: boolean; // exigências alteráveis até a etapa 4 (antes do controle jurídico e da publicação)
+  valorTotalEstimado: Centavos | null;
+  parcelas: ParcelaQualificacaoTecnica[];
+  definidaEm: InstanteISO | null;
+  definidaPor: UsuarioResumo | null;
+  licitantes: { id: Id; nome: string }[];
+  analise: AnaliseHabilitacaoLicitante[];
+  premissas: string[];
+  fontes: string[];
+  geradaEm: InstanteISO;
+  fundamento: string;
+  aviso: string;
+}
+// GET /processos/:id/qualificacao-tecnica → QualificacaoTecnica (documentos:ler)
+// PUT /processos/:id/qualificacao-tecnica body EntradaQualificacaoTecnica → QualificacaoTecnica
+//     (jornada:editar; até a etapa 4; 422 REGRA_NEGOCIO se violar o art. 67, §§ 1º e 2º)

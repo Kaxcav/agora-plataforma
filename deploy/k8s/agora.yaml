@@ -31,6 +31,9 @@ data:
   AGORA_LOG_NIVEL: "info"
   AGORA_CONFIAR_PROXY: "true"
   AGORA_ORGAO_CNPJ: "00000000000000"
+  # Documentos do processo (RF-21) e OCR (RIA-08). Antivírus do órgão (opcional): AGORA_ANTIVIRUS_URL: "tcp://clamav.seguranca:3310"
+  AGORA_ARQUIVOS_DIR: "/var/lib/agora/arquivos"
+  AGORA_OCR_URL: "http://agora-ocr:8080"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -81,9 +84,12 @@ spec:
             capabilities: { drop: [ALL] }
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
+            - { name: arquivos, mountPath: /var/lib/agora/arquivos }
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: arquivos
+          persistentVolumeClaim: { claimName: agora-arquivos }
 ---
 apiVersion: v1
 kind: Service

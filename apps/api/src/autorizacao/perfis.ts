@@ -27,6 +27,9 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'auditoria:ler',
   'lgpd:revelar',
   'lgpd:relatorio',
+  'documentos:ler',
+  'documentos:enviar',
+  'documentos:analisar',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -59,6 +62,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'sancoes:ler',
       'sancoes:instruir',
       'jornada:ler',
+      'documentos:ler',
     ],
   },
   {
@@ -99,7 +103,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
     codigo: 'planejamento',
     nome: 'Planejamento',
     descricao: 'Conduz a fase preparatória da contratação (DFD, ETP, riscos e preços).',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'itens:ler', 'fornecedores:ler', 'jornada:ler', 'jornada:editar', 'documentos:ler', 'documentos:enviar'],
   },
   {
     codigo: 'agente_contratacao',
@@ -115,13 +119,16 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'jornada:ler',
       'jornada:editar',
       'jornada:publicar',
+      'documentos:ler',
+      'documentos:enviar',
+      'documentos:analisar',
     ],
   },
   {
     codigo: 'juridico',
     nome: 'Assessoria jurídica',
     descricao: 'Realiza o controle prévio de legalidade (art. 53) e aprova a fase jurídica.',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'documentos:ler'],
   },
   {
     codigo: 'auditor',
