@@ -137,18 +137,23 @@ async function conferir(executor: Executor, linha: LinhaProcesso, exercicio: num
 }
 
 /**
- * Demandas por código do catálogo, para o sinal de registro de preços compartilhado: os DFDs dos processos ainda no
- * planejamento (etapas 1 a 3) e os itens dos PCAs aprovados ou publicados do exercício, em todas as UASGs.
+ * Demandas com os códigos do catálogo indicados, para o sinal de registro de preços compartilhado: os DFDs dos processos
+ * ainda no planejamento (etapas 1 a 3) e os itens dos PCAs aprovados ou publicados do exercício, em todas as UASGs.
+ * O filtro pelos códigos fica no banco: a avaliação roda para cada processo da lista da jornada.
  */
-async function demandasPorCodigo(executor: Executor, exercicio: number): Promise<DemandaUnidade[]> {
+async function demandasPorCodigo(executor: Executor, exercicio: number, codigos: readonly string[]): Promise<DemandaUnidade[]> {
   const demandas: DemandaUnidade[] = [];
+  const alvo = new Set(codigos);
   const processos = await executor.consultar<{ id: string; uasg: string; numero_sei: string; dfd: LinhaProcesso['dfd']; criado_em: string }>(
-    'SELECT id, uasg, numero_sei, dfd, criado_em FROM processos WHERE etapa_atual <= 3',
+    `SELECT p.id, p.uasg, p.numero_sei, p.dfd, p.criado_em FROM processos p
+      WHERE p.etapa_atual <= 3
+        AND EXISTS (SELECT 1 FROM jsonb_array_elements(p.dfd -> 'itens') AS i WHERE i ->> 'catmat' = ANY($1::text[]))`,
+    [[...alvo]],
   );
   for (const p of processos) {
     if (Number(p.criado_em.slice(0, 4)) !== exercicio) continue;
     for (const item of p.dfd.itens) {
-      if (!item.catmat) continue;
+      if (!item.catmat || !alvo.has(item.catmat)) continue;
       demandas.push({
         uasg: p.uasg,
         origem: 'dfd',
@@ -162,9 +167,9 @@ async function demandasPorCodigo(executor: Executor, exercicio: number): Promise
   }
   const itens = await executor.consultar<LinhaItemPca>(
     `${SELECAO_ITEM}
-      WHERE p.ano = $1 AND p.situacao IN ('aprovado', 'publicado') AND i.codigo_catalogo IS NOT NULL
+      WHERE p.ano = $1 AND p.situacao IN ('aprovado', 'publicado') AND i.codigo_catalogo = ANY($2::text[])
       ORDER BY p.uasg, i.numero`,
-    [exercicio],
+    [exercicio, [...alvo]],
   );
   for (const i of itens) {
     demandas.push({
@@ -183,7 +188,7 @@ async function demandasPorCodigo(executor: Executor, exercicio: number): Promise
 async function sugestoesCompartilhadas(executor: Executor, linha: LinhaProcesso, exercicio: number) {
   const codigos = linha.dfd.itens.flatMap((i) => (i.catmat ? [i.catmat] : []));
   if (codigos.length === 0) return [];
-  return sugerirRegistroPrecosCompartilhado({ uasg: linha.uasg, codigos }, await demandasPorCodigo(executor, exercicio));
+  return sugerirRegistroPrecosCompartilhado({ uasg: linha.uasg, codigos }, await demandasPorCodigo(executor, exercicio, codigos));
 }
 
 async function codigosConhecidos(executor: Executor, codigos: readonly string[]): Promise<Set<string>> {
