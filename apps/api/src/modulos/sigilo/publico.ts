@@ -15,7 +15,8 @@ import { contratosSigilosos, documentosRetidos, marcosOrcamento, vigentesPorProc
 export const AVISO_REGISTRO_MINIMO =
   'Contratação classificada como sigilosa por razões de segurança da sociedade e do Estado (Lei 14.133/2021, art. 13; Lei 12.527/2011, art. 24). Divulga-se apenas o registro mínimo.';
 
-export async function aplicarSigiloEditais(executor: Executor, editais: readonly EditalPublico[], hoje: string): Promise<EditalPublico[]> {
+/** `comValor`: calcula o valor total estimado (só no detalhe do edital, para não recalcular a cesta de cada item da lista). */
+export async function aplicarSigiloEditais(executor: Executor, editais: readonly EditalPublico[], hoje: string, comValor = false): Promise<EditalPublico[]> {
   if (editais.length === 0) return [];
   const ids = editais.map((e) => e.id);
   const vigentes = await vigentesPorProcesso(executor, ids, hoje);
@@ -28,7 +29,7 @@ export async function aplicarSigiloEditais(executor: Executor, editais: readonly
     const situacao = marcos.get(e.id)?.situacao;
     const divulgavel = situacao?.divulgavel ?? true;
     let valorEstimado: number | null = null;
-    if (doProcesso === null && divulgavel) {
+    if (comValor && doProcesso === null && divulgavel) {
       const linha = await obterLinhaProcesso(executor, e.id, null);
       valorEstimado = linha ? valorTotalEstimado(linha, hoje) : null;
     }

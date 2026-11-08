@@ -92,7 +92,7 @@ describe('configuração do sigilo (RNF-09)', () => {
   });
 
   test('produção sem AGORA_COFRE_CHAVE: cofre indisponível; fora de produção, chave derivada do segredo', () => {
-    const producao = carregarConfig({ ...base, AGORA_AMBIENTE: 'producao', AGORA_SEGREDO_SESSAO: 'x'.repeat(40), AGORA_BANCO_URL: 'postgres://u:s@h:5432/b' });
+    const producao = carregarConfig({ ...base, AGORA_AMBIENTE: 'producao', AGORA_SEGREDO_SESSAO: 'x'.repeat(40), AGORA_BANCO_URL: 'postgres://banco.exemplo:5432/agora' });
     assert.equal(resolverChaveCofre(producao, 'x'.repeat(40)), null);
     const demo = resolverChaveCofre(carregarConfig(base), 'segredo-de-teste-com-mais-de-32-bytes!!');
     assert.ok(demo?.derivada);
@@ -165,9 +165,12 @@ describe('sigilo de segurança pública (RN-40, RF-33, RNF-09) — API', () => {
       AGORA_CARIMBO_TEMPO_CERTIFICADO_SHA256: tsa.certificadoSha256,
     });
     app = await construirApp(config, { relogio: tempo.relogio, fetch: tsa.fetch });
-    [planejamento, agente, juridico, auditor, gestor, admin] = await Promise.all(
-      ['planejamento', 'agente', 'juridico', 'auditoria.externa', 'gestor', 'admin'].map((u) => entrar(app, `${u}@agora.demo`)),
-    );
+    planejamento = await entrar(app, 'planejamento@agora.demo');
+    agente = await entrar(app, 'agente@agora.demo');
+    juridico = await entrar(app, 'juridico@agora.demo');
+    auditor = await entrar(app, 'auditoria.externa@agora.demo');
+    gestor = await entrar(app, 'gestor@agora.demo');
+    admin = await entrar(app, 'admin@agora.demo');
   });
   after(async () => {
     await app.close();
@@ -262,6 +265,9 @@ describe('sigilo de segurança pública (RN-40, RF-33, RNF-09) — API', () => {
     assert.equal(desclassificar.statusCode, 200, desclassificar.body);
     const publico = (await app.inject({ method: 'GET', url: `/api/v1/publico/editais/${id}` })).json<EditalPublico>();
     assert.ok(publico.documentos.some((d) => d.tipo === 'tr'));
+    // Orçamento público: o valor estimado aparece no detalhe do edital (na lista, não é recalculado).
+    assert.equal(publico.sigilo?.orcamento.situacao, 'publico');
+    assert.ok((publico.sigilo?.orcamento.valorEstimado ?? 0) > 0);
   });
 
   test('processo classificado: credencial no processo decide; grau insuficiente e revogação negam; registro mínimo na transparência', async () => {

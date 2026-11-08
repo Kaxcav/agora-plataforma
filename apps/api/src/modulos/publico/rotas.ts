@@ -107,7 +107,7 @@ export async function rotasPublico(app: FastifyInstance): Promise<void> {
   app.get('/publico/editais/:id', async (request): Promise<EditalPublico> => {
     const id = idDaRota(request.params);
     const { itens } = await consultarEditais(ctx.banco, { busca: null, id, limite: 1, inicio: 0, pncpReal: pncpReal() });
-    const [edital] = await aplicarSigiloEditais(ctx.banco, await comDocumentosPreparatorios(ctx.banco, itens), ctx.hoje());
+    const [edital] = await aplicarSigiloEditais(ctx.banco, await comDocumentosPreparatorios(ctx.banco, itens), ctx.hoje(), true);
     if (!edital) throw naoEncontrado('Edital não encontrado ou ainda não publicado.');
     return edital;
   });

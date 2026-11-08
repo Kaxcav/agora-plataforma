@@ -73,8 +73,8 @@ test('documento reservado: some da transparência e da fila do PNCP; sem credenc
   await expect(linhaTr).toContainText('Reservada até');
   await expect(page.getByText(/Você tem credencial neste processo até o grau reservada/)).toBeVisible();
 
-  // Fila do PNCP: o termo de referência aparece retido por sigilo nos envios da etapa de publicação.
-  await page.goto(`/jornada/${id}`);
+  // Fila do PNCP: o termo de referência aparece retido por sigilo nos envios da etapa de publicação (etapa 5).
+  await page.goto(`/jornada/${id}?etapa=5`);
   await esperarPaginaOk(page);
   const envios = page.getByRole('region', { name: 'Envios ao PNCP' });
   await expect(envios.getByText('Retidos por sigilo, não enviados ao PNCP:')).toBeVisible();
