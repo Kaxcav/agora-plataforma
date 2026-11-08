@@ -118,7 +118,8 @@ describe('jornada da contratação: processos sintéticos, regras de avanço e c
 
   test('GET /processos/designaveis lista servidores ativos do escopo, ordenados e sem dados pessoais', async () => {
     const lista = await obterJson<UsuarioDesignavel[]>(app, agente, '/api/v1/processos/designaveis');
-    assert.equal(lista.length, 17 + USUARIOS_DEMONSTRACAO_ADICIONAIS.length);
+    // O perfil cidadão (gestão compartilhada com a sociedade) não tem acesso interno nem é designável.
+    assert.equal(lista.length, 17 + USUARIOS_DEMONSTRACAO_ADICIONAIS.filter((u) => u.perfil !== 'cidadao').length);
     assert.deepEqual(
       lista.map((u) => u.nome),
       [...lista.map((u) => u.nome)].sort((a, b) => a.localeCompare(b, 'pt-BR')),

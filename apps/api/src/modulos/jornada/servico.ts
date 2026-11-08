@@ -178,9 +178,11 @@ export async function gravarEquipe(
 
 /**
  * Usuários ativos no escopo de UASG de quem designa (`$1` nulo = todas): com acesso a todas as UASGs, a alguma
- * UASG do escopo, ou administradores/auditores sem UASG explícita (escopo total por perfil).
+ * UASG do escopo, ou administradores/auditores sem UASG explícita (escopo total por perfil). O perfil cidadão
+ * (gestão compartilhada com a sociedade) não é agente público e nunca é designável.
  */
-const CONDICAO_DESIGNAVEL = `u.ativo AND ($1::text[] IS NULL OR u.todas_uasgs
+const CONDICAO_DESIGNAVEL = `u.ativo AND NOT EXISTS (SELECT 1 FROM usuarios_perfis pc WHERE pc.usuario_id = u.id AND pc.perfil = 'cidadao')
+     AND ($1::text[] IS NULL OR u.todas_uasgs
      OR EXISTS (SELECT 1 FROM usuarios_uasgs uu WHERE uu.usuario_id = u.id AND uu.uasg = ANY($1::text[]))
      OR (NOT EXISTS (SELECT 1 FROM usuarios_uasgs ux WHERE ux.usuario_id = u.id)
          AND EXISTS (SELECT 1 FROM usuarios_perfis px WHERE px.usuario_id = u.id AND px.perfil IN ('administrador', 'auditor'))))`;

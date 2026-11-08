@@ -35,3 +35,6 @@ export * from './lei14133/extensao-sancao.ts';
 export * from './lei14133/declaracoes-agentes.ts';
 export * from './integracoes/fila.ts';
 export * from './lei14133/pncp.ts';
+export * from './privacidade.ts';
+export * from './lei14133/gestao-compartilhada.ts';
+export * from './dados-abertos.ts';

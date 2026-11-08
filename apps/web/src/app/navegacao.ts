@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   FileSignature,
+  MessagesSquare,
   type LucideIcon,
 } from 'lucide-react';
 import type { RequisitoPermissao } from '../sessao/permissoes';
@@ -138,6 +139,14 @@ export const MENU: readonly SecaoMenu[] = [
         permissao: ['controle:primeira_linha', 'controle:segunda_linha', 'controle:terceira_linha'],
       },
       { rotulo: 'Controle externo', caminho: '/controle-externo', icone: Landmark, permissao: 'controle_externo:ler' },
+    ],
+  },
+  {
+    id: 'sociedade',
+    titulo: 'Sociedade',
+    itens: [
+      { rotulo: 'Gestão compartilhada', caminho: '/sociedade', icone: MessagesSquare, permissao: 'sociedade:ler', exato: true },
+      { rotulo: 'Minhas manifestações', caminho: '/sociedade/minhas-manifestacoes', icone: MessagesSquare, permissao: 'sociedade:manifestar' },
     ],
   },
 ];

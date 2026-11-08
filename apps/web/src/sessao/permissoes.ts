@@ -24,6 +24,7 @@ export const NOMES_PERFIS: Record<CodigoPerfil, string> = {
   auditor: 'Auditor',
   consulta: 'Consulta',
   controle_interno: 'Controle interno',
+  cidadao: 'Cidadão',
 };
 
 export const NOMES_PERMISSOES: Record<Permissao, string> = {
@@ -73,6 +74,12 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'impedimentos:parecer': 'Emitir a análise jurídica da extensão de sanção',
   'impedimentos:decidir': 'Decidir a extensão de sanção (autoridade competente)',
   'agentes:declarar': 'Assinar a própria declaração de inexistência de impedimento',
+  'sociedade:ler': 'Consultar a gestão compartilhada com a sociedade',
+  'sociedade:manifestar': 'Enviar manifestações sobre contratos (cidadão identificado)',
+  'sociedade:moderar': 'Moderar as manifestações da sociedade',
+  'sociedade:responder': 'Responder às manifestações da sociedade',
+  'sociedade:registrar': 'Publicar fotos e vídeos da execução',
+  'sociedade:relatorio_final': 'Publicar o relatório final do contrato',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);

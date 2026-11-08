@@ -78,6 +78,12 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/impedimentos/fornecedores/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/FornecedorVinculos')) },
   { caminho: '/impedimentos/extensoes/:id', permissao: 'impedimentos:ler', pagina: lazy(() => import('../paginas/impedimentos/ExtensaoDetalhe')) },
   { caminho: '/impedimentos/declaracao', permissao: 'agentes:declarar', pagina: lazy(() => import('../paginas/impedimentos/MinhaDeclaracao')) },
+
+  // Gestão compartilhada com a sociedade (RF-37) e dados abertos (RF-38)
+  { caminho: '/dados-abertos', publica: true, pagina: lazy(() => import('../paginas/publicas/DadosAbertos')) },
+  { caminho: '/sociedade', permissao: 'sociedade:ler', pagina: lazy(() => import('../paginas/sociedade/GestaoCompartilhada')) },
+  { caminho: '/sociedade/contratos/:id', permissao: 'sociedade:ler', pagina: lazy(() => import('../paginas/sociedade/ContratoSociedade')) },
+  { caminho: '/sociedade/minhas-manifestacoes', permissao: 'sociedade:manifestar', pagina: lazy(() => import('../paginas/sociedade/MinhasManifestacoes')) },
 ];
 
 export const PAGINA_NAO_ENCONTRADA = lazy(() => import('../paginas/NaoEncontrada'));

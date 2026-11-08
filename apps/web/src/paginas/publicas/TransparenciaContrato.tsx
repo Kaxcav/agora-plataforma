@@ -14,6 +14,7 @@ import {
   Secao,
 } from '../../componentes';
 import { formatarPercentual } from '../../utilitarios/formatacao';
+import { GestaoCompartilhadaPublicaContrato } from './GestaoCompartilhadaPublica';
 
 export default function TransparenciaContrato() {
   const { id = '' } = useParams();
@@ -85,6 +86,8 @@ export default function TransparenciaContrato() {
                 />
                 <BarraProgresso valor={percentualPago} rotulo="Execução financeira (pago em relação ao valor global)" tom="sucesso" />
               </Secao>
+              {/* Gestão compartilhada com a sociedade (RF-37; art. 174, § 3º, VI) */}
+              <GestaoCompartilhadaPublicaContrato contratoId={c.id} />
             </>
           );
         }}

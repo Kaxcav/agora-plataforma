@@ -77,7 +77,8 @@ export type CodigoPerfil =
   | 'juridico'
   | 'auditor'
   | 'consulta'
-  | 'controle_interno';
+  | 'controle_interno'
+  | 'cidadao';
 
 export type Permissao =
   | 'painel:ler'
@@ -125,7 +126,13 @@ export type Permissao =
   | 'impedimentos:registrar'
   | 'impedimentos:parecer'
   | 'impedimentos:decidir'
-  | 'agentes:declarar';
+  | 'agentes:declarar'
+  | 'sociedade:ler'
+  | 'sociedade:manifestar'
+  | 'sociedade:moderar'
+  | 'sociedade:responder'
+  | 'sociedade:registrar'
+  | 'sociedade:relatorio_final';
 
 export interface UsuarioSessao {
   id: Id;
@@ -2564,3 +2571,230 @@ export interface PublicacaoPncp {
 // GET /processos/:id/publicacao-pncp → PublicacaoPncp (jornada:ler)
 // POST /processos/:id/publicar → ProcessoDetalhe (jornada:publicar): publica a contratação com o edital pela fila; os anexos seguem depois do 201
 // POST /processos/:id/contrato/publicar-pncp → PublicacaoPncp (jornada:publicar): divulga o contrato gerado (art. 94)
+
+// ───────────────────────── Gestão compartilhada com a sociedade (RF-37) ─────────────────────────
+
+export type AssuntoManifestacao = 'execucao' | 'qualidade' | 'prazo' | 'atendimento' | 'outro';
+export type SituacaoManifestacao = 'em_moderacao' | 'publicada' | 'recusada';
+export type SituacaoPrazoResposta = 'aguardando' | 'vence_em_breve' | 'vencido' | 'respondida_no_prazo' | 'respondida_fora_do_prazo';
+export type FormatoMidiaSociedade = 'jpeg' | 'png' | 'mp4';
+export type ConclusaoRelatorioFinal = 'atingidos' | 'parcialmente_atingidos' | 'nao_atingidos';
+
+/** Resposta identificada: servidor com a função ou contratado com o preposto (art. 174, § 3º, VI, "c"). */
+export interface RespostaManifestacao {
+  id: Id;
+  origem: 'administracao' | 'contratado';
+  /** "Rafael A. V." (servidor) ou razão social do contratado. */
+  autor: string;
+  /** "Gestor do contrato", "Fiscal do contrato" ou "Preposto: <nome>". */
+  funcao: string;
+  texto: string; // dados pessoais tarjados
+  respondidaEm: InstanteISO;
+}
+
+/** Manifestação publicada pela moderação: autor só com primeiro nome e iniciais; texto com dados pessoais tarjados. */
+export interface ManifestacaoPublica {
+  id: Id;
+  assunto: AssuntoManifestacao;
+  autor: string;
+  texto: string;
+  recebidaEm: InstanteISO;
+  publicadaEm: InstanteISO | null;
+  /** Imagem sem metadados de localização, servida pela Ágora; null sem imagem. */
+  imagemUrl: string | null;
+  prazoResposta: DataISO;
+  situacaoPrazo: SituacaoPrazoResposta;
+  respostas: RespostaManifestacao[];
+}
+
+/** Foto ou vídeo do acompanhamento da execução publicado pela fiscalização (art. 19, III). */
+export interface RegistroExecucaoPublico {
+  id: Id;
+  titulo: string;
+  descricao: string;
+  midia: 'imagem' | 'video';
+  formato: FormatoMidiaSociedade;
+  url: string;
+  /** Dia em que a foto ou o vídeo foi feito. */
+  registradoEm: DataISO;
+  publicadoEm: InstanteISO;
+  sha256: string;
+  bytes: number;
+}
+
+export interface RelatorioFinalPublico {
+  objetivos: string;
+  resultados: string;
+  conclusao: ConclusaoRelatorioFinal;
+  publicadoEm: InstanteISO;
+  publicadoPor: string; // "Gestor do contrato — Rafael A. V."
+  /** Dados da execução congelados na publicação. */
+  execucao: {
+    vigenciaInicio: DataISO;
+    vigenciaFim: DataISO;
+    valorGlobal: Centavos;
+    valorPago: Centavos;
+    aditivos: number;
+    manifestacoesPublicadas: number;
+    registrosPublicados: number;
+  };
+  /** SHA-256 do conteúdo publicado (objetivos, resultados, conclusão e dados da execução). */
+  sha256: string;
+  fundamento: string;
+}
+
+export interface GestaoCompartilhadaPublica {
+  contratoId: Id;
+  numero: string;
+  manifestacoes: ManifestacaoPublica[];
+  registros: RegistroExecucaoPublico[];
+  relatorioFinal: RelatorioFinalPublico | null;
+  /** O relatório final é publicado a partir do fim da vigência. */
+  vigenciaFim: DataISO;
+  prazoRespostaDias: number;
+  fundamento: string;
+}
+// GET /publico/contratos/:id/gestao-compartilhada → GestaoCompartilhadaPublica (sem login)
+// GET /publico/contratos/:id/manifestacoes/:manifestacaoId/imagem e /publico/contratos/:id/registros/:registroId/midia → bytes (só o publicado)
+
+export interface EntradaManifestacao {
+  assunto: AssuntoManifestacao;
+  texto: string; // 20 a 2.000 caracteres
+}
+// POST /sociedade/contratos/:id/manifestacoes (sociedade:manifestar) body EntradaManifestacao → MinhaManifestacao (201, em moderação)
+// POST /sociedade/manifestacoes/:id/imagem (sociedade:manifestar; corpo binário PNG ou JPEG; só o autor e só em moderação) → MinhaManifestacao
+
+export interface MinhaManifestacao {
+  id: Id;
+  contrato: { id: Id; numero: string; objeto: string };
+  assunto: AssuntoManifestacao;
+  texto: string;
+  situacao: SituacaoManifestacao;
+  motivoModeracao: string | null;
+  recebidaEm: InstanteISO;
+  moderadaEm: InstanteISO | null;
+  temImagem: boolean;
+  /** Metadados removidos da imagem enviada (ex.: "EXIF e localização (APP1)"). */
+  metadadosRemovidos: string[];
+  prazoResposta: DataISO;
+  respostas: RespostaManifestacao[];
+}
+// GET /sociedade/minhas-manifestacoes (sociedade:manifestar) → MinhaManifestacao[]
+
+/** Manifestação vista pela moderação e pela Administração (escopo de UASG do contrato). */
+export interface ManifestacaoModeracao {
+  id: Id;
+  contrato: { id: Id; numero: string; uasg: string; objeto: string };
+  assunto: AssuntoManifestacao;
+  autor: string; // primeiro nome e iniciais
+  /** Texto como sairá em público (dados pessoais tarjados). */
+  texto: string;
+  dadosPessoaisTarjados: boolean;
+  situacao: SituacaoManifestacao;
+  motivoModeracao: string | null;
+  moderadaPor: string | null;
+  moderadaEm: InstanteISO | null;
+  recebidaEm: InstanteISO;
+  /** Imagem para a moderação (rota autenticada); null sem imagem. */
+  imagemUrl: string | null;
+  metadadosRemovidos: string[];
+  prazoResposta: DataISO;
+  situacaoPrazo: SituacaoPrazoResposta;
+  respostas: RespostaManifestacao[];
+}
+// GET /sociedade/manifestacoes?situacao&pagina&tamanhoPagina (sociedade:ler) → Pagina<ManifestacaoModeracao>
+// GET /sociedade/manifestacoes/:id/imagem (sociedade:ler) → bytes
+
+export interface EntradaModeracao {
+  decisao: 'publicar' | 'recusar';
+  motivo: string; // 10 a 500 caracteres, sempre
+}
+// POST /sociedade/manifestacoes/:id/moderacao (sociedade:moderar) → ManifestacaoModeracao
+
+export interface EntradaRespostaManifestacao {
+  origem: 'administracao' | 'contratado';
+  texto: string;
+  /** Nome do preposto, obrigatório quando a resposta é do contratado. */
+  representante: string | null;
+}
+// POST /sociedade/manifestacoes/:id/respostas (sociedade:responder) → ManifestacaoModeracao
+
+export interface RegistroExecucaoInterno {
+  id: Id;
+  titulo: string;
+  descricao: string;
+  midia: 'imagem' | 'video';
+  formato: FormatoMidiaSociedade;
+  registradoEm: DataISO;
+  sha256: string;
+  bytes: number;
+  publicado: boolean;
+  /** Motivo de não publicar (ponto de checagem do sigilo). */
+  motivoRetencao: string | null;
+  enviadoPor: string;
+  enviadoEm: InstanteISO;
+  metadadosRemovidos: string[];
+  url: string; // rota autenticada
+}
+
+export interface GestaoCompartilhadaContrato {
+  contrato: { id: Id; numero: string; uasg: string; objeto: string; vigenciaInicio: DataISO; vigenciaFim: DataISO; encerrado: boolean };
+  manifestacoes: ManifestacaoModeracao[];
+  registros: RegistroExecucaoInterno[];
+  relatorioFinal: RelatorioFinalPublico | null;
+  armazenamentoDisponivel: boolean;
+  tamanhoMaximoImagemBytes: number;
+  tamanhoMaximoVideoBytes: number;
+  formatosAceitos: FormatoMidiaSociedade[];
+  prazoRespostaDias: number;
+}
+// GET /sociedade/contratos/:id (sociedade:ler) → GestaoCompartilhadaContrato
+// POST /sociedade/contratos/:id/registros?titulo&descricao&registradoEm&sigiloso (sociedade:registrar; corpo binário JPEG, PNG ou MP4) → RegistroExecucaoInterno
+// GET /sociedade/contratos/:id/registros/:registroId/midia (sociedade:ler) → bytes
+
+export interface EntradaRelatorioFinal {
+  objetivos: string;
+  resultados: string;
+  conclusao: ConclusaoRelatorioFinal;
+}
+// POST /sociedade/contratos/:id/relatorio-final (sociedade:relatorio_final; só após o fim da vigência; um por contrato) → RelatorioFinalPublico
+
+// ───────────────────────── Dados abertos (RF-38) ─────────────────────────
+
+export type TipoColunaDadosAbertos = 'identificador' | 'texto' | 'inteiro' | 'decimal' | 'data' | 'booleano';
+export interface ColunaDicionarioDados {
+  nome: string;
+  tipo: TipoColunaDadosAbertos;
+  descricao: string;
+}
+export interface ArquivoConjuntoDados {
+  formato: 'csv' | 'json';
+  url: string;
+  tipoMidia: string;
+  sha256: string;
+  bytes: number;
+}
+export interface ConjuntoDadosAbertos {
+  id: string;
+  titulo: string;
+  descricao: string;
+  fundamento: string;
+  publicador: string;
+  licenca: { nome: string; identificador: string; url: string };
+  /** Última alteração dos dados do conjunto (null quando vazio). */
+  atualizadoEm: InstanteISO | null;
+  periodicidade: string;
+  registros: number;
+  arquivos: ArquivoConjuntoDados[];
+  dicionario: ColunaDicionarioDados[];
+}
+export interface CatalogoDadosAbertos {
+  publicador: string;
+  geradoEm: InstanteISO;
+  conjuntos: ConjuntoDadosAbertos[];
+  limiteRequisicoesPorMinuto: number;
+  /** Conjuntos previstos que ainda não existem na Ágora (ex.: plano de contratações anual). */
+  indisponiveis: { id: string; titulo: string; motivo: string }[];
+}
+// GET /publico/dados-abertos → CatalogoDadosAbertos ; GET /publico/dados-abertos/:conjunto → ConjuntoDadosAbertos
+// GET /publico/dados-abertos/:conjunto/csv e /json → arquivo (sem login; limite de requisições por IP; cabeçalho X-Agora-SHA256)

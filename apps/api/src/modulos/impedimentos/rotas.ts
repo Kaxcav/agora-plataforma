@@ -216,7 +216,10 @@ export async function rotasImpedimentos(app: FastifyInstance): Promise<void> {
 
   /** Agentes públicos do órgão (servidores ativos), para registrar vínculo de agente com fornecedor. */
   app.get('/impedimentos/agentes', registro, async (): Promise<UsuarioResumo[]> =>
-    ctx.banco.consultar<UsuarioResumo>('SELECT id, nome FROM usuarios WHERE ativo ORDER BY nome LIMIT 1000'),
+    ctx.banco.consultar<UsuarioResumo>(
+      // O perfil cidadão (gestão compartilhada com a sociedade) não é agente público.
+      "SELECT id, nome FROM usuarios u WHERE ativo AND NOT EXISTS (SELECT 1 FROM usuarios_perfis pc WHERE pc.usuario_id = u.id AND pc.perfil = 'cidadao') ORDER BY nome LIMIT 1000",
+    ),
   );
 
   app.post('/impedimentos/vinculos', registro, async (request, reply): Promise<VinculoRegistrado> => {

@@ -32,4 +32,6 @@ export const USUARIOS_DEMONSTRACAO: readonly UsuarioDemonstracao[] = [
 export const USUARIOS_DEMONSTRACAO_ADICIONAIS: readonly UsuarioDemonstracao[] = [
   { email: 'controle@agora.demo', nome: 'Renata Quintela Duarte', perfil: 'controle_interno', descricao: 'Controle interno: linhas de defesa, TCU/CGU e matriz de riscos', escopo: 'todas' },
   { email: 'auditoria.externa@agora.demo', nome: 'Otávio Brandão Lessa', perfil: 'auditor', descricao: 'Auditor do controle externo (CGU/TCU): 3ª linha de defesa e relatório', escopo: 'todas' },
+  { email: 'cidadao@agora.demo', nome: 'Antônia Ribeiro Carvalho', perfil: 'cidadao', descricao: 'Cidadã identificada (gov.br, sem acesso interno): manifestações sobre contratos', escopo: 0 },
+  { email: 'fiscal.obras@agora.demo', nome: 'Gilberto Nunes Farias', perfil: 'fiscal', descricao: 'Fiscal de obras e serviços: fotos e vídeos da execução para a sociedade', escopo: 'todas' },
 ];

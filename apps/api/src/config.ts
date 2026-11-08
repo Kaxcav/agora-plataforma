@@ -51,6 +51,8 @@ export interface Config {
   };
   /** Publicação no PNCP (RF-19): API de manutenção e login do sistema credenciado. */
   pncpPublicacao: { url: string; usuario: string | null; senha: string | null };
+  /** Catálogo de dados abertos (RF-38): limite de requisições por minuto e por IP nas rotas públicas do catálogo. */
+  dadosAbertos: { limitePorMinuto: number };
 }
 
 export interface ConfigSmtp {
@@ -161,6 +163,7 @@ const esquemaAmbiente = z.object({
   AGORA_PNCP_PUBLICACAO_URL: textoOpcional,
   AGORA_PNCP_USUARIO: textoOpcional,
   AGORA_PNCP_SENHA: textoOpcional,
+  AGORA_DADOS_ABERTOS_LIMITE_MINUTO: z.coerce.number().int().min(1).max(100_000).default(60),
 });
 
 const PORTA_SMTP_PADRAO = { tls: 465, starttls: 587, nenhuma: 25 } as const;
@@ -349,5 +352,6 @@ export function carregarConfig(env: Record<string, string | undefined> = process
       usuario: e.AGORA_PNCP_USUARIO,
       senha: e.AGORA_PNCP_SENHA,
     },
+    dadosAbertos: { limitePorMinuto: e.AGORA_DADOS_ABERTOS_LIMITE_MINUTO },
   };
 }

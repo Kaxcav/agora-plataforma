@@ -48,6 +48,12 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'impedimentos:parecer',
   'impedimentos:decidir',
   'agentes:declarar',
+  'sociedade:ler',
+  'sociedade:manifestar',
+  'sociedade:moderar',
+  'sociedade:responder',
+  'sociedade:registrar',
+  'sociedade:relatorio_final',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -94,6 +100,11 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'impedimentos:registrar',
       'impedimentos:decidir',
       'agentes:declarar',
+      'sociedade:ler',
+      'sociedade:moderar',
+      'sociedade:responder',
+      'sociedade:registrar',
+      'sociedade:relatorio_final',
     ],
   },
   {
@@ -120,6 +131,9 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'certidoes:registrar',
       'regularidade:consultar',
       'agentes:declarar',
+      'sociedade:ler',
+      'sociedade:responder',
+      'sociedade:registrar',
     ],
   },
   {
@@ -214,7 +228,15 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'controle_externo:ler',
       'controle_externo:registrar',
       'riscos:revisar',
+      'sociedade:ler',
     ],
+  },
+  {
+    codigo: 'cidadao',
+    nome: 'Cidadão',
+    descricao:
+      'Interessado identificado pelo Login Único gov.br, sem acesso interno: envia mensagens e imagens sobre contratos para a gestão compartilhada com a sociedade (art. 174, § 3º, VI) e acompanha as próprias manifestações.',
+    permissoes: ['sociedade:manifestar'],
   },
 ];
 

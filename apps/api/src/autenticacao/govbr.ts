@@ -43,6 +43,8 @@ const esquemaClaims = z.object({
   exp: z.number(),
   iat: z.number().optional(),
   nonce: z.string().optional(),
+  name: z.string().max(200).optional(),
+  email: z.string().max(254).optional(),
 });
 const esquemaJwks = z.object({
   keys: z.array(
@@ -132,8 +134,8 @@ export class ClienteGovbr {
     return { url: url.toString(), estado };
   }
 
-  /** Troca o código pelo id_token, valida-o e devolve o CPF (somente dígitos) do usuário autenticado. */
-  async concluir(parametros: { code: string; state: string }, estado: EstadoGovbr): Promise<{ cpf: string }> {
+  /** Troca o código pelo id_token, valida-o e devolve o CPF (somente dígitos), o nome e o e-mail informados pelo gov.br. */
+  async concluir(parametros: { code: string; state: string }, estado: EstadoGovbr): Promise<{ cpf: string; nome: string | null; email: string | null }> {
     if (this.#relogio().getTime() - estado.criadoEm > VALIDADE_ESTADO_MS) throw new ErroGovbr('Estado do login expirado');
     if (!iguaisTempoConstante(parametros.state, estado.state)) throw new ErroGovbr('Parâmetro state não confere');
 
@@ -160,7 +162,7 @@ export class ClienteGovbr {
     const claims = await this.#validarIdToken(token.id_token, descoberta, estado.nonce);
     const cpf = somenteDigitos(claims.sub);
     if (!validarCpf(cpf)) throw new ErroGovbr('O identificador retornado pelo gov.br não é um CPF válido');
-    return { cpf };
+    return { cpf, nome: claims.name ?? null, email: claims.email ?? null };
   }
 
   async #validarIdToken(idToken: string, descoberta: Descoberta, nonce: string): Promise<z.infer<typeof esquemaClaims>> {
