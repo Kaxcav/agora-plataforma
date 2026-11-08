@@ -62,6 +62,8 @@ export const TODAS_PERMISSOES: readonly Permissao[] = [
   'sociedade:responder',
   'sociedade:registrar',
   'sociedade:relatorio_final',
+  'alteracoes:parecer',
+  'alteracoes:decidir',
 ];
 
 const PERMISSOES_LEITURA = TODAS_PERMISSOES.filter((p) => p.endsWith(':ler'));
@@ -118,6 +120,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
       'sociedade:responder',
       'sociedade:registrar',
       'sociedade:relatorio_final',
+      'alteracoes:decidir',
     ],
   },
   {
@@ -210,7 +213,7 @@ export const PERFIS: readonly PerfilAcesso[] = [
     codigo: 'juridico',
     nome: 'Assessoria jurídica',
     descricao: 'Realiza o controle prévio de legalidade (art. 53) e aprova a fase jurídica.',
-    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler', 'documentos:ler', 'impedimentos:ler', 'impedimentos:parecer', 'agentes:declarar'],
+    permissoes: ['painel:ler', 'atas:ler', 'contratos:ler', 'fornecedores:ler', 'sancoes:ler', 'jornada:ler', 'jornada:aprovar_juridico', 'controle:segunda_linha', 'controle_externo:ler', 'documentos:ler', 'impedimentos:ler', 'impedimentos:parecer', 'agentes:declarar', 'alteracoes:parecer'],
   },
   {
     codigo: 'auditor',

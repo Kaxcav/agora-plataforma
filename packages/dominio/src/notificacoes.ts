@@ -312,6 +312,8 @@ export function montarMensagemNotificacao(e: EntradaMensagemNotificacao): Mensag
       }
       fatos = [`Fim da vigência: ${formatarData(i.vigenciaFim)} (${vigencia.rotulo.toLowerCase()}).`];
       if (i.tipo === 'ata') fatos.push('A ata de registro de preços vale por 1 ano, prorrogável por igual período se comprovada a vantajosidade (art. 84).');
+      // RN-33 (frente K): situação da prorrogação do contrato (limite de vigência ou nova licitação).
+      if (detalhe) fatos.push(`Prorrogação: ${linhaUnica(detalhe)}`);
       break;
     }
     case 'reajuste': {

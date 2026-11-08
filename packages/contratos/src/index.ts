@@ -140,7 +140,9 @@ export type Permissao =
   | 'sociedade:moderar'
   | 'sociedade:responder'
   | 'sociedade:registrar'
-  | 'sociedade:relatorio_final';
+  | 'sociedade:relatorio_final'
+  | 'alteracoes:parecer'
+  | 'alteracoes:decidir';
 
 export interface UsuarioSessao {
   id: Id;
@@ -449,7 +451,7 @@ export interface ItemContrato {
 export interface Aditivo {
   id: Id;
   numero: string; // "1º Termo Aditivo"
-  tipo: 'acrescimo' | 'supressao' | 'prorrogacao' | 'reajuste';
+  tipo: 'acrescimo' | 'supressao' | 'prorrogacao' | 'reajuste' | 'qualitativa' | 'reequilibrio';
   valor: Centavos;
   novaVigenciaFim: DataISO | null;
   assinadoEm: DataISO;
@@ -2110,10 +2112,20 @@ export interface EntradaProrrogarContrato {
   novaVigenciaFim: DataISO;
   valor: Centavos;
   justificativa: string;
+  /** RN-33 (arts. 105 a 114): travas da prorrogação, conforme a natureza do contrato. */
+  natureza?: NaturezaDuracaoContrato;
+  vantajosidadeAtestada?: boolean;
+  precoCompativel?: boolean;
+  previsaoEdital?: boolean;
+  creditoOrcamentario?: boolean;
+  causaAtraso?: 'sem_culpa_contratado' | 'culpa_contratado';
+  moraConstituida?: boolean;
 }
 export interface RespostaProrrogacao {
   aditivo: Aditivo;
   verificacao: VerificacaoRegularidade;
+  /** Registro do termo na aba Alterações (RF-27), com a divulgação no PNCP. */
+  alteracao?: AlteracaoContratual;
 }
 
 /** Resposta de POST /pagamentos/:id/atestar: o pagamento e o recheque de regularidade (RN-23). */
@@ -2510,7 +2522,7 @@ export interface VinculosFornecedor {
 // ───────────────────────── Fila de integrações (RNF-07) ─────────────────────────
 
 /** Tarefa da fila durável de integrações (RabbitMQ ou PostgreSQL), executada pelo serviço trabalhador. */
-export type TipoTarefaFila = 'sincronizacao' | 'pncp.compra' | 'pncp.arquivo' | 'pncp.contrato';
+export type TipoTarefaFila = 'sincronizacao' | 'pncp.compra' | 'pncp.arquivo' | 'pncp.contrato' | 'pncp.termo';
 /** 'pendente' inclui a espera de nova tentativa (`tentativas` > 0 e `proximaTentativaEm`); 'erro' é a fila de erro (dead letter). */
 export type SituacaoTarefaFila = 'pendente' | 'executando' | 'concluida' | 'erro';
 export interface TarefaFila {
@@ -3290,3 +3302,243 @@ export interface CatalogoDadosAbertos {
 }
 // GET /publico/dados-abertos → CatalogoDadosAbertos ; GET /publico/dados-abertos/:conjunto → ConjuntoDadosAbertos
 // GET /publico/dados-abertos/:conjunto/csv e /json → arquivo (sem login; limite de requisições por IP; cabeçalho X-Agora-SHA256)
+// ───────── Frente K (F22a): execução contratual como ato — RN-32, RN-33 e RF-27 ─────────
+
+/** Natureza do contrato quanto à duração (Lei 14.133/2021, arts. 105 a 114). */
+export type NaturezaDuracaoContrato = 'continuo' | 'ti_estruturante' | 'escopo' | 'receita_sem_investimento' | 'receita_com_investimento';
+export type RegimeMaoDeObra = 'dedicacao_exclusiva' | 'predominancia' | 'sem_dedicacao';
+export type EspecieAlteracaoContratual = 'aditivo' | 'apostila' | 'rescisao';
+export type TipoAlteracaoContratual = 'acrescimo' | 'supressao' | 'qualitativa' | 'prazo' | 'reequilibrio' | 'reajuste' | 'repactuacao' | 'extincao';
+export type SituacaoAlteracaoContratual =
+  | 'aguardando_parecer'
+  | 'pronto_para_assinatura'
+  | 'devolvido'
+  | 'em_contraditorio'
+  | 'aguardando_decisao'
+  | 'assinado'
+  | 'indeferido'
+  | 'arquivado';
+export type ResultadoParecerAlteracao = 'favoravel' | 'favoravel_com_ressalvas' | 'desfavoravel';
+export type EnquadramentoReequilibrio =
+  | 'forca_maior'
+  | 'caso_fortuito'
+  | 'fato_principe'
+  | 'fato_imprevisivel'
+  | 'previsivel_consequencias_incalculaveis'
+  | 'tributo_superveniente'
+  | 'alteracao_unilateral';
+export type FormaExtincaoContrato = 'unilateral' | 'consensual' | 'judicial_arbitral';
+export type MotivoExtincaoContrato =
+  | 'art137_I'
+  | 'art137_II'
+  | 'art137_III'
+  | 'art137_IV'
+  | 'art137_V'
+  | 'art137_VI'
+  | 'art137_VII'
+  | 'art137_VIII'
+  | 'art137_IX'
+  | 'art137_p2_I'
+  | 'art137_p2_II'
+  | 'art137_p2_III'
+  | 'art137_p2_IV'
+  | 'art137_p2_V';
+export type EfeitoExtincaoContrato =
+  | 'assuncao_objeto'
+  | 'ocupacao_local'
+  | 'execucao_garantia'
+  | 'retencao_creditos'
+  | 'devolucao_garantia'
+  | 'pagamentos_devidos'
+  | 'custo_desmobilizacao'
+  | 'ressarcimento_prejuizos';
+
+/** Divulgação do termo no PNCP pela fila de integrações (art. 94 para o aditivo; art. 174 para apostila e rescisão). */
+export interface DivulgacaoAlteracaoPncp {
+  situacao: SituacaoEnvioPncp | 'nao_solicitada' | 'importado';
+  modo: 'offline' | 'online' | null;
+  tarefaId: Id | null;
+  protocolo: string | null;
+  numeroControle: string | null;
+  hashDados: string | null;
+  enviadoEm: InstanteISO | null;
+  ultimoErro: string | null;
+  prazo: {
+    situacao: 'divulgado_no_prazo' | 'divulgado_fora_do_prazo' | 'pendente_no_prazo' | 'pendente_vencido' | 'sem_prazo_de_eficacia';
+    limite: DataISO | null;
+    explicacao: string;
+  } | null;
+}
+
+/** Um ato do histórico de alterações (termo aditivo, apostila, reequilíbrio ou extinção). */
+export interface AlteracaoContratual {
+  id: Id;
+  contratoId: Id;
+  especie: EspecieAlteracaoContratual;
+  tipo: TipoAlteracaoContratual;
+  situacao: SituacaoAlteracaoContratual;
+  /** "2º Termo Aditivo", "1º Apostilamento", "Termo de Rescisão" (definido na assinatura). */
+  numero: string | null;
+  /** Efeito no valor global, com sinal (supressão e redução negativas). */
+  valor: Centavos;
+  novaVigenciaFim: DataISO | null;
+  justificativa: string;
+  /** 'importado': termo assinado antes da Ágora (carga do Contratos.gov.br), sem o ciclo de parecer e assinatura. */
+  origem: 'agora' | 'importado';
+  /** Linhas de resumo do ato, já formatadas pelo servidor (índice, percentuais, componentes, motivo...). */
+  detalhes: { rotulo: string; valor: string }[];
+  /** Explicação da trava aplicada (RN-32, RN-33...), com o fundamento. */
+  avaliacao: { explicacao: string; fundamento: string } | null;
+  parecer: { resultado: ResultadoParecerAlteracao; numero: string; texto: string; emitidoPor: UsuarioResumo | null; emitidoEm: InstanteISO } | null;
+  decisao: { resultado: string; fundamentacao: string; decididoPor: UsuarioResumo | null; decididoEm: InstanteISO } | null;
+  contraditorio: {
+    prazoDiasUteis: number;
+    prazoFim: DataISO;
+    notificadoEm: InstanteISO;
+    defesa: { apresentadaEm: DataISO; resumo: string } | null;
+    semManifestacao: boolean;
+  } | null;
+  propostoPor: UsuarioResumo | null;
+  propostoEm: InstanteISO;
+  assinadoPor: UsuarioResumo | null;
+  assinadoEm: DataISO | null;
+  verificacaoRegularidadeId: Id | null;
+  divulgacao: DivulgacaoAlteracaoPncp;
+  /** Termo em PDF (GET), quando assinado. */
+  linkTermo: string | null;
+  /** Próximos passos possíveis pela situação (o servidor ainda confere a permissão de quem pede). */
+  acoes: { parecer: boolean; assinar: boolean; indeferir: boolean; defesa: boolean; decidirExtincao: boolean; divulgar: boolean };
+}
+
+/** GET /contratos/:id/alteracoes → PainelAlteracoesContrato (contratos:ler) */
+export interface PainelAlteracoesContrato {
+  contratoId: Id;
+  natureza: NaturezaDuracaoContrato | null;
+  regimeMaoDeObra: RegimeMaoDeObra | null;
+  extintoEm: DataISO | null;
+  /** Art. 125: acréscimos e supressões acumulados sobre o valor inicial atualizado. */
+  limites: {
+    valorInicial: Centavos;
+    reajustes: Centavos;
+    valorInicialAtualizado: Centavos;
+    acrescimos: Centavos;
+    supressoes: Centavos;
+    percentualAcrescimos: number;
+    percentualSupressoes: number;
+    limiteAcrescimos: number;
+    limiteSupressoes: number;
+    margemAcrescimos: Centavos;
+    margemSupressoes: Centavos;
+    nivel: 'regular' | 'proximo' | 'excedido';
+    explicacao: string;
+    fundamento: string;
+  };
+  prorrogacao: {
+    tipo: 'planejar_prorrogacao' | 'limite_prorrogacao' | 'nova_licitacao' | 'prorrogacao_automatica' | 'natureza_nao_informada';
+    limiteVigencia: DataISO | null;
+    diasRestantes: number;
+    mensagem: string;
+    fundamento: string;
+  };
+  reajuste: {
+    indice: string;
+    dataBase: DataISO;
+    ciclosAplicados: number;
+    proximoAniversario: DataISO;
+    /** O interregno de 12 meses do próximo ciclo já se completou. */
+    disponivel: boolean;
+    saldoContratual: Centavos;
+  };
+  alteracoes: AlteracaoContratual[];
+}
+
+/** POST /contratos/:id/alteracoes → 201 AlteracaoContratual (contratos:editar). Recusa com 422 (RN-32, RN-33). */
+export type EntradaProporAlteracao =
+  | {
+      tipo: 'acrescimo' | 'supressao';
+      valor: Centavos;
+      reformaEdificioOuEquipamento?: boolean;
+      justificativa: string;
+    }
+  | {
+      tipo: 'qualitativa';
+      valor: Centavos;
+      efeitoFinanceiro: 'acrescimo' | 'supressao' | 'nenhum';
+      descricaoAlteracao: string;
+      justificativa: string;
+    }
+  | ({ tipo: 'prazo'; justificativa: string } & Omit<EntradaProrrogarContrato, 'justificativa'>)
+  | {
+      tipo: 'reequilibrio';
+      enquadramento: EnquadramentoReequilibrio;
+      /** Risco da matriz de riscos do contrato ao qual o evento se refere; ausente = evento não previsto na matriz. */
+      riscoId?: Id | null;
+      dataEvento: DataISO;
+      solicitadoEm: DataISO;
+      solicitante: 'contratada' | 'administracao';
+      sentido: 'aumento' | 'reducao';
+      valor: Centavos;
+      demonstracao: string;
+      justificativa: string;
+    };
+
+/** POST /contratos/:id/alteracoes/:alteracaoId/parecer (alteracoes:parecer) */
+export interface EntradaParecerAlteracao {
+  resultado: ResultadoParecerAlteracao;
+  numero: string;
+  texto: string;
+}
+/** POST /contratos/:id/alteracoes/:alteracaoId/assinar (alteracoes:decidir) → AlteracaoContratual. No reequilíbrio, o valor reconhecido pode ser menor que o pleiteado. */
+export interface EntradaAssinarAlteracao {
+  confirmacao: true;
+  valorReconhecido?: Centavos;
+  fundamentacao?: string;
+}
+/** POST /contratos/:id/alteracoes/:alteracaoId/indeferir (alteracoes:decidir) */
+export interface EntradaIndeferirAlteracao {
+  fundamentacao: string;
+}
+/** POST /contratos/:id/reajustes → 201 AlteracaoContratual (alteracoes:decidir): apostila (art. 136, I). */
+export interface EntradaReajusteContrato {
+  percentual: number;
+  fonteIndice: string;
+  observacao?: string | null;
+}
+/** POST /contratos/:id/repactuacoes → 201 AlteracaoContratual (alteracoes:decidir): apostila (art. 135 e art. 136, I). */
+export interface EntradaRepactuacaoContrato {
+  regimeMaoDeObra?: RegimeMaoDeObra;
+  solicitadaEm: DataISO;
+  efeitosDesde: DataISO;
+  componentes: {
+    descricao: string;
+    origem: 'mao_de_obra' | 'insumos';
+    dataBase: DataISO;
+    valorMensalAnterior: Centavos;
+    valorMensalNovo: Centavos;
+    documento: string;
+  }[];
+  clausulasNaoTrabalhistasExcluidas: boolean;
+  justificativa: string;
+}
+/** POST /contratos/:id/extincao → 201 AlteracaoContratual (contratos:editar) */
+export interface EntradaInstaurarExtincao {
+  forma: FormaExtincaoContrato;
+  motivo: MotivoExtincaoContrato;
+  fundamentacao: string;
+  prazoDefesaDiasUteis?: number | null;
+  interesseAdministracao?: boolean;
+  referenciaDecisao?: string | null;
+}
+/** POST /contratos/:id/alteracoes/:alteracaoId/defesa (contratos:editar) */
+export type EntradaDefesaExtincao = { semManifestacao: true } | { semManifestacao?: false; apresentadaEm: DataISO; resumo: string };
+/** POST /contratos/:id/alteracoes/:alteracaoId/decidir-extincao (alteracoes:decidir) */
+export interface EntradaDecidirExtincao {
+  decisao: 'extinguir' | 'arquivar';
+  dataEfeitos: DataISO;
+  fundamentacao: string;
+  culpaAdministracao: boolean;
+  efeitos: EfeitoExtincaoContrato[];
+  autorizacaoMinistro?: boolean;
+}
+// GET /contratos/:id/alteracoes/:alteracaoId/termo.pdf (contratos:ler) — termo assinado em PDF, para juntar ao processo
+// POST /contratos/:id/alteracoes/:alteracaoId/divulgar-pncp (alteracoes:decidir) — reabre a divulgação que está na fila de erro

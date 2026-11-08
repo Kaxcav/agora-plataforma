@@ -23,6 +23,7 @@ import { gerarOperacaoMetas } from './operacao-metas.ts';
 import { gerarImr } from './imr.ts';
 import { gerarPreparatorios } from './preparatorios.ts';
 import { gerarSociedade } from './sociedade.ts';
+import { gerarAlteracoes } from './alteracoes.ts';
 
 /** Semente fixa do gerador (Lei 14.133): a mesma data de referência produz sempre os mesmos dados. */
 export const SEMENTE_DEMONSTRACAO = 14_133;
@@ -51,6 +52,7 @@ export const ETAPAS_SEED: EtapaSeed[] = [
   { nome: 'imr', executar: gerarImr },
   { nome: 'preparatorios', executar: gerarPreparatorios },
   { nome: 'sociedade', executar: gerarSociedade },
+  { nome: 'alteracoes', executar: gerarAlteracoes },
 ];
 
 function dadosVazios(): DadosSeed {

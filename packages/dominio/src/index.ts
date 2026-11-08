@@ -43,3 +43,4 @@ export * from './lei14133/fase-preparatoria.ts';
 export * from './privacidade.ts';
 export * from './lei14133/gestao-compartilhada.ts';
 export * from './dados-abertos.ts';
+export * from './lei14133/alteracoes-contratuais.ts';

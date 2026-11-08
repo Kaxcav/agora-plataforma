@@ -88,6 +88,8 @@ export const NOMES_PERMISSOES: Record<Permissao, string> = {
   'sociedade:responder': 'Responder às manifestações da sociedade',
   'sociedade:registrar': 'Publicar fotos e vídeos da execução',
   'sociedade:relatorio_final': 'Publicar o relatório final do contrato',
+  'alteracoes:parecer': 'Emitir o parecer jurídico das alterações do contrato',
+  'alteracoes:decidir': 'Assinar aditivos e apostilas e decidir reequilíbrio e extinção (autoridade competente)',
 };
 
 export const TODAS_PERMISSOES = Object.keys(NOMES_PERMISSOES).filter((p): p is Permissao => p in NOMES_PERMISSOES);
