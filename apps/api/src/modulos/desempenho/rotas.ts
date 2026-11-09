@@ -64,10 +64,10 @@ const esquemaAvaliacao = z.object({
   tipo: z.enum(['parcial', 'final']),
   periodoInicio: dataIso,
   periodoFim: dataIso,
-  entregasNoPrazo: contagem,
-  entregasTotal: contagem,
-  recebimentosAprovados: contagem,
-  recebimentosTotal: contagem,
+  entregasNoPrazo: contagem.optional(),
+  entregasTotal: contagem.optional(),
+  recebimentosAprovados: contagem.optional(),
+  recebimentosTotal: contagem.optional(),
   evidencias: z.string().trim().min(10).max(2000),
   motivacao: z.string().trim().min(1).max(5000),
 });
@@ -214,6 +214,8 @@ export async function rotasDesempenho(app: FastifyInstance): Promise<void> {
       vigenciaFim: contrato.vigencia_fim,
       ocorrencias: derivados.ocorrencias,
       sancoesNoPeriodo: derivados.sancoes,
+      entregas: derivados.entregas,
+      recebimentos: derivados.recebimentos,
       avaliador: avaliadorDoContrato(contrato, sessao.usuario.id, sessao.permissoes.has('desempenho:avaliar')),
     };
   });
@@ -234,11 +236,15 @@ export async function rotasDesempenho(app: FastifyInstance): Promise<void> {
         throw regraNegocio(avaliador.motivo ?? 'Avaliação não permitida.', [{ campo: 'RN-37', mensagem: 'O gestor ou o fiscal designado do contrato emite a avaliação (art. 88, § 3º; art. 117).' }]);
       }
       const derivados = await derivadosDoPeriodo(tx, id, entrada.periodoInicio, entrada.periodoFim);
+      const entregasTotal = entrada.entregasTotal ?? derivados.entregas.total;
+      const entregasNoPrazo = entrada.entregasNoPrazo ?? derivados.entregas.noPrazo;
+      const recebimentosTotal = entrada.recebimentosTotal ?? derivados.recebimentos.total;
+      const recebimentosAprovados = entrada.recebimentosAprovados ?? derivados.recebimentos.aprovados;
       const indicadores = {
-        entregasNoPrazo: entrada.entregasNoPrazo,
-        entregasTotal: entrada.entregasTotal,
-        recebimentosAprovados: entrada.recebimentosAprovados,
-        recebimentosTotal: entrada.recebimentosTotal,
+        entregasNoPrazo,
+        entregasTotal,
+        recebimentosAprovados,
+        recebimentosTotal,
         ocorrenciasFiscalizacao: derivados.ocorrencias.total,
         ocorrenciasResolvidasNoPrazo: derivados.ocorrencias.resolvidasNoPrazo,
       };

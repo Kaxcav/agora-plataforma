@@ -22,6 +22,7 @@ import type {
   IndicadorImrContrato,
   MedicaoImr,
   Pagamento,
+  RecebimentoDefinitivoConferencia,
   SituacaoConferenciaNota,
 } from '@agora/contratos';
 import type { Executor, Transacao } from '../../banco/tipos.ts';
@@ -646,6 +647,38 @@ export async function montarContextoConferencia(
   const linha = await conferenciaDoPagamento(executor, pagamento.id);
   const atesto = await situacaoAtestoConferencia(executor, pagamento);
   const porId = new Map(itens.map((i) => [i.id, { numero: i.numero, descricao: i.descricao, valorUnitario: i.valor_unitario }]));
+
+  // Só o recebimento ligado a esta parcela pelo agente: aproximar por competência poderia atribuir a entrega errada.
+  const [recebimentoDef] = await executor.consultar<{
+    id: string;
+    numero: number;
+    quantidade: number | null;
+    itens: Array<{ itemContratoId?: string; quantidade?: number }> | null;
+    termo_id: string;
+    termo_data: string;
+  }>(
+    `SELECT r.id, r.numero, r.quantidade, r.itens, t.id AS termo_id, t.data AS termo_data
+       FROM contratos_recebimentos r
+       JOIN recebimentos_termos t ON t.recebimento_id = r.id AND t.tipo = 'definitivo' AND t.resultado = 'aceito'
+      WHERE r.pagamento_id = $1
+      ORDER BY t.data DESC, r.numero DESC
+      LIMIT 1`,
+    [pagamento.id],
+  );
+
+  const recebimentoDefinitivo: RecebimentoDefinitivoConferencia | null = recebimentoDef
+    ? {
+        id: recebimentoDef.id,
+        numero: recebimentoDef.numero,
+        data: recebimentoDef.termo_data,
+        termoId: recebimentoDef.termo_id,
+        quantidadeRecebida: recebimentoDef.quantidade ?? 1,
+        itens: Array.isArray(recebimentoDef.itens)
+          ? recebimentoDef.itens.map((it) => ({ itemContratoId: String(it.itemContratoId ?? ''), quantidadeRecebida: Number(it.quantidade ?? 0) }))
+          : undefined,
+      }
+    : null;
+
   return {
     pagamento: pagamentoExibido,
     contrato: { id: pagamento.contrato_id, numero: pagamento.contrato_numero, objeto: pagamento.contrato_objeto, temImr: imr.temImr },
@@ -664,7 +697,7 @@ export async function montarContextoConferencia(
       pagamento.situacao === 'previsto'
         ? { liberado: atesto.liberado, motivo: atesto.motivo, parcelaEmAberto: true }
         : { liberado: false, motivo: 'A parcela já foi atestada.', parcelaEmAberto: false },
-    recebimentoDefinitivo: null,
+    recebimentoDefinitivo,
   };
 }
 

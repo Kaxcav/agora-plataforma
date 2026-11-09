@@ -41,7 +41,7 @@ import {
 
 const TIPOS = ['vencimento', 'reajuste', 'garantia', 'pendencia', 'ocorrencia'] as const;
 const CANAIS = ['email', 'sei', 'govbr'] as const;
-const DESTINOS = ['gestor', 'fiscal', 'contratada'] as const;
+const DESTINOS = ['gestor', 'fiscal', 'contratada', 'emitente_garantia'] as const;
 
 const semRepeticao = <T>(lista: readonly T[]) => new Set(lista).size === lista.length;
 

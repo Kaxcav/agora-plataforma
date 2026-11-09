@@ -15,6 +15,7 @@ import { naoEncontrado, regraNegocio } from '../../http/erros.ts';
 import { centavos, dataIso, idDaRota } from '../../http/validacao.ts';
 import { obterLinhaProcesso } from '../jornada/repositorio.ts';
 import type { LinhaProcesso } from '../jornada/tipos.ts';
+import { registrarDesempenho } from '../execucao/avisos.ts';
 import { carregarBaseConhecimento, listarDecisoes, listarOcorrencias, paraDecisao } from './repositorio.ts';
 
 const CATEGORIAS = ['prazo', 'qualidade', 'nivel_servico', 'garantia', 'quantitativo', 'fiscalizacao'] as const;
@@ -50,9 +51,9 @@ function pretendidoDe(linha: LinhaProcesso) {
 export async function rotasLicoes(app: FastifyInstance): Promise<void> {
   const ctx = app.agora;
 
-  async function contratoNoEscopo(executor: Executor, contratoId: string, escopo: string[] | null): Promise<{ id: string; uasg: string; numero: string; vigencia_inicio: string }> {
-    const [contrato] = await executor.consultar<{ id: string; uasg: string; numero: string; vigencia_inicio: string }>(
-      'SELECT id, uasg, numero, vigencia_inicio FROM contratos WHERE id = $1 AND ($2::text[] IS NULL OR uasg = ANY($2::text[]))',
+  async function contratoNoEscopo(executor: Executor, contratoId: string, escopo: string[] | null): Promise<{ id: string; uasg: string; numero: string; vigencia_inicio: string; fornecedor_id: string }> {
+    const [contrato] = await executor.consultar<{ id: string; uasg: string; numero: string; vigencia_inicio: string; fornecedor_id: string }>(
+      'SELECT id, uasg, numero, vigencia_inicio, fornecedor_id FROM contratos WHERE id = $1 AND ($2::text[] IS NULL OR uasg = ANY($2::text[]))',
       [contratoId, escopo],
     );
     if (!contrato) throw naoEncontrado('Contrato não encontrado.');
@@ -118,6 +119,9 @@ export async function rotasLicoes(app: FastifyInstance): Promise<void> {
         resumo: `Registrou ${entrada.tipo === 'ocorrencia' ? 'ocorrência' : entrada.tipo === 'rescisao' ? 'rescisão' : entrada.tipo} na execução do contrato ${contrato.numero}`,
         dados: { instrumentoTipo: 'contrato', instrumentoId: contrato.id, tipo: entrada.tipo, categoria, data: entrada.data, diasAtraso: entrada.diasAtraso ?? null, valorGlosa: entrada.valorGlosa ?? null },
       });
+      if (contrato.fornecedor_id) {
+        await registrarDesempenho(tx, contrato.fornecedor_id, { ocorrencias: 1 });
+      }
     });
     const [criada] = await listarOcorrencias(ctx.banco, { id: novoId, escopo });
     if (!criada) throw naoEncontrado();
@@ -135,6 +139,12 @@ export async function rotasLicoes(app: FastifyInstance): Promise<void> {
       if (atual.situacao !== 'aberta') throw regraNegocio('A ocorrência já tem solução registrada.');
       if (entrada.resolvidaEm < atual.data || entrada.resolvidaEm > ctx.hoje()) throw regraNegocio('A data da solução deve estar entre a ocorrência e hoje.');
       await tx.executar('UPDATE ocorrencias_execucao SET situacao = $2, resolvida_em = $3 WHERE id = $1', [id, entrada.situacao, entrada.resolvidaEm]);
+      if (entrada.situacao === 'resolvida_no_prazo') {
+        const [c] = await tx.consultar<{ fornecedor_id: string }>('SELECT fornecedor_id FROM contratos WHERE id = $1', [atual.contratoId]);
+        if (c?.fornecedor_id) {
+          await registrarDesempenho(tx, c.fornecedor_id, { ocorrenciasNoPrazo: 1 });
+        }
+      }
       await auditar(tx, request, {
         acao: 'execucao.ocorrencia.solucionar',
         recurso: 'ocorrencia_execucao',

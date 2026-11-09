@@ -29,6 +29,7 @@ export const PAPEIS_DESTINATARIO: Record<PapelDestinatario, string> = {
   fiscal: 'Fiscal',
   contratada: 'Contratada',
   responsavel: 'Responsável pela pendência',
+  emitente_garantia: 'Emitente da garantia',
 };
 
 export const SITUACOES_ENVIO: Record<SituacaoEnvio, RotuloTom> = {

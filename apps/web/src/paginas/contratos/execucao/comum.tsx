@@ -27,6 +27,9 @@ export const TIPOS_OCORRENCIA: Record<TipoOcorrenciaContrato, string> = {
   inconformidade: 'Desconformidade com o contrato',
   comunicacao: 'Comunicação da contratada',
   outra: 'Outra',
+  ocorrencia: 'Ocorrência',
+  glosa: 'Glosa',
+  rescisao: 'Rescisão',
 };
 
 export const SITUACOES_RECEBIMENTO: Record<SituacaoRecebimento, { rotulo: string; tom: TomEtiqueta }> = {

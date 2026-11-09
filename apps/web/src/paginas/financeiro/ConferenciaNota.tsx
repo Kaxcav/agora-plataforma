@@ -81,10 +81,14 @@ function FormularioNota({ contexto }: { contexto: ContextoConferenciaNota }) {
     Object.fromEntries(
       contexto.itensContrato.map((i) => {
         const conferido = atual?.itens.find((x) => x.itemContratoId === i.id);
+        // A quantidade recebida vem do termo definitivo (por item, ou do total quando o contrato tem um só item).
+        // A quantidade faturada nunca é preenchida: sai da nota fiscal, e é ela que a conferência compara com a recebida.
+        const itemDef = contexto.recebimentoDefinitivo?.itens?.find((x) => x.itemContratoId === i.id);
+        const qtdDef = itemDef ? itemDef.quantidadeRecebida : contexto.itensContrato.length === 1 ? (contexto.recebimentoDefinitivo?.quantidadeRecebida ?? 0) : 0;
         return [
           i.id,
           {
-            quantidadeRecebida: String(conferido?.quantidadeRecebida ?? 0),
+            quantidadeRecebida: String(conferido?.quantidadeRecebida ?? qtdDef),
             quantidadeFaturada: String(conferido?.quantidadeFaturada ?? 0),
             valorUnitarioFaturado: conferido?.valorUnitarioFaturado ?? i.valorUnitario,
           },
@@ -430,9 +434,18 @@ function ConteudoConferencia({ contexto }: { contexto: ContextoConferenciaNota }
         <EstadoVazio icone={Receipt} titulo="Nota fiscal ainda não conferida" descricao={contrato.temImr ? 'Neste contrato, o atesto exige a conferência da nota.' : 'A conferência é recomendada antes do atesto.'} />
       )}
       {podeConferir && emAberto ? <FormularioNota key={conferencia?.versao ?? 0} contexto={contexto} /> : null}
-      <p className="texto-pequeno texto-secundario">
-        Quando o módulo de recebimentos estiver disponível, a quantidade recebida virá do termo de recebimento definitivo (art. 140). Até lá, ela é informada aqui e fica na trilha de auditoria.
-      </p>
+      {contexto.recebimentoDefinitivo ? (
+        <Alerta tipo="info" titulo="Termo de recebimento definitivo vinculado">
+          <p>
+            Entrega nº {contexto.recebimentoDefinitivo.numero} com termo definitivo aceito em {formatarData(contexto.recebimentoDefinitivo.data)}.
+            Quantidade recebida pré-carregada do recebimento ({contexto.recebimentoDefinitivo.quantidadeRecebida}).
+          </p>
+        </Alerta>
+      ) : (
+        <p className="texto-pequeno texto-secundario">
+          A quantidade recebida pode ser informada manualmente ou vinculada ao termo de recebimento definitivo (art. 140).
+        </p>
+      )}
     </div>
   );
 }

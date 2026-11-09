@@ -12,7 +12,7 @@ import { adicionarMeses, exigirInteiro, lerData } from './interno.ts';
 export type TipoNotificacao = 'vencimento' | 'reajuste' | 'garantia' | 'pendencia' | 'ocorrencia';
 export type CanalNotificacao = 'email' | 'sei' | 'govbr';
 /** gestor, fiscal e responsável são servidores com conta na Ágora; a contratada é a parte externa do contrato. */
-export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel';
+export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel' | 'emitente_garantia';
 /** Faixas do semáforo em que a varredura diária gera aviso (RN-31). */
 export type FaixaVencimento = 30 | 60 | 90 | 120;
 
@@ -138,6 +138,9 @@ export function avaliarAvisoGarantia(validaAte: DataISO, hoje: DataISO, antecede
 export function baseLegalEnvio(papel: PapelDestinatario): string {
   if (papel === 'contratada') {
     return 'Lei 13.709/2018 (LGPD), art. 7º, II e V: cumprimento de obrigação legal e execução do contrato de que a contratada é parte (Lei 14.133/2021, arts. 92 e 117, § 1º).';
+  }
+  if (papel === 'emitente_garantia') {
+    return 'Lei 13.709/2018 (LGPD), art. 7º, II e V: cumprimento de obrigação legal e execução da garantia contratual (Lei 14.133/2021, arts. 96 a 102 e 139).';
   }
   if (papel === 'gestor' || papel === 'fiscal' || papel === 'responsavel') {
     return 'Lei 13.709/2018 (LGPD), art. 7º, II e III, e art. 23: cumprimento de obrigação legal e execução de política pública pela Administração (gestão e fiscalização do contrato, Lei 14.133/2021, art. 117).';

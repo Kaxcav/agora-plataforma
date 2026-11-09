@@ -8,44 +8,66 @@ const SELETOR_FOCAVEIS =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Títulos das seções que contêm o elemento (do mais próximo ao mais distante): destino do foco ao fechar o
+ * IDs dos títulos das seções que contêm o elemento (do mais próximo ao mais distante): destino do foco ao fechar o
  * diálogo quando quem o abriu deixou de existir (ex.: o botão "Assinar" some depois da assinatura).
  */
-function titulosAncestrais(origem: HTMLElement): HTMLElement[] {
-  const titulos: HTMLElement[] = [];
+function titulosAncestrais(origem: HTMLElement): string[] {
+  const titulos: string[] = [];
   for (let el = origem.parentElement; el; el = el.parentElement) {
     const rotulo = el.getAttribute('aria-labelledby');
     if (!rotulo || !el.matches('section, form, [role="region"]')) continue;
-    const titulo = document.getElementById(rotulo.split(' ')[0] ?? '');
+    const id = rotulo.trim().split(/\s+/)[0] ?? '';
+    if (!id || titulos.includes(id)) continue;
+    const titulo = document.getElementById(id);
     // A legenda (<caption>) da tabela rolável não recebe foco: com tabindex ela quebra a estrutura da tabela (ARIA).
-    if (titulo && titulo.tagName !== 'CAPTION') titulos.push(titulo);
+    if (titulo && titulo.tagName === 'CAPTION') continue;
+    titulos.push(id);
   }
   return titulos;
 }
 
-function focarRefugio(refugios: readonly HTMLElement[]): void {
-  const destino = refugios.find((t) => t.isConnected) ?? document.getElementById('conteudo');
+function focarRefugio(refugios: readonly string[]): void {
+  let destino: HTMLElement | null = null;
+  for (const id of refugios) {
+    const el = document.getElementById(id);
+    if (el && el.isConnected && el.tagName !== 'CAPTION') {
+      destino = el;
+      break;
+    }
+  }
+  if (!destino) {
+    destino = document.querySelector<HTMLElement>('main h1') ?? document.getElementById('conteudo');
+  }
   if (!destino) return;
   if (!destino.hasAttribute('tabindex')) destino.setAttribute('tabindex', '-1');
   destino.focus();
 }
 
 /** Por quanto tempo, após fechar, o foco é vigiado: a atualização dos dados pode remover a origem logo depois. */
-const VIGIA_FOCO_MS = 1000;
+const VIGIA_FOCO_MS = 5000;
 
-function devolverFoco(origem: HTMLElement | null, refugios: readonly HTMLElement[]): void {
+function devolverFoco(origem: HTMLElement | null, refugios: readonly string[]): void {
   if (origem && origem.isConnected && !origem.matches(':disabled')) origem.focus();
   else focarRefugio(refugios);
-  // Se a origem sumir com a atualização dos dados (ex.: o botão "Assinar" depois da assinatura), o foco iria
-  // para o <body>: nesse caso ele passa ao título da seção. Não interfere se o usuário já moveu o foco.
+
+  // A atualização dos dados pode remover, logo depois, o elemento que ficou com o foco (o botão "Assinar" depois da
+  // assinatura, ou o cartão inteiro redesenhado): o foco iria para o <body>. Enquanto a vigia dura, ele passa ao título
+  // da seção. Basta o usuário clicar ou teclar para a vigia parar, sem disputar o foco com ele.
   const limite = performance.now() + VIGIA_FOCO_MS;
+  let ativa = true;
+  const parar = () => {
+    ativa = false;
+    document.removeEventListener('pointerdown', parar, true);
+    document.removeEventListener('keydown', parar, true);
+  };
+  document.addEventListener('pointerdown', parar, true);
+  document.addEventListener('keydown', parar, true);
   const vigiar = () => {
-    const perdido = document.activeElement === null || document.activeElement === document.body;
-    if (perdido && (origem === null || !origem.isConnected)) {
-      focarRefugio(refugios);
-      return;
-    }
+    if (!ativa) return;
+    const atual = document.activeElement;
+    if (atual === null || atual === document.body) focarRefugio(refugios);
     if (performance.now() < limite) window.requestAnimationFrame(vigiar);
+    else parar();
   };
   window.requestAnimationFrame(vigiar);
 }
@@ -67,7 +89,7 @@ export interface PropsDialogo {
 export function Dialogo({ aberto, aoFechar, titulo, descricao, children, rodape, largura = 'media' }: PropsDialogo) {
   const referencia = useRef<HTMLDialogElement>(null);
   const origemFoco = useRef<HTMLElement | null>(null);
-  const refugiosFoco = useRef<HTMLElement[]>([]);
+  const refugiosFoco = useRef<string[]>([]);
   const idTitulo = useId();
   const idDescricao = useId();
 
@@ -93,6 +115,19 @@ export function Dialogo({ aberto, aoFechar, titulo, descricao, children, rodape,
     origemFoco.current = null;
     refugiosFoco.current = [];
   }, [aberto]);
+
+  // Desmontado ainda aberto (o pai deixou de renderizá-lo ao concluir): o foco é devolvido do mesmo jeito.
+  useEffect(() => {
+    const dialogo = referencia.current;
+    return () => {
+      // Continua na página (ex.: remontagem de teste do StrictMode): nada a devolver.
+      if (dialogo?.isConnected) return;
+      if (origemFoco.current === null && refugiosFoco.current.length === 0) return;
+      devolverFoco(origemFoco.current, refugiosFoco.current);
+      origemFoco.current = null;
+      refugiosFoco.current = [];
+    };
+  }, []);
 
   return (
     <dialog
