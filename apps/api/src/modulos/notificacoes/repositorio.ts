@@ -12,7 +12,7 @@ import type {
   TipoNotificacao,
   VencimentoLinhaTempo,
 } from '@agora/contratos';
-import { adicionarDias, avisoObrigatorio, faixaVencimento, mascararEmail, preferenciaPadrao, TIPOS_NOTIFICACAO } from '@agora/dominio';
+import { adicionarDias, avisoObrigatorio, faixaVencimento, mascararEmail, preferenciaPadrao, TIPOS_NOTIFICACAO, TIPOS_PREFERENCIA_NOTIFICACAO } from '@agora/dominio';
 import type { Executor, ParametroSql } from '../../banco/tipos.ts';
 import type { Config } from '../../config.ts';
 import { classificar, usuarioResumo } from '../../compartilhado/instrumentos.ts';
@@ -270,7 +270,7 @@ export async function listarPreferencias(executor: Executor, usuarioId: string):
     'SELECT tipo, canal, ativo FROM notificacoes_preferencias WHERE usuario_id = $1',
     [usuarioId],
   );
-  return TIPOS_NOTIFICACAO.flatMap((tipo) =>
+  return TIPOS_PREFERENCIA_NOTIFICACAO.flatMap((tipo) =>
     CANAIS_PESSOAIS.map((canal): PreferenciaNotificacao => {
       const gravada = gravadas.find((g) => g.tipo === tipo && g.canal === canal);
       return {

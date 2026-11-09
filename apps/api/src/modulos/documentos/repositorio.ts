@@ -19,6 +19,7 @@ import type {
 } from '@agora/contratos';
 import type { Executor } from '../../banco/tipos.ts';
 import { tarjarDadosPessoais } from '../publico/editais.ts';
+import type { ParcelaArmazenada } from './tipos.ts';
 
 export interface LinhaArquivo {
   id: string;
@@ -76,16 +77,7 @@ export async function obterArquivo(executor: Executor, processoId: string, arqui
   return linha ?? null;
 }
 
-/** Parcela gravada em processos_qualificacao_tecnica.parcelas. */
-export interface ParcelaArmazenada {
-  id: string;
-  descricao: string;
-  unidade: string;
-  quantidadeObjeto: number;
-  valorEstimado: number;
-  quantidadeMinima: number;
-  termos: string[];
-}
+export type { ParcelaArmazenada };
 
 export interface LinhaQualificacao {
   parcelas: ParcelaArmazenada[];

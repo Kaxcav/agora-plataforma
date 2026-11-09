@@ -82,6 +82,13 @@ const ROTULOS_CRITERIO: Record<string, string> = {
   maior_retorno_economico: 'maior retorno econômico',
 };
 
+const ROTULOS_MODO_DISPUTA: Record<string, string> = {
+  aberto: 'aberto',
+  aberto_fechado: 'aberto e fechado',
+  fechado_aberto: 'fechado e aberto',
+  fechado: 'fechado',
+};
+
 const MARCADOR_SITUACAO = '<!-- situacao -->';
 
 // ───────────────────────── utilitários de Markdown ─────────────────────────
@@ -612,7 +619,7 @@ function modeloTr(d: DadosDocumento): ModeloDocumento {
     '',
     '## h) Forma e critérios de seleção do fornecedor',
     '',
-    `Modalidade prevista: **${linha.modalidade_prevista ?? 'Pregão eletrônico'}**, na forma eletrônica, com critério de julgamento de **${ROTULOS_CRITERIO[edital.criterioJulgamento] ?? edital.criterioJulgamento}** e modo de disputa aberto (arts. 33 e 56), ${ROTULOS_REGIME[edital.regimeExecucao]}. Prazo mínimo para apresentação de propostas: ${prazo.diasUteis} dias úteis (${prazo.fundamento}). As exigências de habilitação constarão do edital, limitadas às dos arts. 62 a 70.`,
+    `Modalidade prevista: **${linha.modalidade_prevista ?? 'Pregão eletrônico'}**, na forma eletrônica, com critério de julgamento de **${ROTULOS_CRITERIO[edital.criterioJulgamento] ?? edital.criterioJulgamento}** e modo de disputa ${ROTULOS_MODO_DISPUTA[edital.modoDisputa ?? 'aberto'] ?? 'aberto'} (arts. 33 e 56), ${ROTULOS_REGIME[edital.regimeExecucao]}. Prazo mínimo para apresentação de propostas: ${prazo.diasUteis} dias úteis (${prazo.fundamento}). As exigências de habilitação constarão do edital, limitadas às dos arts. 62 a 70.`,
     'Aplicam-se os benefícios da Lei Complementar 123/2006 às microempresas e empresas de pequeno porte (art. 4º da Lei 14.133/2021).',
     ...clausulaProvaConceito(d, '').map((l) => l.trimStart()),
     ...(itensMeEpp.length > 0
@@ -653,6 +660,7 @@ function secaoHabilitacao(d: DadosDocumento): string {
   const { edital } = d.carga.linha;
   const valor = d.valorEstimado ?? 0;
   const pl = edital.patrimonioLiquidoMinimoPercentual;
+  const parcelas = d.carga.qualificacaoTecnica ?? [];
   const linhasEconomica = [
     '6.3. Habilitação econômico-financeira (art. 69): certidão negativa de falência expedida pelo distribuidor da sede do licitante e balanço patrimonial, demonstração de resultado de exercício e demais demonstrações contábeis dos 2 últimos exercícios sociais.',
     edital.exigeFaturamentoMinimo
@@ -662,6 +670,25 @@ function secaoHabilitacao(d: DadosDocumento): string {
       ? 'Não será exigido capital mínimo ou patrimônio líquido mínimo.'
       : `Será exigido patrimônio líquido mínimo de ${pl.toLocaleString('pt-BR')}% do valor estimado da contratação (${formatarMoeda(Math.round((valor * pl) / 100))})${pl > LIMITE_PATRIMONIO_LIQUIDO_PERCENTUAL ? ` — ⚠️ acima do limite de ${LIMITE_PATRIMONIO_LIQUIDO_PERCENTUAL}% do art. 69, § 4º` : `, dentro do limite de ${LIMITE_PATRIMONIO_LIQUIDO_PERCENTUAL}% (art. 69, § 4º)`}.`,
   ];
+  const linhasQualificacao =
+    parcelas.length > 0
+      ? [
+          '6.4. Qualificação técnica (art. 67): comprovação de aptidão para desempenho de atividade pertinente e compatível em características, quantidades e prazos com o objeto desta licitação, mediante atestados de capacidade técnica que comprovem a execução dos quantitativos mínimos abaixo definidos para as parcelas de maior relevância técnica e valor significativo:',
+          '',
+          tabela(
+            ['Parcela de maior relevância', 'Unidade', 'Quantidade no objeto', 'Valor estimado', 'Quantitativo mínimo exigido (art. 67, § 2º)'],
+            parcelas.map((p) => [
+              p.descricao,
+              p.unidade,
+              p.quantidadeObjeto.toLocaleString('pt-BR'),
+              formatarMoeda(p.valorEstimado),
+              `${p.quantidadeMinima.toLocaleString('pt-BR')} ${p.unidade}`,
+            ]),
+          ),
+        ]
+      : [
+          `6.4. Qualificação técnica (art. 67): ${pendente('atestados de capacidade técnica compatíveis com o objeto, conforme o termo de referência')}.`,
+        ];
   return protegido(
     'habilitacao',
     [
@@ -672,7 +699,7 @@ function secaoHabilitacao(d: DadosDocumento): string {
       '6.2. Habilitação fiscal, social e trabalhista (art. 68): inscrição no CNPJ; regularidade perante as Fazendas federal, estadual e municipal, a seguridade social e o FGTS; regularidade trabalhista (CNDT); e cumprimento do art. 7º, XXXIII, da Constituição.',
       '',
       ...linhasEconomica.flatMap((l) => [l, '']),
-      `6.4. Qualificação técnica (art. 67): ${pendente('atestados de capacidade técnica compatíveis com o objeto, conforme o termo de referência')}.`,
+      ...linhasQualificacao,
       '',
       '6.5. A habilitação será verificada por meio do SICAF, sempre que possível (art. 87), e somente do licitante vencedor, após o julgamento das propostas (art. 63, II). O exame da documentação é ato do agente de contratação.',
     ].join('\n'),
@@ -707,7 +734,7 @@ function modeloEdital(d: DadosDocumento): ModeloDocumento {
   const corpo = [
     `**${modalidade.toUpperCase()} Nº ${pendente('número/ano')}**`,
     '',
-    `A União, por intermédio da unidade ${linha.uasg_nome} (UASG ${linha.uasg}), torna público que realizará licitação na modalidade ${modalidade.toLowerCase()}, na forma eletrônica, com critério de julgamento de ${ROTULOS_CRITERIO[edital.criterioJulgamento] ?? edital.criterioJulgamento} e modo de disputa aberto, nos termos da Lei 14.133/2021, da Lei Complementar 123/2006 e das demais normas aplicáveis, e de acordo com as condições deste edital e de seus anexos.`,
+    `A União, por intermédio da unidade ${linha.uasg_nome} (UASG ${linha.uasg}), torna público que realizará licitação na modalidade ${modalidade.toLowerCase()}, na forma eletrônica, com critério de julgamento de ${ROTULOS_CRITERIO[edital.criterioJulgamento] ?? edital.criterioJulgamento} e modo de disputa ${ROTULOS_MODO_DISPUTA[edital.modoDisputa ?? 'aberto'] ?? 'aberto'}, nos termos da Lei 14.133/2021, da Lei Complementar 123/2006 e das demais normas aplicáveis, e de acordo com as condições deste edital e de seus anexos.`,
     '',
     '## 1. Do objeto',
     '',

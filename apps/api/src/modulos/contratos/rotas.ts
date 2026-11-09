@@ -20,6 +20,7 @@ import {
 import { carregarProveniencias, provenienciaDe } from '../../integracoes/servico.ts';
 import { empenhosDoContrato, listarPagamentos } from '../financeiro/repositorio.ts';
 import { avaliarRegularidade } from '../fornecedores/repositorio.ts';
+import { contratosSemAcesso, rotuloInformacaoClassificada } from '../sigilo/acesso.ts';
 import { tarefasDoInstrumento } from '../tarefas/repositorio.ts';
 import { listarContratos, montarContratoDetalhe, obterContratoDetalheBase } from './repositorio.ts';
 
@@ -82,9 +83,11 @@ export async function rotasContratos(app: FastifyInstance): Promise<void> {
   app.get('/contratos', leitura, async (request): Promise<Pagina<ContratoResumo>> => {
     const f = esquemaFiltro.parse(request.query);
     const sessao = sessaoDe(request);
+    const restritos = await contratosSemAcesso(ctx.banco, sessao, ctx.hoje());
     const contratos = await listarContratos(
       ctx.banco,
       {
+        semBuscaTextual: [...restritos.keys()],
         escopo: escopoUasgs(sessao),
         busca: f.busca,
         uasg: f.uasg,
@@ -95,6 +98,10 @@ export async function rotasContratos(app: FastifyInstance): Promise<void> {
     );
     const filtrados = f.situacao ? contratos.filter((c) => c.situacao === f.situacao) : contratos;
     const ordenados = ordenarPor(filtrados, CHAVES_ORDENACAO[f.ordenarPor ?? 'vigenciaFim'], f.ordem ?? 'asc');
+    for (const c of ordenados) {
+      const restrito = restritos.get(c.id);
+      if (restrito) c.objeto = rotuloInformacaoClassificada(restrito);
+    }
     return paginarEmMemoria(ordenados, f.pagina, f.tamanhoPagina);
   });
 

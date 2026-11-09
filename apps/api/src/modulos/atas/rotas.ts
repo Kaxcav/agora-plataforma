@@ -19,6 +19,7 @@ import {
 } from '../../http/validacao.ts';
 import { carregarProveniencias, provenienciaDe } from '../../integracoes/servico.ts';
 import { listarContratos } from '../contratos/repositorio.ts';
+import { mascararContratosSigilosos } from '../sigilo/acesso.ts';
 import { tarefasDoInstrumento } from '../tarefas/repositorio.ts';
 import { itensDaAta, listarAtas, montarAtaDetalhe, montarInfoReajuste, obterAtaBase } from './repositorio.ts';
 
@@ -147,7 +148,9 @@ export async function rotasAtas(app: FastifyInstance): Promise<void> {
 
   app.get('/atas/:id/contratos', leitura, async (request) => {
     const base = await ataVisivel(request);
-    return listarContratos(ctx.banco, { escopo: escopoUasgs(sessaoDe(request)), ataId: base.resumo.id }, ctx.hoje());
+    const sessao = sessaoDe(request);
+    const contratos = await listarContratos(ctx.banco, { escopo: escopoUasgs(sessao), ataId: base.resumo.id }, ctx.hoje());
+    return mascararContratosSigilosos(ctx.banco, sessao, ctx.hoje(), contratos);
   });
 
   app.get('/atas/:id/tarefas', leitura, async (request) => {

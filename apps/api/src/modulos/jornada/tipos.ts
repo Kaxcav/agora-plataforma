@@ -1,6 +1,7 @@
 import type { aplicarDesempate, analisarCestaPrecos, EfeitoReforma, FonteCotacao, PapelProcesso } from '@agora/dominio';
 import type { DocumentoGerado, EtapaJornada, OrgaoRequisitante, ParametrosEdital, ProcessoDetalhe } from '@agora/contratos';
 import type { DeclaracaoAgente, LinhaDotacao } from '@agora/dominio';
+import type { ParcelaArmazenada } from '../documentos/tipos.ts';
 
 export type { ParametrosEdital };
 
@@ -215,6 +216,8 @@ export interface CargaProcesso {
   documentos: DocumentoCarregado[];
   /** Dotação orçamentária e declarações dos agentes designados (frente P — RN-39 e RF-32). */
   preparatorios?: DadosPreparatorios;
+  /** Parcelas de maior relevância e quantitativos mínimos (art. 67). */
+  qualificacaoTecnica?: ParcelaArmazenada[] | null;
 }
 
 /** Dotação orçamentária gravada em `processos_dotacoes` (RN-39). */

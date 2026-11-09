@@ -741,8 +741,12 @@ export interface RegistroAcessoDadoPessoal {
   recursoId: Id;
   campo: string;
   finalidade: string;
+  /** Origem do registro: revelação de campo mascarado, acesso a documento com dado pessoal ou a informação sigilosa. */
+  origem: OrigemAcessoLgpd;
 }
-// GET /lgpd/acessos → Pagina<RegistroAcessoDadoPessoal> (permissão lgpd:relatorio)
+export type OrigemAcessoLgpd = 'dado_pessoal' | 'documento' | 'sigilo';
+// GET /lgpd/acessos?usuario&origem → Pagina<RegistroAcessoDadoPessoal> (permissão lgpd:relatorio); reúne lgpd_acessos,
+// os acessos a documentos com dado pessoal (processos_arquivos_acessos) e os acessos a informação sigilosa (sigilo_acessos), sem CPF
 
 export interface Sincronizacao {
   fonte: FonteDados;
@@ -889,6 +893,8 @@ export interface ParametrosEdital {
   provaConceito?: ProvaConceitoEdital;
   /** Inversão de fases (art. 17, § 1º; RN-22). No PUT, ausente = não adotada; o GET sempre devolve. */
   inversaoFases?: InversaoFasesEdital;
+  /** Modo de disputa adotado na sessão (art. 56). No PUT, ausente = 'aberto'; o GET sempre devolve. */
+  modoDisputa?: ModoDisputaSessao;
 }
 export interface EntradaNovoProcesso {
   titulo: string;
@@ -1247,10 +1253,10 @@ export interface ResultadoImportacaoReferencias {
 // POST /pesquisa-precos/referencias-engenharia/importacao body EntradaImportacaoReferencias → ResultadoImportacaoReferencias (integracoes:executar; 422 com erros por linha)
 // ───────────────────────── Notificações (RF-26) e vencimentos 30/60/90/120 (RN-31) ─────────────────────────
 
-export type TipoNotificacao = 'vencimento' | 'reajuste' | 'garantia' | 'pendencia' | 'ocorrencia';
+export type TipoNotificacao = 'vencimento' | 'reajuste' | 'garantia' | 'pendencia' | 'ocorrencia' | 'manifestacao';
 export type CanalNotificacao = 'email' | 'sei' | 'govbr';
-/** gestor, fiscal e responsável são servidores; a contratada é a parte externa do contrato. */
-export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel' | 'emitente_garantia';
+/** gestor, fiscal e responsável são servidores; a contratada é a parte externa do contrato; o emitente da garantia é avisado na extinção; o cidadão é o autor de manifestação. */
+export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel' | 'emitente_garantia' | 'cidadao';
 export type SituacaoEnvio = 'pendente' | 'enviando' | 'enviado' | 'falhou' | 'suprimido';
 export type FaixaVencimento = 30 | 60 | 90 | 120;
 /** smtp = servidor de e-mail do órgão; webservice = SEI do órgão (SeiWS); simulado = driver de demonstração (nada sai do servidor). */

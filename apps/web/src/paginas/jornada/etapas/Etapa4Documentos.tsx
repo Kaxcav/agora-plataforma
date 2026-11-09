@@ -47,6 +47,13 @@ function lerPrazo(texto: string): number | null | undefined {
   return Number.isInteger(valor) && valor >= 1 && valor <= 30 ? valor : undefined;
 }
 
+const MODOS_DISPUTA: { valor: NonNullable<ParametrosEdital['modoDisputa']>; rotulo: string }[] = [
+  { valor: 'aberto', rotulo: 'Aberto' },
+  { valor: 'aberto_fechado', rotulo: 'Aberto e fechado' },
+  { valor: 'fechado_aberto', rotulo: 'Fechado e aberto' },
+  { valor: 'fechado', rotulo: 'Fechado' },
+];
+
 function ParametrosDoEdital({ processo, editavel }: PropsEtapa) {
   const base = useId();
   const { avisar } = useAvisos();
@@ -116,6 +123,7 @@ function ParametrosDoEdital({ processo, editavel }: PropsEtapa) {
           itens={[
             { termo: 'Critério de julgamento', valor: CRITERIOS_JULGAMENTO[p.criterioJulgamento] },
             { termo: 'Regime de execução', valor: REGIMES_EXECUCAO[p.regimeExecucao] },
+            { termo: 'Modo de disputa', valor: MODOS_DISPUTA.find((o) => o.valor === (p.modoDisputa ?? 'aberto'))?.rotulo ?? 'Aberto' },
             { termo: 'Faturamento mínimo', valor: p.exigeFaturamentoMinimo ? 'Exigido (vedado)' : 'Não exigido' },
             {
               termo: 'Patrimônio líquido mínimo',
@@ -170,6 +178,18 @@ function ParametrosDoEdital({ processo, editavel }: PropsEtapa) {
           onChange={(e) => {
             const v = e.target.value;
             if (ehRegimeExecucao(v)) alterar('regimeExecucao', v);
+          }}
+        />
+      </div>
+      <div className="formulario__linha">
+        <Selecao
+          rotulo="Modo de disputa (art. 56)"
+          obrigatorio
+          opcoes={MODOS_DISPUTA}
+          value={parametros.modoDisputa ?? 'aberto'}
+          onChange={(e) => {
+            const v = MODOS_DISPUTA.find((o) => o.valor === e.target.value);
+            if (v) alterar('modoDisputa', v.valor);
           }}
         />
       </div>

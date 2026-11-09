@@ -10,6 +10,7 @@ export const TIPOS_NOTIFICACAO: Record<TipoNotificacao, RotuloTom> = {
   garantia: { rotulo: 'Garantia', tom: 'alerta' },
   pendencia: { rotulo: 'Pendência', tom: 'neutro' },
   ocorrencia: { rotulo: 'Ocorrência', tom: 'critico' },
+  manifestacao: { rotulo: 'Manifestação', tom: 'info' },
 };
 
 export const CANAIS_NOTIFICACAO: Record<CanalNotificacao, string> = {
@@ -30,6 +31,7 @@ export const PAPEIS_DESTINATARIO: Record<PapelDestinatario, string> = {
   contratada: 'Contratada',
   responsavel: 'Responsável pela pendência',
   emitente_garantia: 'Emitente da garantia',
+  cidadao: 'Cidadão',
 };
 
 export const SITUACOES_ENVIO: Record<SituacaoEnvio, RotuloTom> = {

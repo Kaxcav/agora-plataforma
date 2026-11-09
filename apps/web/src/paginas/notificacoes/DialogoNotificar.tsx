@@ -31,6 +31,7 @@ const DESCRICAO_TIPO: Record<TipoNotificacao, string> = {
   garantia: 'Validade da garantia contratual e pedido de renovação.',
   pendencia: 'Pendência a tratar, com prazo.',
   ocorrencia: 'Falha na execução registrada pela fiscalização. Aviso obrigatório (art. 117, § 1º).',
+  manifestacao: 'Aviso sobre manifestação cidadã, moderação ou resposta.',
 };
 
 function resumoEnvios(n: NotificacaoDetalhe): string {

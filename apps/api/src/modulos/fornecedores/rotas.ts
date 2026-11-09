@@ -6,6 +6,7 @@ import { padraoContem } from '../../compartilhado/texto.ts';
 import { naoEncontrado } from '../../http/erros.ts';
 import { booleanoQuery, camposPaginacao, idDaRota, ordemQuery, ordenarPor, paginarEmMemoria, textoBusca } from '../../http/validacao.ts';
 import { listarContratos } from '../contratos/repositorio.ts';
+import { mascararContratosSigilosos } from '../sigilo/acesso.ts';
 import { listarSancoes } from '../sancoes/repositorio.ts';
 import { avaliarRegularidade, carregarFornecedor, carregarFornecedores } from './repositorio.ts';
 
@@ -69,7 +70,7 @@ export async function rotasFornecedores(app: FastifyInstance): Promise<void> {
         fundamento: idc.fundamento,
         aviso: idc.aviso,
       },
-      contratos: await listarContratos(ctx.banco, { escopo, fornecedorId: id }, hoje),
+      contratos: await mascararContratosSigilosos(ctx.banco, sessaoDe(request), hoje, await listarContratos(ctx.banco, { escopo, fornecedorId: id }, hoje)),
       sancoes: sancoes.itens,
       regularidade: await avaliarRegularidade(ctx.banco, id, hoje, ctx.relogio()),
     };

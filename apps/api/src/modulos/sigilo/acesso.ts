@@ -11,7 +11,17 @@ import { permissoesDosPerfis } from '../../autorizacao/perfis.ts';
 import type { Executor, Transacao } from '../../banco/tipos.ts';
 import type { SessaoAtiva } from '../../http/contexto.ts';
 import { auditar } from '../../http/auditar.ts';
-import { classificacaoAplicavel, credencialAtiva, marcosOrcamento, vigentesPorProcesso, type AlvoConsulta, type LinhaClassificacao } from './consultas.ts';
+import {
+  classificacaoAplicavel,
+  contratosSigilosos,
+  credencialAtiva,
+  idsContratosComClassificacaoLai,
+  idsProcessosComClassificacaoLai,
+  marcosOrcamento,
+  vigentesPorProcesso,
+  type AlvoConsulta,
+  type LinhaClassificacao,
+} from './consultas.ts';
 
 export interface ContextoAcessoSigilo {
   processoId: string;
@@ -62,7 +72,7 @@ export function decidirPara(c: ContextoAcessoSigilo, alvo: AlvoConsulta): Result
   return { decisao, classificacao };
 }
 
-const ROTULO_BASE: Record<BaseAcessoSigilo, string> = {
+export const ROTULO_BASE: Record<BaseAcessoSigilo, string> = {
   sem_sigilo: 'sem classificação vigente',
   controle: 'órgão de controle, acesso irrestrito',
   credencial: 'credencial no processo',
@@ -130,4 +140,57 @@ export async function consultaRegistradaRecentemente(
     [processoId, usuarioId, alvo, titulo, limite, permitido],
   );
   return linha?.existe ?? false;
+}
+
+/** Texto que substitui título e objeto de quem não tem credencial nas listas internas (LAI, art. 24). */
+export function rotuloInformacaoClassificada(c: LinhaClassificacao): string {
+  return c.grau ? `Informação classificada (${c.grau})` : 'Informação classificada';
+}
+
+/**
+ * Processos classificados pela LAI aos quais o usuário NÃO tem acesso hoje, com a classificação que vale. Órgão de
+ * controle (auditor, controle interno) tem acesso irrestrito e nunca entra aqui. A decisão é a mesma do detalhe
+ * (`decidirPara`), sem regra paralela.
+ */
+export async function processosSemAcesso(executor: Executor, sessao: SessaoAtiva, hoje: string): Promise<Map<string, LinhaClassificacao>> {
+  const mapa = new Map<string, LinhaClassificacao>();
+  if (ehOrgaoControle(sessao)) return mapa;
+  for (const processoId of await idsProcessosComClassificacaoLai(executor)) {
+    const contexto = await carregarContextoAcesso(executor, processoId, sessao, hoje);
+    const { decisao, classificacao } = decidirPara(contexto, { alvo: 'processo' });
+    if (!decisao.permitido && classificacao?.tipo === 'lai') mapa.set(processoId, classificacao);
+  }
+  return mapa;
+}
+
+/** Contratos sigilosos (art. 91, § 1º) aos quais o usuário não tem acesso hoje, com a classificação que vale. */
+export async function contratosSemAcesso(executor: Executor, sessao: SessaoAtiva, hoje: string): Promise<Map<string, LinhaClassificacao>> {
+  const mapa = new Map<string, LinhaClassificacao>();
+  if (ehOrgaoControle(sessao)) return mapa;
+  const sigilosos = await contratosSigilosos(executor, await idsContratosComClassificacaoLai(executor), hoje);
+  const contextos = new Map<string, ContextoAcessoSigilo>();
+  for (const [contratoId, classificacao] of sigilosos) {
+    let contexto = contextos.get(classificacao.processo_id);
+    if (!contexto) {
+      contexto = await carregarContextoAcesso(executor, classificacao.processo_id, sessao, hoje);
+      contextos.set(classificacao.processo_id, contexto);
+    }
+    if (!decidirPara(contexto, { alvo: 'contrato', contratoId }).decisao.permitido) mapa.set(contratoId, classificacao);
+  }
+  return mapa;
+}
+
+/** Troca o objeto de contrato sigiloso por "Informação classificada" para quem não tem acesso (listas aninhadas). */
+export async function mascararContratosSigilosos<T extends { id: string; objeto: string }>(
+  executor: Executor,
+  sessao: SessaoAtiva,
+  hoje: string,
+  contratos: T[],
+): Promise<T[]> {
+  const restritos = await contratosSemAcesso(executor, sessao, hoje);
+  for (const c of contratos) {
+    const restrito = restritos.get(c.id);
+    if (restrito) c.objeto = rotuloInformacaoClassificada(restrito);
+  }
+  return contratos;
 }

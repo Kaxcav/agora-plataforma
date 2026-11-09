@@ -26,6 +26,7 @@ import { bloqueiosControleExterno } from '../../compartilhado/controle-externo.t
 import { sinaisVinculosDaDisputa } from '../impedimentos/jornada.ts';
 import { regrasPlanejamentoEtapa1 } from '../planejamento/dfd.ts';
 import { avaliarDotacaoDoProcesso, carregarDadosPreparatorios } from '../preparatorios/dotacao.ts';
+import { obterQualificacao } from '../documentos/repositorio.ts';
 import { aplicarRotaContratacao } from '../rotas-contratacao/jornada.ts';
 import { ITENS_PARECER, PAPEIS_PROCESSO, TIPOS_DOCUMENTO } from './constantes.ts';
 import {
@@ -91,6 +92,8 @@ export interface FiltroProcessosSql {
   orgao?: OrgaoRequisitante | undefined;
   etapa?: EtapaJornada | undefined;
   busca?: string | undefined;
+  /** Processos classificados sem credencial: a busca por texto não os encontra (só pelo número SEI). */
+  semBuscaTextual?: readonly string[] | undefined;
 }
 
 export async function listarLinhasProcessos(
@@ -103,12 +106,12 @@ export async function listarLinhasProcessos(
       WHERE ($1::text[] IS NULL OR p.uasg = ANY($1::text[]))
         AND ($2::text IS NULL OR p.orgao = $2)
         AND ($3::integer IS NULL OR p.etapa_atual = $3)
-        AND ($4::text IS NULL OR p.busca_normalizada LIKE $4 ESCAPE '\\')`;
-  const parametros = [filtro.escopo, filtro.orgao ?? null, filtro.etapa ?? null, filtro.busca ? padraoContem(filtro.busca) : null] as const;
+        AND ($4::text IS NULL OR (p.busca_normalizada LIKE $4 ESCAPE '\\' AND NOT p.id = ANY($5::uuid[])) OR (p.id = ANY($5::uuid[]) AND p.numero_sei LIKE $4 ESCAPE '\\'))`;
+  const parametros = [filtro.escopo, filtro.orgao ?? null, filtro.etapa ?? null, filtro.busca ? padraoContem(filtro.busca) : null, [...(filtro.semBuscaTextual ?? [])]] as const;
   const linhas = await executor.consultar<LinhaProcesso>(
     `${SELECAO_PROCESSO}${condicoes}
       ORDER BY p.atualizado_em DESC, p.numero_sei
-      LIMIT $5 OFFSET $6`,
+      LIMIT $6 OFFSET $7`,
     [...parametros, limite, deslocamento],
   );
   const [contagem] = await executor.consultar<{ total: number }>(
@@ -217,12 +220,14 @@ export async function carregarDocumentos(executor: Executor, processoId: string,
 }
 
 export async function carregarProcesso(executor: Executor, linha: LinhaProcesso): Promise<CargaProcesso> {
+  const qualificacao = await obterQualificacao(executor, linha.id);
   return {
     linha,
     equipe: await carregarEquipe(executor, linha.id),
     arvore: await carregarArvore(executor, linha.id),
     documentos: await carregarDocumentos(executor, linha.id, linha.edital),
     preparatorios: await carregarDadosPreparatorios(executor, linha.id),
+    qualificacaoTecnica: qualificacao?.parcelas ?? null,
   };
 }
 
