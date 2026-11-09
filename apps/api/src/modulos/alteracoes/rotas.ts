@@ -35,6 +35,8 @@ import { conflito, naoEncontrado, regraNegocio } from '../../http/erros.ts';
 import { centavos, dataIso, idDaRota } from '../../http/validacao.ts';
 import { obterMatrizRiscosContrato } from '../controle/riscos.ts';
 import { exigirRegularidade, verificarRegularidade } from '../regularidade/servico.ts';
+import { aplicarEfeitoDaExtincaoNaGarantia } from '../execucao/garantia-extincao.ts';
+import { processarFila } from '../notificacoes/servico.ts';
 import { camposTravasProrrogacao, conferirTravasProrrogacao } from './prorrogacao.ts';
 import {
   ciclosReajusteAplicados,
@@ -932,7 +934,7 @@ export async function rotasAlteracoes(app: FastifyInstance): Promise<void> {
           resumo: `Arquivou o processo de extinção do contrato ${contrato.numero}: o contrato segue vigente`,
           dados: { alteracaoId: alteracao.id, fundamentacao: entrada.fundamentacao },
         });
-        return { contratoId: contrato.id, alteracaoId: alteracao.id, tarefa: null };
+        return { contratoId: contrato.id, alteracaoId: alteracao.id, tarefa: null, notificacaoEmitenteId: null };
       }
       const numero = await proximoNumeroTermo(tx, contrato.id, 'rescisao');
       await tx.executar(
@@ -955,6 +957,17 @@ export async function rotasAlteracoes(app: FastifyInstance): Promise<void> {
           WHERE id = $1`,
         [alteracao.id, numero, autor.id, hoje, JSON.stringify(decisao), JSON.stringify(dados), agora],
       );
+
+      // Costura da execução: efeito da extinção na garantia e aviso ao emitente (arts. 100, 139 e 156, § 8º)
+      const efeitoGarantia = await aplicarEfeitoDaExtincaoNaGarantia(tx, ctx, request, {
+        contrato: { id: contrato.id, numero: contrato.numero },
+        autor,
+        numeroTermo: numero,
+        dataEfeitos: entrada.dataEfeitos,
+        culpaAdministracao: entrada.culpaAdministracao,
+        execucaoGarantia: entrada.efeitos.includes('execucao_garantia'),
+        fundamentacao: entrada.fundamentacao,
+      });
       const tarefa = await solicitarDivulgacaoTermo(tx, app.fila, { alteracaoId: alteracao.id, numeroTermo: numero, contrato, solicitante: autor.id, modo: ctx.config.integracoes });
       await auditar(tx, request, {
         acao: 'contrato.extinguir',
@@ -970,11 +983,17 @@ export async function rotasAlteracoes(app: FastifyInstance): Promise<void> {
           efeitos: entrada.efeitos,
           alteracoesArquivadas: arquivadas,
           tarefaPncpId: tarefa.id,
+          efeitoGarantia: efeitoGarantia.efeito,
+          efeitoGarantiaDetalhe: efeitoGarantia.linhas,
+          notificacaoEmitenteId: efeitoGarantia.notificacaoId,
         },
       });
-      return { contratoId: contrato.id, alteracaoId: alteracao.id, tarefa };
+      return { contratoId: contrato.id, alteracaoId: alteracao.id, tarefa, notificacaoEmitenteId: efeitoGarantia.notificacaoId };
     });
     await despachar(r.tarefa);
+    if (r.notificacaoEmitenteId) {
+      await processarFila(ctx, { notificacaoId: r.notificacaoEmitenteId });
+    }
     return responder(r.contratoId, r.alteracaoId, request);
   });
 

@@ -4,6 +4,7 @@
  * integrações (frente B), notifica o contratado pela central de notificações (frente J) e monta o texto do termo em PDF.
  */
 import {
+  adicionarDias,
   chaveIdempotencia,
   formatarData,
   formatarMoeda,
@@ -18,7 +19,9 @@ import type { ServicoFila } from '../../fila/servico.ts';
 import type { LinhaTarefa } from '../../fila/tipos.ts';
 import { auditar } from '../../http/auditar.ts';
 import type { ContextoApp } from '../../http/contexto.ts';
-import { conflito, naoEncontrado } from '../../http/erros.ts';
+import { conflito, ErroApi, naoEncontrado } from '../../http/erros.ts';
+import { normalizarBusca } from '../../compartilhado/texto.ts';
+import { notificarContratada } from '../execucao/avisos.ts';
 import { carregarInstrumento, criarNotificacaoManual, ErroDisparo } from '../notificacoes/servico.ts';
 import { proximoNumeroTermo, type DadosAlteracao, type LinhaContratoAlteracao } from './repositorio.ts';
 
@@ -154,6 +157,59 @@ export async function efetivarProrrogacao(
     solicitante: usuarioId,
     modo: ctx.config.integracoes,
   });
+  // Prorrogação assinada (frente K): exige ou abre a renovação da garantia (frente L)
+  // com prazo, pendência e aviso pela central de notificações.
+  const garantiasAtivas = await tx.consultar<{
+    id: string;
+    valida_ate: string | null;
+  }>(
+    // Só a garantia já apresentada e sem renovação em aberto: a que ainda será apresentada já nasce com a nova vigência.
+    `SELECT g.id, g.valida_ate
+       FROM contratos_garantias g
+      WHERE g.contrato_id = $1 AND g.finalidade = 'execucao' AND g.situacao = 'vigente'
+        AND NOT EXISTS (SELECT 1 FROM pendencias p WHERE p.id = g.pendencia_id AND p.situacao = 'aberta')
+      ORDER BY g.registrada_em DESC`,
+    [atual.id],
+  );
+
+  for (const g of garantiasAtivas) {
+    if (!g.valida_ate || g.valida_ate < e.novaVigenciaFim) {
+      const prazoRenovacao = adicionarDias(hoje, 15) > e.novaVigenciaFim ? e.novaVigenciaFim : adicionarDias(hoje, 15);
+      await tx.executar(
+        `INSERT INTO garantias_movimentos (garantia_id, tipo, data, valor, descricao, registrado_por, registrado_em)
+         VALUES ($1, 'exigencia', $2, NULL, $3, $4, $5)`,
+        [
+          g.id,
+          hoje,
+          `Renovação exigida pela prorrogação da vigência (${numero}) até ${formatarData(e.novaVigenciaFim)} (art. 96). Prazo: ${formatarData(prazoRenovacao)}.`,
+          usuarioId,
+          agora,
+        ],
+      );
+      const motivoPendencia = `Renovação da garantia de execução do contrato ${atual.numero}: vigência prorrogada até ${formatarData(e.novaVigenciaFim)}. Prazo para renovação: ${formatarData(prazoRenovacao)}.`;
+      const [pendencia] = await tx.consultar<{ id: string }>(
+        `INSERT INTO pendencias (tipo, prioridade, instrumento_tipo, instrumento_id, uasg, motivo, prazo, responsavel_id, busca_normalizada)
+         VALUES ('garantia', 'alta', 'contrato', $1, $2, $3, $4, $5, $6) RETURNING id`,
+        [atual.id, atual.uasg, motivoPendencia, prazoRenovacao, usuarioId, normalizarBusca(motivoPendencia, atual.numero)],
+      );
+      if (pendencia) {
+        await tx.executar('UPDATE contratos_garantias SET pendencia_id = $2 WHERE id = $1', [g.id, pendencia.id]);
+      }
+      try {
+        await notificarContratada(tx, ctx, request, {
+          contratoId: atual.id,
+          tipo: 'pendencia',
+          detalhe: motivoPendencia,
+          dataReferencia: prazoRenovacao,
+          complemento: 'Providencie a renovação da garantia junto à instituição garantidora para cobrir a nova vigência prorrogada.',
+        });
+      } catch (erro) {
+        // Sem destinatário válido, a prorrogação segue e a pendência continua registrada; outro erro não é engolido.
+        if (!(erro instanceof ErroApi)) throw erro;
+      }
+    }
+  }
+
   await auditar(tx, request, {
     acao: 'contrato.prorrogar',
     recurso: 'contrato',

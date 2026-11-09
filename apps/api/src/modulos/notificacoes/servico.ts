@@ -60,6 +60,7 @@ export const ROTULO_PAPEL: Record<PapelDestinatario, string> = {
   fiscal: 'fiscal',
   contratada: 'contratada',
   responsavel: 'responsável',
+  emitente_garantia: 'emitente da garantia',
 };
 export const ROTULO_TIPO: Record<TipoNotificacao, string> = {
   vencimento: 'vencimento',
@@ -214,6 +215,24 @@ export async function resolverDestinatarios(
   for (const papel of papeis) {
     if (papel === 'contratada') {
       destinatarios.push(...(await contratadasDe(executor, instrumento)));
+      continue;
+    }
+    if (papel === 'emitente_garantia') {
+      const garantias = await executor.consultar<{ emissor: string | null; documento: string | null }>(
+        `SELECT emissor, documento FROM contratos_garantias WHERE contrato_id = $1 AND situacao IN ('vigente', 'liberada', 'executada') ORDER BY registrada_em DESC LIMIT 1`,
+        [instrumento.id],
+      );
+      const g = garantias[0];
+      const nomeEmissor = g?.emissor || (g?.documento ? `Emitente (${g.documento})` : 'Emitente da garantia');
+      destinatarios.push({
+        papel: 'emitente_garantia',
+        usuarioId: null,
+        fornecedorId: null,
+        nome: nomeEmissor,
+        email: null,
+        ativo: true,
+        pessoaFisica: false,
+      });
       continue;
     }
     const id = idPorPapel[papel];
@@ -371,7 +390,7 @@ export function instrumentoDaMensagem(i: InstrumentoNotificavel) {
 
 export interface EntradaDisparo {
   tipo: TipoNotificacao;
-  destinatarios: readonly ('gestor' | 'fiscal' | 'contratada')[];
+  destinatarios: readonly ('gestor' | 'fiscal' | 'contratada' | 'emitente_garantia')[];
   canais: readonly CanalNotificacao[];
   dataReferencia: string | null;
   detalhe: string | null;

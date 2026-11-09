@@ -28,7 +28,9 @@ import {
   validarDecisaoAutoridade,
   validarOcorrencia,
   verificarDesignacoesContrato,
+  TIPOS_OCORRENCIA,
   type PapelFiscalizacao,
+  type TipoOcorrencia,
 } from '@agora/dominio';
 import type {
   DesignacaoContrato,
@@ -131,21 +133,35 @@ const esquemaDesignacao = z.object({
 const esquemaEncerrar = z.object({ fim: dataIso, motivo: texto(10, 1000) });
 
 const esquemaOcorrencia = z.object({
-  tipo: z.enum(['falha_execucao', 'atraso', 'inconformidade', 'comunicacao', 'outra']),
+  tipo: z.enum(['falha_execucao', 'atraso', 'inconformidade', 'comunicacao', 'outra', 'ocorrencia', 'glosa', 'rescisao']),
+  categoria: z.enum(['prazo', 'qualidade', 'nivel_servico', 'garantia', 'quantitativo', 'fiscalizacao']).nullable().optional(),
   dataFato: dataIso,
   relato: texto(1, 5000),
   providencia: textoOpcional(2000),
   prazoRegularizacao: dataIso.nullable(),
+  diasAtraso: z.number().int().positive().max(3650).nullable().optional(),
+  valorGlosa: centavos.positive().nullable().optional(),
   notificarContratada: z.boolean(),
 });
 
 const esquemaRegularizar = z.object({ data: dataIso, observacao: texto(10, 2000) });
+
+const esquemaItemRecebimento = z.object({
+  itemContratoId: z.string().optional(),
+  descricao: texto(1, 500).optional(),
+  quantidade: z.number().positive(),
+  unidade: texto(1, 50).optional(),
+  valorUnitario: centavos.optional(),
+  valorTotal: centavos.optional(),
+});
 
 const esquemaRecebimento = z.object({
   descricao: texto(5, 500),
   valor: centavos,
   entregueEm: dataIso,
   pagamentoId: uuid.nullable(),
+  quantidade: z.number().int().positive().nullable().optional(),
+  itens: z.array(esquemaItemRecebimento).nullable().optional(),
 });
 
 const esquemaTermo = z.object({
@@ -546,7 +562,9 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
     const entrada = esquemaOcorrencia.parse(request.body);
     const sessao = sessaoDe(request);
     const hoje = ctx.hoje();
-    const validacao = validarOcorrencia({ tipo: entrada.tipo, dataFato: entrada.dataFato, relato: entrada.relato, prazoRegularizacao: entrada.prazoRegularizacao, hoje });
+    // Os tipos de glosa, rescisão e ocorrência (livro único) seguem a mesma validação de uma ocorrência genérica.
+    const tipoParaValidar: TipoOcorrencia = (TIPOS_OCORRENCIA as readonly string[]).includes(entrada.tipo) ? (entrada.tipo as TipoOcorrencia) : 'outra';
+    const validacao = validarOcorrencia({ tipo: tipoParaValidar, dataFato: entrada.dataFato, relato: entrada.relato, prazoRegularizacao: entrada.prazoRegularizacao, hoje });
     const notificar = entrada.notificarContratada || validacao.exigeNotificacao;
     let notificacaoId: string | null = null;
     const { contratoId, ocorrenciaId } = await ctx.banco.transacao(async (tx) => {
@@ -563,10 +581,24 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
         });
       }
       const [criada] = await tx.consultar<{ id: string }>(
-        `INSERT INTO contratos_ocorrencias (contrato_id, numero, tipo, data_fato, relato, providencia, prazo_regularizacao, notificacao_id,
-                                            registrada_por, registrada_em)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-        [contrato.id, numero, entrada.tipo, entrada.dataFato, entrada.relato, entrada.providencia, entrada.prazoRegularizacao, notificacaoId, sessao.usuario.id, ctx.relogio().toISOString()],
+        `INSERT INTO contratos_ocorrencias (contrato_id, numero, tipo, categoria, data_fato, relato, providencia, prazo_regularizacao,
+                                            dias_atraso, valor_glosa, notificacao_id, registrada_por, registrada_em)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+        [
+          contrato.id,
+          numero,
+          entrada.tipo,
+          entrada.categoria ?? null,
+          entrada.dataFato,
+          entrada.relato,
+          entrada.providencia,
+          entrada.prazoRegularizacao,
+          entrada.diasAtraso ?? null,
+          entrada.valorGlosa ?? null,
+          notificacaoId,
+          sessao.usuario.id,
+          ctx.relogio().toISOString(),
+        ],
       );
       if (!criada) throw new Error('Falha ao registrar a ocorrência');
       await registrarDesempenho(tx, contrato.fornecedor_id, { ocorrencias: 1 });
@@ -657,9 +689,21 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
       const prazo = prazoRecebimentoProvisorio(entrada.entregueEm, parametros, calendario);
       const [criado] = await tx.consultar<{ id: string }>(
         `INSERT INTO contratos_recebimentos (contrato_id, numero, descricao, valor, entregue_em, pagamento_id, situacao, prazo_atual,
-                                             registrado_por, registrado_em)
-         VALUES ($1, $2, $3, $4, $5, $6, 'aguardando_provisorio', $7, $8, $9) RETURNING id`,
-        [contrato.id, numero, entrada.descricao, entrada.valor, entrada.entregueEm, entrada.pagamentoId?.toLowerCase() ?? null, prazo.limite, sessao.usuario.id, ctx.relogio().toISOString()],
+                                             quantidade, itens, registrado_por, registrado_em)
+         VALUES ($1, $2, $3, $4, $5, $6, 'aguardando_provisorio', $7, $8, $9::jsonb, $10, $11) RETURNING id`,
+        [
+          contrato.id,
+          numero,
+          entrada.descricao,
+          entrada.valor,
+          entrada.entregueEm,
+          entrada.pagamentoId?.toLowerCase() ?? null,
+          prazo.limite,
+          entrada.quantidade ?? 1,
+          entrada.itens ? JSON.stringify(entrada.itens) : null,
+          sessao.usuario.id,
+          ctx.relogio().toISOString(),
+        ],
       );
       if (!criado) throw new Error('Falha ao registrar a entrega');
       await auditar(tx, request, {
@@ -841,6 +885,12 @@ export async function rotasExecucaoContrato(app: FastifyInstance): Promise<void>
           [contrato.id, numero, entrada.data, relato, resultado.prazoCorrecao, id, notificacaoId, sessao.usuario.id, instante],
         );
         await registrarDesempenho(tx, contrato.fornecedor_id, { ocorrencias: 1 });
+      }
+      if (entrada.tipo === 'provisorio') {
+        await registrarDesempenho(tx, contrato.fornecedor_id, {
+          entregas: 1,
+          entregasNoPrazo: resultado.foraDoPrazo ? 0 : 1,
+        });
       }
       if (resultado.liberaLiquidacao) {
         const [ressalvas] = await tx.consultar<{ total: number }>(

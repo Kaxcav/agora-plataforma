@@ -3,7 +3,7 @@
  * avaliação ao final de uma etapa ou na conclusão, com os indicadores aferidos (a nota é calculada no servidor),
  * registra a manifestação do contratado e a analisa. A avaliação definitiva entra no registro cadastral do fornecedor.
  */
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { ClipboardCheck, FileText, MessageSquareText, Scale } from 'lucide-react';
 import type { AvaliacaoDesempenho, AvaliadorContrato, ContratoDetalhe, SituacaoAvaliacaoDesempenho } from '@agora/contratos';
 import { formatarData, hojeISO } from '@agora/dominio';
@@ -84,6 +84,22 @@ function DialogoEmitir({ contrato, aberto, aoFechar }: { contrato: ContratoDetal
   const previa = usePreviaAvaliacao(contrato.id, periodoValido ? { periodoInicio: inicio, periodoFim: fim } : null);
   const idFormulario = `${base}-formulario`;
 
+  // As contagens vêm dos termos de recebimento da fiscalização; ao mudar o período, são recarregadas uma vez (o agente pode ajustá-las depois).
+  const periodoAplicado = useRef('');
+  useEffect(() => {
+    const dados = previa.data;
+    if (!dados) return;
+    const chave = `${dados.periodoInicio}|${dados.periodoFim}`;
+    if (periodoAplicado.current === chave) return;
+    periodoAplicado.current = chave;
+    definirContagens({
+      entregasNoPrazo: String(dados.entregas.noPrazo),
+      entregasTotal: String(dados.entregas.total),
+      recebimentosAprovados: String(dados.recebimentos.aprovados),
+      recebimentosTotal: String(dados.recebimentos.total),
+    });
+  }, [previa.data]);
+
   const erroPeriodo = !periodoValido ? 'Informe o início e o fim do período, com o fim igual ou posterior ao início.' : null;
   const erroQtd = erroContagens(contagens);
   const erroEvidencias = evidencias.trim().length < 10 ? 'Indique os documentos que comprovam as contagens (ao menos 10 caracteres).' : null;
@@ -158,6 +174,8 @@ function DialogoEmitir({ contrato, aberto, aoFechar }: { contrato: ContratoDetal
             <p>
               Ocorrências da fiscalização: {previa.data.ocorrencias.total} ({previa.data.ocorrencias.resolvidasNoPrazo} resolvida(s) no prazo, {previa.data.ocorrencias.abertas} em
               aberto). Sanções aplicadas no período: {previa.data.sancoesNoPeriodo.length === 0 ? 'nenhuma' : previa.data.sancoesNoPeriodo.length}.
+              {` Entregas no prazo: ${previa.data.entregas.noPrazo}/${previa.data.entregas.total}.`}
+              {` Recebimentos sem ressalva: ${previa.data.recebimentos.aprovados}/${previa.data.recebimentos.total}.`}
             </p>
           </Alerta>
         ) : null}

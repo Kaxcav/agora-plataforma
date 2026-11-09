@@ -73,19 +73,25 @@ export function avaliadorDoContrato(contrato: Pick<ContratoAvaliado, 'gestor_id'
   return { podeAvaliar: true, papel, motivo: null };
 }
 
-/** Ocorrências registradas e sanções aplicadas no contrato, no período (dados derivados, não digitados). */
+/** Ocorrências registradas, sanções aplicadas e contagens de entregas e recebimentos no contrato, no período (dados derivados, não digitados). */
 export async function derivadosDoPeriodo(
   executor: Executor,
   contratoId: string,
   inicio: string,
   fim: string,
-): Promise<{ ocorrencias: { total: number; resolvidasNoPrazo: number; abertas: number }; sancoes: { tipo: TipoSancao; dataAplicacao: string }[] }> {
+): Promise<{
+  ocorrencias: { total: number; resolvidasNoPrazo: number; abertas: number };
+  sancoes: { tipo: TipoSancao; dataAplicacao: string }[];
+  entregas: { total: number; noPrazo: number };
+  recebimentos: { total: number; aprovados: number };
+}> {
   const [o] = await executor.consultar<{ total: number; resolvidas: number; abertas: number }>(
     `SELECT count(*)::int AS total,
-            count(*) FILTER (WHERE situacao = 'resolvida_no_prazo')::int AS resolvidas,
+            count(*) FILTER (WHERE situacao = 'resolvida_no_prazo' OR (situacao = 'regularizada' AND (prazo_regularizacao IS NULL OR regularizada_em IS NULL OR regularizada_em <= prazo_regularizacao)))::int AS resolvidas,
             count(*) FILTER (WHERE situacao = 'aberta')::int AS abertas
-       FROM ocorrencias_execucao
-      WHERE contrato_id = $1 AND tipo IN ('ocorrencia', 'glosa', 'atraso') AND data BETWEEN $2::date AND $3::date`,
+       FROM contratos_ocorrencias
+      WHERE contrato_id = $1 AND tipo IN ('ocorrencia', 'glosa', 'atraso', 'falha_execucao', 'inconformidade', 'comunicacao', 'outra')
+        AND data_fato BETWEEN $2::date AND $3::date`,
     [contratoId, inicio, fim],
   );
   const sancoes = await executor.consultar<{ tipo: TipoSancao; aplicada_em: string }>(
@@ -94,9 +100,45 @@ export async function derivadosDoPeriodo(
       ORDER BY aplicada_em, id`,
     [contratoId, inicio, fim],
   );
+  const [ent] = await executor.consultar<{ total: number; no_prazo: number }>(
+    `SELECT count(r.id)::int AS total,
+            count(r.id) FILTER (WHERE NOT EXISTS (
+              SELECT 1 FROM recebimentos_termos t
+               WHERE t.recebimento_id = r.id AND t.tipo = 'provisorio' AND t.fora_do_prazo = true
+            ))::int AS no_prazo
+       FROM contratos_recebimentos r
+      WHERE r.contrato_id = $1
+        AND (
+          r.entregue_em BETWEEN $2::date AND $3::date
+          OR EXISTS (
+            SELECT 1 FROM recebimentos_termos t
+             WHERE t.recebimento_id = r.id AND t.tipo = 'provisorio' AND t.data BETWEEN $2::date AND $3::date
+          )
+        )`,
+    [contratoId, inicio, fim],
+  );
+  const [rec] = await executor.consultar<{ total: number; aprovados: number }>(
+    `SELECT count(r.id)::int AS total,
+            count(r.id) FILTER (WHERE NOT EXISTS (
+              SELECT 1 FROM recebimentos_termos t
+               WHERE t.recebimento_id = r.id AND t.resultado <> 'aceito'
+            ))::int AS aprovados
+       FROM contratos_recebimentos r
+      WHERE r.contrato_id = $1
+        AND (
+          (r.definitivo_em IS NOT NULL AND r.definitivo_em BETWEEN $2::date AND $3::date)
+          OR EXISTS (
+            SELECT 1 FROM recebimentos_termos t
+             WHERE t.recebimento_id = r.id AND t.tipo = 'definitivo' AND t.data BETWEEN $2::date AND $3::date
+          )
+        )`,
+    [contratoId, inicio, fim],
+  );
   return {
     ocorrencias: { total: o?.total ?? 0, resolvidasNoPrazo: o?.resolvidas ?? 0, abertas: o?.abertas ?? 0 },
     sancoes: sancoes.map((s) => ({ tipo: s.tipo, dataAplicacao: s.aplicada_em })),
+    entregas: { total: ent?.total ?? 0, noPrazo: ent?.no_prazo ?? 0 },
+    recebimentos: { total: rec?.total ?? 0, aprovados: rec?.aprovados ?? 0 },
   };
 }
 

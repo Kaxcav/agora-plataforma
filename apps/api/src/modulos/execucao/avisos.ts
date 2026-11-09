@@ -138,19 +138,21 @@ export async function espelharGarantiaNoContrato(tx: Transacao, contratoId: stri
 export async function registrarDesempenho(
   tx: Transacao,
   fornecedorId: string,
-  d: { recebimentos?: number; recebimentosAprovados?: number; ocorrencias?: number; ocorrenciasNoPrazo?: number },
+  d: { entregas?: number; entregasNoPrazo?: number; recebimentos?: number; recebimentosAprovados?: number; ocorrencias?: number; ocorrenciasNoPrazo?: number },
 ): Promise<void> {
   await tx.executar(
-    `INSERT INTO fornecedores_indicadores (fornecedor_id, recebimentos_total, recebimentos_aprovados, ocorrencias_fiscalizacao,
+    `INSERT INTO fornecedores_indicadores (fornecedor_id, entregas_total, entregas_no_prazo, recebimentos_total, recebimentos_aprovados, ocorrencias_fiscalizacao,
                                            ocorrencias_resolvidas_no_prazo, atualizado_em)
-     VALUES ($1, $2::integer, $3::integer, $4::integer, $5::integer, now())
+     VALUES ($1, $2::integer, $3::integer, $4::integer, $5::integer, $6::integer, $7::integer, now())
      ON CONFLICT (fornecedor_id) DO UPDATE SET
+       entregas_total = fornecedores_indicadores.entregas_total + EXCLUDED.entregas_total,
+       entregas_no_prazo = fornecedores_indicadores.entregas_no_prazo + EXCLUDED.entregas_no_prazo,
        recebimentos_total = fornecedores_indicadores.recebimentos_total + EXCLUDED.recebimentos_total,
        recebimentos_aprovados = fornecedores_indicadores.recebimentos_aprovados + EXCLUDED.recebimentos_aprovados,
        ocorrencias_fiscalizacao = fornecedores_indicadores.ocorrencias_fiscalizacao + EXCLUDED.ocorrencias_fiscalizacao,
        ocorrencias_resolvidas_no_prazo = fornecedores_indicadores.ocorrencias_resolvidas_no_prazo + EXCLUDED.ocorrencias_resolvidas_no_prazo,
        atualizado_em = now()`,
-    [fornecedorId, d.recebimentos ?? 0, d.recebimentosAprovados ?? 0, d.ocorrencias ?? 0, d.ocorrenciasNoPrazo ?? 0],
+    [fornecedorId, d.entregas ?? 0, d.entregasNoPrazo ?? 0, d.recebimentos ?? 0, d.recebimentosAprovados ?? 0, d.ocorrencias ?? 0, d.ocorrenciasNoPrazo ?? 0],
   );
 }
 

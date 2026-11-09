@@ -210,11 +210,14 @@ interface LinhaOcorrencia {
   id: string;
   numero: number;
   tipo: OcorrenciaContrato['tipo'];
+  categoria?: OcorrenciaContrato['categoria'];
+  dias_atraso?: number | null;
+  valor_glosa?: number | null;
   data_fato: string;
   relato: string;
   providencia: string | null;
   prazo_regularizacao: string | null;
-  situacao: 'aberta' | 'regularizada';
+  situacao: OcorrenciaContrato['situacao'];
   registrada_por: string | null;
   registrada_por_nome: string | null;
   registrada_em: string;
@@ -236,10 +239,13 @@ export async function carregarOcorrencias(executor: Executor, contratoId: string
     id: l.id,
     numero: l.numero,
     tipo: l.tipo,
+    categoria: l.categoria ?? null,
     dataFato: l.data_fato,
     relato: l.relato,
     providencia: l.providencia,
     prazoRegularizacao: l.prazo_regularizacao,
+    diasAtraso: l.dias_atraso ?? null,
+    valorGlosa: l.valor_glosa ?? null,
     situacao: l.situacao,
     registradaPor: usuarioResumo(l.registrada_por, l.registrada_por_nome),
     registradaEm: l.registrada_em,
@@ -257,6 +263,8 @@ interface LinhaRecebimento {
   numero: number;
   descricao: string;
   valor: number;
+  quantidade?: number | null;
+  itens?: RecebimentoContrato['itens'];
   entregue_em: string;
   pagamento_id: string | null;
   nota_fiscal: string | null;
@@ -312,7 +320,7 @@ export async function carregarRecebimentos(
   id?: string,
 ): Promise<RecebimentoContrato[]> {
   const linhas = await executor.consultar<LinhaRecebimento>(
-    `SELECT r.id, r.numero, r.descricao, r.valor, r.entregue_em, r.pagamento_id, p.nota_fiscal, p.situacao AS pagamento_situacao,
+    `SELECT r.id, r.numero, r.descricao, r.valor, r.quantidade, r.itens, r.entregue_em, r.pagamento_id, p.nota_fiscal, p.situacao AS pagamento_situacao,
             p.vencimento AS pagamento_vencimento, r.situacao, r.etapa_correcao, r.prazo_atual, r.prazo_correcao, r.definitivo_em,
             r.registrado_por, u.nome AS registrado_por_nome, r.registrado_em
        FROM contratos_recebimentos r
@@ -336,6 +344,8 @@ export async function carregarRecebimentos(
     numero: l.numero,
     descricao: l.descricao,
     valor: l.valor,
+    quantidade: l.quantidade ?? null,
+    itens: l.itens ?? null,
     entregueEm: l.entregue_em,
     notaFiscal:
       l.pagamento_id && l.nota_fiscal && l.pagamento_situacao && l.pagamento_vencimento

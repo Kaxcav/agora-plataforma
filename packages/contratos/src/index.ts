@@ -1250,7 +1250,7 @@ export interface ResultadoImportacaoReferencias {
 export type TipoNotificacao = 'vencimento' | 'reajuste' | 'garantia' | 'pendencia' | 'ocorrencia';
 export type CanalNotificacao = 'email' | 'sei' | 'govbr';
 /** gestor, fiscal e responsável são servidores; a contratada é a parte externa do contrato. */
-export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel';
+export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel' | 'emitente_garantia';
 export type SituacaoEnvio = 'pendente' | 'enviando' | 'enviado' | 'falhou' | 'suprimido';
 export type FaixaVencimento = 30 | 60 | 90 | 120;
 /** smtp = servidor de e-mail do órgão; webservice = SEI do órgão (SeiWS); simulado = driver de demonstração (nada sai do servidor). */
@@ -2651,18 +2651,22 @@ export interface DesignacaoContrato {
   designadoEm: InstanteISO;
 }
 
-export type TipoOcorrenciaContrato = 'falha_execucao' | 'atraso' | 'inconformidade' | 'comunicacao' | 'outra';
+export type TipoOcorrenciaContrato = 'falha_execucao' | 'atraso' | 'inconformidade' | 'comunicacao' | 'outra' | 'ocorrencia' | 'glosa' | 'rescisao';
+export type SituacaoOcorrenciaContrato = 'aberta' | 'regularizada' | 'resolvida_no_prazo' | 'resolvida_fora_do_prazo';
 
 /** Registro no livro de ocorrências do contrato (art. 117, § 1º). */
 export interface OcorrenciaContrato {
   id: Id;
   numero: number;
   tipo: TipoOcorrenciaContrato;
+  categoria?: CategoriaLicao | null;
   dataFato: DataISO;
   relato: string;
   providencia: string | null;
   prazoRegularizacao: DataISO | null;
-  situacao: 'aberta' | 'regularizada';
+  situacao: SituacaoOcorrenciaContrato;
+  diasAtraso?: number | null;
+  valorGlosa?: Centavos | null;
   registradaPor: UsuarioResumo | null;
   registradaEm: InstanteISO;
   /** Aviso enviado à contratada pela central de notificações. */
@@ -2721,6 +2725,8 @@ export interface RecebimentoContrato {
   numero: number;
   descricao: string;
   valor: Centavos;
+  quantidade?: number | null;
+  itens?: { itemContratoId: Id; quantidade: number }[] | null;
   entregueEm: DataISO;
   notaFiscal: { pagamentoId: Id; numero: string; situacao: SituacaoPagamento } | null;
   situacao: SituacaoRecebimento;
@@ -2912,6 +2918,8 @@ export interface EntradaRegularizarOcorrencia {
 export interface EntradaRecebimento {
   descricao: string;
   valor: Centavos;
+  quantidade?: number | null;
+  itens?: { itemContratoId: Id; quantidade: number }[] | null;
   entregueEm: DataISO;
   pagamentoId: Id | null;
 }
@@ -3755,6 +3763,17 @@ export interface ConferenciaNotaFiscal {
   conferidaEm: InstanteISO;
 }
 
+export interface RecebimentoDefinitivoConferencia {
+  id: Id;
+  numero: number;
+  data: DataISO;
+  termoId: Id;
+  descricao?: string;
+  valor?: Centavos;
+  quantidadeRecebida: number;
+  itens?: { itemContratoId: Id; quantidadeRecebida: number }[];
+}
+
 export interface ContextoConferenciaNota {
   pagamento: Pagamento;
   contrato: { id: Id; numero: string; objeto: string; temImr: boolean };
@@ -3764,8 +3783,8 @@ export interface ContextoConferenciaNota {
   conferencia: ConferenciaNotaFiscal | null;
   /** Situação do atesto quanto à conferência (RN-36); a regularidade do contratado (RN-23) é verificada no próprio atesto. */
   atesto: { liberado: boolean; motivo: string | null; /** A parcela ainda não foi atestada: a nota pode ser conferida, corrigida ou justificada. */ parcelaEmAberto: boolean };
-  /** O registro do recebimento definitivo (art. 140) entra aqui quando o módulo de recebimentos estiver disponível; hoje, a quantidade recebida é informada na conferência. */
-  recebimentoDefinitivo: null;
+  /** Termo de recebimento definitivo (art. 140) ligado a esta parcela e quantidade recebida. */
+  recebimentoDefinitivo: RecebimentoDefinitivoConferencia | null;
 }
 export interface EntradaConferenciaNota {
   numeroNota: string;
@@ -5010,7 +5029,7 @@ export interface AvaliacoesContrato {
   avaliacoes: AvaliacaoDesempenho[];
 }
 
-/** Dados que o servidor deriva para o período (ocorrências registradas e sanções aplicadas no contrato). */
+/** Dados que o servidor deriva para o período (ocorrências registradas, sanções aplicadas e contagens de recebimentos no contrato). */
 export interface PreviaAvaliacaoDesempenho {
   periodoInicio: DataISO;
   periodoFim: DataISO;
@@ -5018,6 +5037,8 @@ export interface PreviaAvaliacaoDesempenho {
   vigenciaFim: DataISO;
   ocorrencias: { total: number; resolvidasNoPrazo: number; abertas: number };
   sancoesNoPeriodo: { tipo: TipoSancao; dataAplicacao: DataISO }[];
+  entregas: { total: number; noPrazo: number };
+  recebimentos: { total: number; aprovados: number };
   avaliador: AvaliadorContrato;
 }
 
@@ -5025,10 +5046,10 @@ export interface EntradaAvaliacaoDesempenho {
   tipo: TipoAvaliacaoDesempenho;
   periodoInicio: DataISO;
   periodoFim: DataISO;
-  entregasNoPrazo: number;
-  entregasTotal: number;
-  recebimentosAprovados: number;
-  recebimentosTotal: number;
+  entregasNoPrazo?: number;
+  entregasTotal?: number;
+  recebimentosAprovados?: number;
+  recebimentosTotal?: number;
   evidencias: string;
   motivacao: string;
 }
