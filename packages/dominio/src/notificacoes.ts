@@ -9,14 +9,16 @@ import { type DataISO, formatarData } from './datas.ts';
 import { classificarVigencia } from './vigencia.ts';
 import { adicionarMeses, exigirInteiro, lerData } from './interno.ts';
 
-export type TipoNotificacao = 'vencimento' | 'reajuste' | 'garantia' | 'pendencia' | 'ocorrencia';
+export type TipoNotificacao = 'vencimento' | 'reajuste' | 'garantia' | 'pendencia' | 'ocorrencia' | 'manifestacao';
 export type CanalNotificacao = 'email' | 'sei' | 'govbr';
-/** gestor, fiscal e responsável são servidores com conta na Ágora; a contratada é a parte externa do contrato. */
-export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel';
+/** gestor, fiscal e responsável são servidores com conta na Ágora; a contratada é a parte externa do contrato; o cidadão é o autor de manifestação. */
+export type PapelDestinatario = 'gestor' | 'fiscal' | 'contratada' | 'responsavel' | 'cidadao';
 /** Faixas do semáforo em que a varredura diária gera aviso (RN-31). */
 export type FaixaVencimento = 30 | 60 | 90 | 120;
 
-export const TIPOS_NOTIFICACAO: readonly TipoNotificacao[] = ['vencimento', 'reajuste', 'garantia', 'pendencia', 'ocorrencia'];
+export const TIPOS_NOTIFICACAO: readonly TipoNotificacao[] = ['vencimento', 'reajuste', 'garantia', 'pendencia', 'ocorrencia', 'manifestacao'];
+/** Tipos de notificação que o servidor configura em suas preferências pessoais (manifestação é aviso ao cidadão). */
+export const TIPOS_PREFERENCIA_NOTIFICACAO: readonly TipoNotificacao[] = ['vencimento', 'reajuste', 'garantia', 'pendencia', 'ocorrencia'];
 export const CANAIS_NOTIFICACAO: readonly CanalNotificacao[] = ['email', 'sei', 'govbr'];
 /** Da mais distante para a mais próxima do fim da vigência. */
 export const FAIXAS_VENCIMENTO: readonly FaixaVencimento[] = [120, 90, 60, 30];
@@ -42,6 +44,7 @@ const FUNDAMENTOS: Record<TipoNotificacao, string> = {
   garantia: 'Lei 14.133/2021, arts. 96 a 102 (garantias contratuais) e art. 92, XII',
   pendencia: 'Lei 14.133/2021, art. 117 (acompanhamento da execução) e art. 141 (ordem cronológica de pagamentos)',
   ocorrencia: 'Lei 14.133/2021, art. 117, § 1º (registro das ocorrências e determinação de regularização) e art. 119',
+  manifestacao: 'Lei 14.133/2021, art. 174, § 3º, VI (gestão compartilhada com a sociedade)',
 };
 
 /**
@@ -68,7 +71,7 @@ export function faixaVencimento(diasRestantes: number): FaixaVencimento | null {
  */
 export function avisoObrigatorio(tipo: TipoNotificacao, faixa: FaixaVencimento | null): boolean {
   if (!TIPOS_NOTIFICACAO.includes(tipo)) throw new ErroDominio('NOTIFICACAO_INVALIDA', `Tipo de notificação desconhecido: ${String(tipo)}.`);
-  if (tipo === 'ocorrencia') return true;
+  if (tipo === 'ocorrencia' || tipo === 'manifestacao') return true;
   return tipo === 'vencimento' && faixa === 30;
 }
 
@@ -142,6 +145,9 @@ export function baseLegalEnvio(papel: PapelDestinatario): string {
   if (papel === 'gestor' || papel === 'fiscal' || papel === 'responsavel') {
     return 'Lei 13.709/2018 (LGPD), art. 7º, II e III, e art. 23: cumprimento de obrigação legal e execução de política pública pela Administração (gestão e fiscalização do contrato, Lei 14.133/2021, art. 117).';
   }
+  if (papel === 'cidadao') {
+    return 'Lei 13.709/2018 (LGPD), art. 7º, II e art. 23: atendimento a manifestação do titular perante a Administração (Lei 14.133/2021, art. 174, § 3º, VI).';
+  }
   throw new ErroDominio('NOTIFICACAO_INVALIDA', `Papel de destinatário desconhecido: ${String(papel)}.`);
 }
 
@@ -172,6 +178,10 @@ export interface EntradaEntrega {
 export function decidirEntregaNotificacao(e: EntradaEntrega): { enviar: boolean; motivo: string | null } {
   if (!CANAIS_NOTIFICACAO.includes(e.canal)) throw new ErroDominio('NOTIFICACAO_INVALIDA', `Canal desconhecido: ${String(e.canal)}.`);
   baseLegalEnvio(e.papel);
+  if (e.papel === 'cidadao') {
+    if (e.canal === 'email') return { enviar: true, motivo: null };
+    return { enviar: false, motivo: 'O aviso ao cidadão é entregue apenas por e-mail institucional.' };
+  }
   if (e.canal === 'sei') return { enviar: true, motivo: null };
   if (e.canal === 'govbr' && !e.destinatarioPessoaFisica) {
     return { enviar: false, motivo: 'O gov.br entrega mensagens apenas a pessoas físicas (CPF). Use o e-mail ou o SEI para a contratada.' };
@@ -353,6 +363,14 @@ export function montarMensagemNotificacao(e: EntradaMensagemNotificacao): Mensag
       if (e.dataReferencia) fatos.push(`Prazo para regularização: ${formatarData(dataObrigatoria(e.dataReferencia, 'O prazo'))}.`);
       providencia =
         'a contratada deve regularizar as faltas ou os defeitos apontados no prazo indicado. Esta notificação não aplica penalidade; eventual sanção depende de processo próprio, com defesa.';
+      break;
+    }
+    case 'manifestacao': {
+      const info = textoObrigatorio(detalhe, 'O detalhe da manifestação');
+      titulo = 'Aviso sobre manifestação da sociedade';
+      resumo = 'atualização sobre sua manifestação';
+      fatos = [linhaUnica(info)];
+      providencia = 'acompanhar a manifestação em "Minhas manifestações" no portal Ágora.';
       break;
     }
   }

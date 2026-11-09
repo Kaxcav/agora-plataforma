@@ -38,6 +38,7 @@ import {
   obterProcessoDetalhe,
   primeiroClassificado,
 } from './repositorio.ts';
+import { processosSemAcesso, rotuloInformacaoClassificada } from '../sigilo/acesso.ts';
 import { analisarCesta, avaliarSegregacao } from './regras.ts';
 import { INVERSAO_FASES_PADRAO, PROVA_CONCEITO_PADRAO, selecaoIniciada, vencedorDoProcesso } from './selecao.ts';
 import { documentoTrazSustentabilidade, politicaSustentabilidadeAtiva, sustentabilidadeDoProcesso } from './sustentabilidade.ts';
@@ -193,6 +194,7 @@ const esquemaParametrosEdital = z.object({
     .object({ adotada: z.boolean(), motivacao: textoOpcional })
     .optional()
     .transform((v) => v ?? INVERSAO_FASES_PADRAO),
+  modoDisputa: z.enum(['aberto', 'aberto_fechado', 'fechado_aberto', 'fechado']).optional().default('aberto'),
 });
 
 const esquemaSustentabilidade = z.object({ criteriosAmbientais: textoOpcional, logisticaReversa: textoOpcional });
@@ -315,16 +317,21 @@ export async function rotasJornada(app: FastifyInstance): Promise<void> {
   app.get('/processos', leitura, async (request): Promise<Pagina<ProcessoResumo>> => {
     const f = esquemaFiltro.parse(request.query);
     const c = await contexto();
+    const sessao = sessaoDe(request);
+    const restritos = await processosSemAcesso(ctx.banco, sessao, c.hoje);
     const { linhas, total } = await listarLinhasProcessos(
       ctx.banco,
-      { escopo: escopoUasgs(sessaoDe(request)), orgao: f.orgao, etapa: f.etapa as EtapaJornada | undefined, busca: f.busca },
+      { escopo: escopoUasgs(sessao), orgao: f.orgao, etapa: f.etapa as EtapaJornada | undefined, busca: f.busca, semBuscaTextual: [...restritos.keys()] },
       f.tamanhoPagina,
       (f.pagina - 1) * f.tamanhoPagina,
     );
     const itens: ProcessoResumo[] = [];
     for (const linha of linhas) {
       const avaliacao = await avaliarProcesso(ctx.banco, await carregarProcesso(ctx.banco, linha), c.hoje, c.calendario, c.agora);
-      itens.push(montarResumo(linha, avaliacao.bloqueios, avaliacao.valorEstimado));
+      const resumo = montarResumo(linha, avaliacao.bloqueios, avaliacao.valorEstimado);
+      const restrita = restritos.get(linha.id);
+      if (restrita) resumo.titulo = rotuloInformacaoClassificada(restrita);
+      itens.push(resumo);
     }
     return pagina(itens, total, f.pagina, f.tamanhoPagina);
   });

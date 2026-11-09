@@ -247,6 +247,26 @@ export async function contratosSigilosos(executor: Executor, contratoIds: readon
   return mapa;
 }
 
+/** Processos com classificação vigente pela LAI (qualquer alvo), para as listas internas. */
+export async function idsProcessosComClassificacaoLai(executor: Executor): Promise<string[]> {
+  const linhas = await executor.consultar<{ processo_id: string }>(
+    `SELECT DISTINCT processo_id FROM sigilo_classificacoes WHERE situacao = 'vigente' AND tipo = 'lai'`,
+  );
+  return linhas.map((l) => l.processo_id);
+}
+
+/** Contratos que podem ser sigilosos hoje: os do processo com classificação LAI e os classificados individualmente. */
+export async function idsContratosComClassificacaoLai(executor: Executor): Promise<string[]> {
+  const linhas = await executor.consultar<{ contrato_id: string }>(
+    `SELECT p.contrato_id FROM processos p
+      WHERE p.contrato_id IS NOT NULL
+        AND p.id IN (SELECT processo_id FROM sigilo_classificacoes WHERE situacao = 'vigente' AND tipo = 'lai')
+     UNION
+     SELECT contrato_id FROM sigilo_classificacoes WHERE contrato_id IS NOT NULL AND situacao = 'vigente' AND tipo = 'lai'`,
+  );
+  return linhas.map((l) => l.contrato_id);
+}
+
 // ───────────────────────── credenciais ─────────────────────────
 
 interface LinhaCredencial {

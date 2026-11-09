@@ -60,6 +60,7 @@ export const ROTULO_PAPEL: Record<PapelDestinatario, string> = {
   fiscal: 'fiscal',
   contratada: 'contratada',
   responsavel: 'responsável',
+  cidadao: 'cidadão',
 };
 export const ROTULO_TIPO: Record<TipoNotificacao, string> = {
   vencimento: 'vencimento',
@@ -67,6 +68,7 @@ export const ROTULO_TIPO: Record<TipoNotificacao, string> = {
   garantia: 'garantia',
   pendencia: 'pendência',
   ocorrencia: 'ocorrência',
+  manifestacao: 'manifestação',
 };
 
 // ───────────────────────── Instrumentos e destinatários ─────────────────────────

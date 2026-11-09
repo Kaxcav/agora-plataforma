@@ -9,6 +9,14 @@ const RECURSOS: Record<string, string> = {
   fornecedor: 'Fornecedor',
   usuario: 'Usuário',
   credor_empenho: 'Credor de empenho',
+  documento_processo: 'Documento do processo',
+  informacao_sigilosa: 'Informação sigilosa',
+};
+
+const ORIGENS: Record<RegistroAcessoDadoPessoal['origem'], string> = {
+  dado_pessoal: 'Dado pessoal revelado',
+  documento: 'Documento com dado pessoal',
+  sigilo: 'Informação sigilosa',
 };
 
 const CAMPOS: Record<string, string> = {
@@ -49,14 +57,20 @@ const COLUNAS: ColunaTabela<RegistroAcessoDadoPessoal>[] = [
     ),
   },
   {
+    id: 'origem',
+    cabecalho: 'Origem',
+    prioritaria: true,
+    celula: (r) => ORIGENS[r.origem],
+  },
+  {
     id: 'campo',
-    cabecalho: 'Dado revelado',
+    cabecalho: 'Dado ou documento acessado',
     prioritaria: true,
     celula: (r) => CAMPOS[r.campo] ?? r.campo,
   },
   {
     id: 'finalidade',
-    cabecalho: 'Finalidade declarada',
+    cabecalho: 'Finalidade ou motivo',
     larguraMinima: '18rem',
     prioritaria: true,
     celula: (r) => <TextoLongo texto={r.finalidade} />,
@@ -80,7 +94,7 @@ export default function AcessosLgpd() {
   return (
     <Pagina
       titulo="Acessos a dados pessoais"
-      subtitulo="Relatório das revelações de dados pessoais mascarados, com usuário, momento e finalidade declarada."
+      subtitulo="Relatório das revelações de dados pessoais, dos acessos a documentos com dado pessoal e dos acessos a informação sigilosa, com usuário, momento e finalidade ou motivo."
       trilha={[
         { rotulo: 'Início', para: '/' },
         { rotulo: 'Auditoria', para: '/auditoria' },

@@ -716,6 +716,7 @@ describe('jornada completa de um processo novo, com relógio controlado, e integ
       exigeRegistroCadastralComplementar: false,
       provaConceito: { exigencia: 'nenhuma', roteiro: null, justificativa: null, prazoDiasUteis: null },
       inversaoFases: { adotada: false, motivacao: null },
+      modoDisputa: 'aberto', // padrão do art. 56 para menor preço, levado ao edital
     });
     await ok(planejamento, 'PUT', `${base}/dfd`, {
       descricaoNecessidade: 'Equipar as equipes de pronta resposta com kits de atendimento pré-hospitalar tático padronizados.',

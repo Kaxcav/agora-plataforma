@@ -12,6 +12,7 @@ import {
   FUNDAMENTO_GESTAO_COMPARTILHADA,
   PRAZO_RESPOSTA_MANIFESTACAO_DIAS,
   prazoRespostaManifestacao,
+  montarMensagemNotificacao,
   validarDecisaoModeracao,
   validarManifestacao,
   validarRelatorioFinal,
@@ -31,6 +32,7 @@ import { z } from 'zod';
 import { criarArmazenamento, ErroArmazenamento, type ArmazenamentoArquivos } from '../../armazenamento/arquivos.ts';
 import { escopoUasgs, exigir, sessaoDe } from '../../autorizacao/exigir.ts';
 import { PERFIS } from '../../autorizacao/perfis.ts';
+import type { Transacao } from '../../banco/tipos.ts';
 import { sha256Hex } from '../../compartilhado/cripto.ts';
 import { detectarFormatoMidia, ErroMidia, removerMetadados, TIPO_CONTEUDO_MIDIA, type FormatoMidia } from '../../compartilhado/midia.ts';
 import { auditar } from '../../http/auditar.ts';
@@ -38,6 +40,7 @@ import { conflito, ErroApi, naoEncontrado, regraNegocio, validacao } from '../..
 import { camposPaginacao, dataIso, deslocamento, idDaRota, pagina, uuid } from '../../http/validacao.ts';
 import { verificarAntivirus } from '../../integracoes/antivirus.ts';
 import { ErroIntegracao } from '../../integracoes/conector.ts';
+import { carregarInstrumento, gravarNotificacao, instrumentoDaMensagem, processarFila, type Destinatario } from '../notificacoes/servico.ts';
 import { marcarIntencaoCidadao } from './cidadaos.ts';
 import { aceitarCorpoBinario } from './corpo-binario.ts';
 import {
@@ -54,6 +57,7 @@ import {
   registrosDoContrato,
   relatorioFinal,
   type LinhaContratoSociedade,
+  type LinhaManifestacao,
 } from './repositorio.ts';
 
 /** Imagem enviada pelo cidadão: até 5 MB (ou o limite geral de arquivos, se menor). */
@@ -180,6 +184,50 @@ export async function rotasSociedade(app: FastifyInstance): Promise<void> {
     return atual;
   }
 
+  async function notificarCidadaoManifestacao(
+    tx: Transacao,
+    linha: LinhaManifestacao,
+    detalhe: string,
+    usuarioId: string,
+  ): Promise<string | null> {
+    const instrumento = await carregarInstrumento(tx, 'contrato', linha.contrato_id, null);
+    if (!instrumento) return null;
+    const mensagem = montarMensagemNotificacao({
+      tipo: 'manifestacao',
+      origem: 'automatica',
+      hoje: ctx.hoje(),
+      instrumento: instrumentoDaMensagem(instrumento),
+      detalhe,
+    });
+    const destinatarios: Destinatario[] = [
+      {
+        papel: 'cidadao',
+        usuarioId: linha.autor_id,
+        fornecedorId: null,
+        nome: linha.autor_nome,
+        email: linha.autor_email,
+        ativo: true,
+        pessoaFisica: true,
+      },
+    ];
+    const gravada = await gravarNotificacao(
+      tx,
+      ctx.config,
+      ctx.relogio(),
+      {
+        tipo: 'manifestacao',
+        origem: 'automatica',
+        instrumento,
+        mensagem,
+        chave: null,
+        criadaPor: usuarioId,
+      },
+      destinatarios,
+      ['email'],
+    );
+    return gravada?.id ?? null;
+  }
+
   // ───────── público (sem login) ─────────
 
   app.get('/publico/contratos/:id/gestao-compartilhada', async (request): Promise<GestaoCompartilhadaPublica> => {
@@ -291,6 +339,7 @@ export async function rotasSociedade(app: FastifyInstance): Promise<void> {
     const linha = await manifestacaoNoEscopo(request);
     const entrada = esquemaModeracao.parse(request.body);
     const decisao = validarDecisaoModeracao({ decisao: entrada.decisao, motivo: entrada.motivo, situacaoAtual: linha.situacao });
+    let notificacaoId: string | null = null;
     await ctx.banco.transacao(async (tx) => {
       const alteradas = await tx.executar(
         `UPDATE sociedade_manifestacoes SET situacao = $2, motivo_moderacao = $3, moderada_por = $4, moderada_em = $5
@@ -305,7 +354,13 @@ export async function rotasSociedade(app: FastifyInstance): Promise<void> {
         resumo: `${decisao.decisao === 'publicar' ? 'Publicou' : 'Recusou'} manifestação sobre o contrato ${linha.contrato_numero}`,
         dados: { manifestacaoId: linha.id, motivo: decisao.motivo },
       });
+      const detalhe =
+        decisao.decisao === 'publicar'
+          ? `Manifestação publicada pela moderação. Motivo: ${decisao.motivo}`
+          : `Manifestação recusada pela moderação. Motivo: ${decisao.motivo}`;
+      notificacaoId = await notificarCidadaoManifestacao(tx, linha, detalhe, sessaoDe(request).usuario.id);
     });
+    if (notificacaoId) await processarFila(ctx, { notificacaoId });
     return moderacaoAtual(linha.id);
   });
 
@@ -324,6 +379,7 @@ export async function rotasSociedade(app: FastifyInstance): Promise<void> {
           : contrato?.fiscal_id === sessao.usuario.id
             ? 'Fiscal do contrato'
             : `Administração (${nomePerfil})`;
+    let notificacaoId: string | null = null;
     await ctx.banco.transacao(async (tx) => {
       const [criada] = await tx.consultar<{ id: string }>(
         `INSERT INTO sociedade_respostas (manifestacao_id, origem, texto, texto_publico, funcao, representante, registrada_por, respondida_em)
@@ -337,7 +393,10 @@ export async function rotasSociedade(app: FastifyInstance): Promise<void> {
         resumo: `${resposta.origem === 'contratado' ? 'Registrou a resposta do contratado' : 'Respondeu'} à manifestação sobre o contrato ${linha.contrato_numero}`,
         dados: { manifestacaoId: linha.id, respostaId: criada?.id ?? null, origem: resposta.origem, funcao },
       });
+      const detalhe = `Resposta registrada (${funcao}): ${resposta.textoPublico}`;
+      notificacaoId = await notificarCidadaoManifestacao(tx, linha, detalhe, sessao.usuario.id);
     });
+    if (notificacaoId) await processarFila(ctx, { notificacaoId });
     return moderacaoAtual(linha.id);
   });
 

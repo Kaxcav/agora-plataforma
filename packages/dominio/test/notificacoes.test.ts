@@ -247,6 +247,39 @@ describe('montarMensagemNotificacao', () => {
     );
     assert.throws(() => montarMensagemNotificacao({ tipo: 'outro' as never, origem: 'manual', hoje: HOJE, instrumento: CONTRATO }), comCodigo('NOTIFICACAO_INVALIDA'));
   });
+
+  it('manifestacao monta assunto, corpo e providência para o cidadão', () => {
+    const m = montarMensagemNotificacao({
+      tipo: 'manifestacao',
+      origem: 'automatica',
+      hoje: HOJE,
+      instrumento: CONTRATO,
+      detalhe: 'Manifestação publicada pela moderação.',
+    });
+    assert.equal(m.assunto, 'Contrato 12/2026: atualização sobre sua manifestação');
+    assert.equal(m.obrigatoria, true);
+    assert.match(m.corpo, /Aviso sobre manifestação da sociedade — Contrato 12\/2026/);
+    assert.match(m.corpo, /Manifestação publicada pela moderação\./);
+    assert.match(m.corpo, /acompanhar a manifestação em "Minhas manifestações"/);
+    assert.match(m.fundamento, /art\. 174, § 3º, VI/);
+  });
+});
+
+describe('papel cidadão e base legal', () => {
+  it('baseLegalEnvio retorna base da LGPD para cidadão', () => {
+    const base = baseLegalEnvio('cidadao');
+    assert.match(base, /Lei 13\.709\/2018/);
+    assert.match(base, /art\. 174, § 3º, VI/);
+  });
+
+  it('decidirEntregaNotificacao entrega ao cidadão apenas por e-mail', () => {
+    const email = decidirEntregaNotificacao({ canal: 'email', papel: 'cidadao', obrigatoria: true, preferencia: null, destinatarioPessoaFisica: true });
+    assert.equal(email.enviar, true);
+    const sei = decidirEntregaNotificacao({ canal: 'sei', papel: 'cidadao', obrigatoria: true, preferencia: null, destinatarioPessoaFisica: true });
+    assert.equal(sei.enviar, false);
+    const govbr = decidirEntregaNotificacao({ canal: 'govbr', papel: 'cidadao', obrigatoria: true, preferencia: null, destinatarioPessoaFisica: true });
+    assert.equal(govbr.enviar, false);
+  });
 });
 
 describe('catálogo: RN-31 e RF-26', () => {

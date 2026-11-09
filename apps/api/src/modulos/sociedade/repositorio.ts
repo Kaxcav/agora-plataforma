@@ -57,6 +57,7 @@ export interface LinhaManifestacao {
   contrato_objeto: string;
   autor_id: string;
   autor_nome: string;
+  autor_email: string;
   assunto: AssuntoManifestacao;
   texto: string;
   texto_publico: string;
@@ -74,7 +75,7 @@ export interface LinhaManifestacao {
 
 const SELECAO_MANIFESTACAO = `
   SELECT m.id, m.contrato_id, c.numero AS contrato_numero, c.uasg AS contrato_uasg, c.objeto AS contrato_objeto,
-         m.autor_id, ua.nome AS autor_nome, m.assunto, m.texto, m.texto_publico, m.dados_pessoais_tarjados,
+         m.autor_id, ua.nome AS autor_nome, ua.email AS autor_email, m.assunto, m.texto, m.texto_publico, m.dados_pessoais_tarjados,
          m.imagem_sha256, m.imagem_formato, m.metadados_removidos, m.situacao, m.motivo_moderacao,
          um.nome AS moderada_por_nome, m.moderada_em, m.recebida_em, m.prazo_resposta
     FROM sociedade_manifestacoes m

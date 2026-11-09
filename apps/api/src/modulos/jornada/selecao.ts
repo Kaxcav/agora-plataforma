@@ -8,6 +8,7 @@ import type {
   FaseRecursalProcesso,
   InversaoFasesEdital,
   LicitanteReferencia,
+  ModoDisputaSessao,
   ProvaConceitoEdital,
   SelecaoProcesso,
   UsuarioResumo,
@@ -16,10 +17,22 @@ import type { AutorAto, DisputaArmazenada, LinhaProcesso, ParametrosEdital, Recu
 
 export const PROVA_CONCEITO_PADRAO: ProvaConceitoEdital = { exigencia: 'nenhuma', roteiro: null, justificativa: null, prazoDiasUteis: null };
 export const INVERSAO_FASES_PADRAO: InversaoFasesEdital = { adotada: false, motivacao: null };
+export const MODO_DISPUTA_PADRAO: ModoDisputaSessao = 'aberto';
+
+export type ParametrosEditalCompletos = ParametrosEdital & {
+  provaConceito: ProvaConceitoEdital;
+  inversaoFases: InversaoFasesEdital;
+  modoDisputa: ModoDisputaSessao;
+};
 
 /** Parâmetros do edital com a prova de conceito e a inversão de fases sempre presentes (editais anteriores não as têm). */
-export function editalCompleto(edital: ParametrosEdital): Required<ParametrosEdital> {
-  return { ...edital, provaConceito: edital.provaConceito ?? PROVA_CONCEITO_PADRAO, inversaoFases: edital.inversaoFases ?? INVERSAO_FASES_PADRAO };
+export function editalCompleto(edital: ParametrosEdital): ParametrosEditalCompletos {
+  return {
+    ...edital,
+    provaConceito: edital.provaConceito ?? PROVA_CONCEITO_PADRAO,
+    inversaoFases: edital.inversaoFases ?? INVERSAO_FASES_PADRAO,
+    modoDisputa: edital.modoDisputa ?? MODO_DISPUTA_PADRAO,
+  };
 }
 
 /** Coluna `selecao` com as listas sempre presentes. */

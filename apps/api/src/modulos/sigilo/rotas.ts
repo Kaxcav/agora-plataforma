@@ -34,6 +34,7 @@ import { agendarAncoragem, ancorarTrilha, situacaoAncoragens, verificarAncoragen
 import { aadAnexo, cifrar, decifrar, ErroCofre, resolverChaveCofre } from './cofre.ts';
 import {
   anexosNoCofre,
+  contratosSigilosos,
   listarClassificacoes,
   listarCredenciais,
   mapearClassificacao,
@@ -52,6 +53,7 @@ const HIPOTESES = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'] as const;
 const NIVEIS = ['ministro_estado', 'titular_entidade', 'direcao_das_101_5', 'delegacao'] as const;
 const TIPOS_DOCUMENTO = ['dfd', 'etp', 'matriz_riscos', 'nota_tecnica_precos', 'tr', 'edital', 'minuta_contrato', 'parecer_checklist'] as const;
 const PREFIXO_PROCESSO = '/api/v1/processos/:id';
+const PREFIXO_CONTRATO = '/api/v1/contratos/:id';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CABECALHO_NOME = 'x-agora-nome-arquivo';
 
@@ -162,6 +164,41 @@ export async function rotasSigilo(app: FastifyInstance): Promise<void> {
         numeroSei: processo.numero_sei,
         classificacaoId: classificacao.id,
         alvo: 'processo',
+        titulo,
+        operacao: 'consulta',
+        permitido: decisao.permitido,
+        base: decisao.base,
+        motivo: null,
+      });
+    }
+    if (!decisao.permitido) throw new ErroApi(403, 'SEM_PERMISSAO', decisao.mensagem);
+  });
+
+  // ───────── ponto de checagem: contrato sigiloso ─────────
+
+  app.addHook('preHandler', async (request) => {
+    const rota = request.routeOptions.url ?? '';
+    if (!(rota === PREFIXO_CONTRATO || rota.startsWith(`${PREFIXO_CONTRATO}/`))) return;
+    const sessao = request.sessao;
+    const id = (request.params as { id?: unknown }).id;
+    if (!sessao || sessao.deveTrocarSenha || typeof id !== 'string' || !UUID.test(id)) return;
+    const hoje = ctx.hoje();
+    const sigilosos = await contratosSigilosos(ctx.banco, [id], hoje);
+    const classificacao = sigilosos.get(id);
+    if (!classificacao) return;
+    const [contrato] = await ctx.banco.consultar<{ uasg: string; numero: string }>('SELECT uasg, numero FROM contratos WHERE id = $1', [id]);
+    if (!contrato || !podeVerUasg(sessao, contrato.uasg)) return;
+    const contexto = await carregarContextoAcesso(ctx.banco, classificacao.processo_id, sessao, hoje);
+    const { decisao } = decidirPara(contexto, { alvo: 'contrato', contratoId: id });
+    const [processo] = await ctx.banco.consultar<{ numero_sei: string }>('SELECT numero_sei FROM processos WHERE id = $1', [classificacao.processo_id]);
+    const titulo = `Contrato ${contrato.numero}`;
+    const registrar = !(await consultaRegistradaRecentemente(ctx.banco, classificacao.processo_id, sessao.usuario.id, 'contrato', titulo, ctx.relogio(), decisao.permitido));
+    if (registrar && (!decisao.permitido || (request.method === 'GET' && rota === PREFIXO_CONTRATO))) {
+      await registrarSeparado(request, {
+        processoId: classificacao.processo_id,
+        numeroSei: processo?.numero_sei ?? '08000.000000/0000-00',
+        classificacaoId: classificacao.id,
+        alvo: 'contrato',
         titulo,
         operacao: 'consulta',
         permitido: decisao.permitido,

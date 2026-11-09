@@ -14,6 +14,8 @@ export interface FiltroContratosSql {
   ids?: readonly string[] | undefined;
   ataId?: string | undefined;
   fornecedorId?: string | undefined;
+  /** Contratos sigilosos sem credencial: a busca por texto não os encontra (só pelo número). */
+  semBuscaTextual?: readonly string[] | undefined;
 }
 
 interface LinhaContrato {
@@ -53,7 +55,7 @@ export async function listarContratos(executor: Executor, filtro: FiltroContrato
   const linhas = await executor.consultar<LinhaContrato>(
     `${SELECAO_CONTRATO}
       WHERE ($1::text[] IS NULL OR c.uasg = ANY($1::text[]))
-        AND ($2::text IS NULL OR c.busca_normalizada LIKE $2 ESCAPE '\\')
+        AND ($2::text IS NULL OR (c.busca_normalizada LIKE $2 ESCAPE '\\' AND NOT c.id = ANY($9::uuid[])) OR (c.id = ANY($9::uuid[]) AND lower(c.numero) LIKE $2 ESCAPE '\\'))
         AND ($3::text IS NULL OR c.uasg = $3)
         AND ($4::uuid IS NULL OR c.gestor_id = $4)
         AND ($5::boolean IS NULL OR ($5 AND c.ata_id IS NULL) OR (NOT $5 AND c.ata_id IS NOT NULL))
@@ -70,6 +72,7 @@ export async function listarContratos(executor: Executor, filtro: FiltroContrato
       filtro.ids ? [...filtro.ids] : null,
       filtro.ataId ?? null,
       filtro.fornecedorId ?? null,
+      [...(filtro.semBuscaTextual ?? [])],
     ],
   );
   const fornecedores = await carregarFornecedores(

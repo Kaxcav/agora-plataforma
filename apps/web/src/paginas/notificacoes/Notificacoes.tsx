@@ -514,7 +514,7 @@ function Preferencias() {
     if (consulta.data) definirRascunho(Object.fromEntries(consulta.data.map((p) => [`${p.tipo}:${p.canal}`, p.ativo])));
   }, [consulta.data]);
 
-  const tipos = Object.keys(TIPOS_NOTIFICACAO) as TipoNotificacao[];
+  const tipos = (Object.keys(TIPOS_NOTIFICACAO) as TipoNotificacao[]).filter((t) => t !== 'manifestacao');
   const alterado = (consulta.data ?? []).some((p) => rascunho[`${p.tipo}:${p.canal}`] !== p.ativo);
 
   const gravar = () => {

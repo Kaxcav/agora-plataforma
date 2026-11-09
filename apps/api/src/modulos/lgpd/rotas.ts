@@ -1,5 +1,5 @@
 import { formatarCnpj, formatarCpf } from '@agora/dominio';
-import type { Pagina, RegistroAcessoDadoPessoal, RespostaRevelar } from '@agora/contratos';
+import type { BaseAcessoSigilo, Pagina, RegistroAcessoDadoPessoal, RespostaRevelar } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { escopoUasgs, exigir, sessaoDe } from '../../autorizacao/exigir.ts';
@@ -7,6 +7,7 @@ import type { Executor } from '../../banco/tipos.ts';
 import { auditar } from '../../http/auditar.ts';
 import { naoEncontrado, regraNegocio } from '../../http/erros.ts';
 import { camposPaginacao, deslocamento, pagina, uuid } from '../../http/validacao.ts';
+import { ROTULO_BASE } from '../sigilo/acesso.ts';
 
 const esquemaRevelar = z.object({
   recurso: z.enum(['fornecedor', 'usuario', 'credor_empenho']),
@@ -48,6 +49,9 @@ async function lerValor(executor: Executor, entrada: EntradaRevelar, escopo: str
 }
 
 interface LinhaAcesso {
+  origem: RegistroAcessoDadoPessoal['origem'];
+  permitido: boolean | null;
+  base: BaseAcessoSigilo | null;
   id: string;
   ocorrido_em: string;
   usuario_id: string;
@@ -55,8 +59,20 @@ interface LinhaAcesso {
   recurso: string;
   recurso_id: string;
   campo: string;
-  finalidade: string;
+  finalidade: string | null;
 }
+
+/** Acessos de três origens, todas somente inclusão: campo mascarado revelado, documento com dado pessoal e informação sigilosa. */
+const UNIAO_ACESSOS = `
+  SELECT 'dado_pessoal'::text AS origem, a.id, a.ocorrido_em, a.usuario_id, a.recurso::text AS recurso, a.recurso_id::text AS recurso_id,
+         a.campo::text AS campo, a.finalidade::text AS finalidade, NULL::boolean AS permitido, NULL::text AS base
+    FROM lgpd_acessos a
+  UNION ALL
+  SELECT 'documento', d.id, d.ocorrido_em, d.usuario_id, 'documento_processo', d.arquivo_id::text, 'documento com dado pessoal', d.finalidade::text, NULL, NULL
+    FROM processos_arquivos_acessos d
+  UNION ALL
+  SELECT 'sigilo', s.id, s.ocorrido_em, s.usuario_id, 'informacao_sigilosa', s.processo_id::text, s.alvo || ': ' || s.titulo, s.motivo::text, s.permitido, s.base
+    FROM sigilo_acessos s`;
 
 export async function rotasLgpd(app: FastifyInstance): Promise<void> {
   const ctx = app.agora;
@@ -89,18 +105,19 @@ export async function rotasLgpd(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/lgpd/acessos', { preHandler: exigir('lgpd:relatorio') }, async (request): Promise<Pagina<RegistroAcessoDadoPessoal>> => {
-    const f = z.object({ usuario: uuid.optional(), ...camposPaginacao }).parse(request.query);
+    const f = z.object({ usuario: uuid.optional(), origem: z.enum(['dado_pessoal', 'documento', 'sigilo']).optional(), ...camposPaginacao }).parse(request.query);
+    const filtro = `WHERE ($1::uuid IS NULL OR t.usuario_id = $1) AND ($2::text IS NULL OR t.origem = $2)`;
     const linhas = await ctx.banco.consultar<LinhaAcesso>(
-      `SELECT a.id, a.ocorrido_em, a.usuario_id, u.nome AS usuario_nome, a.recurso, a.recurso_id, a.campo, a.finalidade
-         FROM lgpd_acessos a JOIN usuarios u ON u.id = a.usuario_id
-        WHERE ($1::uuid IS NULL OR a.usuario_id = $1)
-        ORDER BY a.ocorrido_em DESC, a.id
-        LIMIT $2 OFFSET $3`,
-      [f.usuario ?? null, f.tamanhoPagina, deslocamento(f.pagina, f.tamanhoPagina)],
+      `SELECT t.origem, t.id, t.ocorrido_em, t.usuario_id, u.nome AS usuario_nome, t.recurso, t.recurso_id, t.campo, t.finalidade, t.permitido, t.base
+         FROM (${UNIAO_ACESSOS}) t JOIN usuarios u ON u.id = t.usuario_id
+        ${filtro}
+        ORDER BY t.ocorrido_em DESC, t.id
+        LIMIT $3 OFFSET $4`,
+      [f.usuario ?? null, f.origem ?? null, f.tamanhoPagina, deslocamento(f.pagina, f.tamanhoPagina)],
     );
     const [contagem] = await ctx.banco.consultar<{ total: number }>(
-      'SELECT COUNT(*)::integer AS total FROM lgpd_acessos a WHERE ($1::uuid IS NULL OR a.usuario_id = $1)',
-      [f.usuario ?? null],
+      `SELECT COUNT(*)::integer AS total FROM (${UNIAO_ACESSOS}) t ${filtro}`,
+      [f.usuario ?? null, f.origem ?? null],
     );
     return pagina(
       linhas.map((l) => ({
@@ -110,7 +127,11 @@ export async function rotasLgpd(app: FastifyInstance): Promise<void> {
         recurso: l.recurso,
         recursoId: l.recurso_id,
         campo: l.campo,
-        finalidade: l.finalidade,
+        finalidade:
+          l.origem === 'sigilo'
+            ? `${l.permitido ? 'Acesso permitido' : 'Acesso negado'} (${l.base ? ROTULO_BASE[l.base] : 'sem base'})${l.finalidade ? `: ${l.finalidade}` : ''}`
+            : (l.finalidade ?? ''),
+        origem: l.origem,
       })),
       contagem?.total ?? 0,
       f.pagina,
