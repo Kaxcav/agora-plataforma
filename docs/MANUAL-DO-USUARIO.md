@@ -289,6 +289,20 @@ Na seção **Ordens de serviço**, o gestor clica em **Registrar ordem de servi�
 
 A Ágora avisa o gestor e o fiscal 30 dias antes da validade, pela central de notificações. Para descontar uma multa aplicada, em **Multas aplicadas** clique em **Descontar**: a tela mostra quanto sai dos pagamentos devidos, quanto sai da garantia e quanto fica para cobrança. Informe a autoridade, o ato e a justificativa e clique em **Registrar desconto**. A contratada é notificada para recompor a garantia.
 
+### Ligações entre fiscalização, recebimentos, nota fiscal e garantia
+
+As etapas da execução contratual operam de forma interligada na Ágora:
+
+- **Ocorrências:** há um único livro de ocorrências por contrato. O que você registra como fiscal de contrato ou gestor de contratos na aba **Fiscalização** reflete automaticamente nas lições aprendidas e na avaliação de desempenho, e o caminho inverso também se aplica.
+- **Avaliação de desempenho:** ao emitir a avaliação (gestor de contratos ou fiscal de contrato designado), a Ágora já traz preenchidas as contagens de entregas no prazo e de recebimentos definitivos sem ressalva do período, extraídas dos termos de recebimento. Você confere os números, faz ajustes se necessário e indica as evidências.
+- **Conferência da nota fiscal:** quando a entrega está ligada à nota e possui termo de recebimento definitivo, a tela de conferência exibe o termo e preenche a quantidade recebida. A quantidade cobrada permanece a da nota: se for maior que a recebida, a Ágora aponta a divergência.
+- **Prorrogação e garantia:** ao assinar a prorrogação, se a validade da garantia de execução não cobrir a nova vigência, a Ágora registra a exigência de renovação na aba **Garantias**, abre uma pendência com prazo de até 15 dias e notifica a contratada. Quem trata é o gestor de contratos, com o apoio do financeiro.
+- **Extinção e garantia:** ao decidir a extinção, a autoridade (gestor de contratos ou administrador) verifica o reflexo na garantia no registro do ato:
+  1. Multa aplicada e ainda não quitada é descontada primeiro dos pagamentos devidos e depois da garantia;
+  2. Sem débitos, entregas pendentes ou ocorrências abertas, a garantia é liberada com a caução em dinheiro atualizada;
+  3. Havendo pendências ou se a decisão indicar execução da garantia, o valor fica retido: a execução formal, com valor apurado e motivo, é feita depois pela autoridade na aba **Garantias**.
+  O emitente da garantia (seguradora, banco ou depositário) é avisado pela central de notificações via processo SEI.
+
 ## 6. Atas de registro de preços e itens
 
 Em **Atas**, a aba **Registradas** lista as atas vigentes e encerradas, e a aba **A montar** lista as que ainda estão em preparação. Use **Buscar** e os filtros **Situação**, **Criticidade**, **UASG** e **Sob minha gestão**. A coluna **Consumo** mostra quanto da ata já foi contratado.
@@ -325,7 +339,7 @@ Se a nota está ligada a uma entrega do contrato (aba **Recebimentos**), ela só
 
 Perfis: gestor de contratos, fiscal de contrato, financeiro e administrador.
 
-1. Em **Pagamentos**, clique em **Conferir nota**. Em **Registrar a nota fiscal**, preencha o **Número da nota fiscal**, a **Data de emissão**, o **Valor total da nota** e, em cada item, a quantidade recebida, a quantidade cobrada e o preço unitário cobrado. Clique em **Registrar a conferência**.
+1. Em **Pagamentos**, clique em **Conferir nota**. Se a entrega ligada à parcela possuir termo de recebimento definitivo aceito, a conferência da nota fiscal utiliza automaticamente a quantidade aferida no termo definitivo, cabendo a você confrontá-la com a quantidade faturada na nota. Em **Registrar a nota fiscal**, preencha o **Número da nota fiscal**, a **Data de emissão**, o **Valor total da nota** e, em cada item, confirme a quantidade recebida, a quantidade cobrada e o preço unitário cobrado. Clique em **Registrar a conferência**.
 2. A Ágora confronta a nota com as medições do IMR da competência e mostra **Valor da nota × valor devido**:
    - Valor devido = (preço unitário contratado × quantidade recebida) − glosa do IMR.
 3. Se houver divergência entre o valor cobrado e o valor devido, ou medição pendente, o atesto fica bloqueado.
@@ -509,7 +523,7 @@ A dotação orçamentária (RN-39) fica na etapa 4. A seção também aparece na
 
 **Etapa 4 — TR, edital e minuta.**
 
-1. Em **Parâmetros do edital**, defina o **Critério de julgamento (art. 33)** e o **Regime de execução (art. 46)**. O **Modo de disputa** é escolhido depois, na sala de disputa (etapa 6).
+1. Em **Parâmetros do edital**, defina o **Critério de julgamento (art. 33)**, o **Regime de execução (art. 46)** e o **Modo de disputa (art. 56)** (aberto, fechado, aberto e fechado ou fechado e aberto). O modo de disputa constará no preâmbulo do edital e no Termo de Referência.
 2. **Prova de conceito ou amostra (RN-20):** em **Exigência do licitante provisoriamente vencedor**, escolha **Não exigir**, **Prova de conceito** ou **Amostra**. Defina o **Prazo para a realização** (dias úteis contados da convocação), o **Roteiro de testes e critérios objetivos de aprovação** e a justificativa. A prova acontece em sessão pública gravada.
 3. Clique em **Salvar parâmetros**.
 4. **Qualificação técnica e financeira (RN-25):** no botão **Documentos e habilitação** do processo, a seção **Exigências de qualificação técnica do edital** (botão **Definir exigências de qualificação técnica**) limita os atestados a parcelas de maior relevância (valor igual ou maior que 4% do total estimado), com quantitativo mínimo não superior a 50% da parcela. O balanço patrimonial restringe-se aos 2 últimos exercícios sociais (ou ao último, para empresas com menos de 2 anos).
@@ -522,6 +536,13 @@ A dotação orçamentária (RN-39) fica na etapa 4. A seção também aparece na
 O IMR do contrato (indicadores, metas e faixas de glosa) é cadastrado depois, na aba **IMR e medições** do contrato (seção 5).
 
 ![Etapa 4: parâmetros do edital com exigência vedada pelo art. 69.](manual/capturas/m16-etapa-4.jpg)
+
+### Modo de disputa e qualificação técnica no edital
+
+Perfis: planejamento e agente de contratação definem nos parâmetros do edital; assessoria jurídica avalia a conformidade.
+
+1. **Modo de disputa (arts. 33 e 56):** ao elaborar o edital na etapa 4, você escolhe o **Modo de disputa** pretendido (Aberto, Fechado, Aberto e Fechado ou Fechado e Aberto). A indicação é inserida automaticamente no preâmbulo do edital e na seleção do fornecedor do Termo de Referência. O modo integra o hash determinístico dos parâmetros do documento: se for alterado posteriormente, o sistema identifica o documento como desatualizado e exige gerar e aprovar nova versão antes da publicação (etapa 5).
+2. **Tabela de qualificação técnica (art. 67, § 2º):** caso existam parcelas de maior relevância técnica e valor significativo cadastradas na instrução preparatória, o edital gera automaticamente na seção 6.4 (Habilitação técnica) a tabela analítica contendo: parcela de maior relevância, unidade, quantidade no objeto, valor estimado e o quantitativo mínimo exigido (limitado ao teto legal de até 50%). Sem cadastro prévio, o edital traz o texto padrão com aviso para preenchimento.
 
 **Documentos do processo e de habilitação (RF-21, RIA-08)**
 
@@ -538,6 +559,15 @@ Perfis: planejamento, agente de contratação, gestor de contratos (autoridade c
 2. **Credenciamento de servidores:** em **Credenciais de acesso**, **Credenciar acesso ao processo** dá o acesso nominal e o **Grau máximo** a cada servidor.
 3. **Cofre cifrado de anexos (RNF-09):** peças confidenciais enviadas como anexo sigiloso são armazenadas em cofre criptografado em repouso com algoritmo AES-256-GCM.
 4. **Download com marca de segurança:** em **Documentos e anexos**, o PDF marcado estampa o grau de sigilo, o código de indexação e a identidade de quem baixou. O acesso fica no **Registro de acessos** e na auditoria.
+
+### Sigilo nas listagens e detalhe de contratos
+
+Perfis: planejamento, agente de contratação, gestor de contratos e administrador acessam processos e contratos segundo suas credenciais; assessoria jurídica, controle interno e auditor consultam.
+
+1. **Rótulo nas listas internas:** servidores sem credencial ativa no processo classificado pela LAI visualizam **"Informação classificada (grau)"** (por exemplo, "Informação classificada (secreta)") no lugar do título do processo ou do objeto do contrato nas listas da jornada e de contratos.
+2. **Busca textual:** a pesquisa por palavras-chave é cega para quem não tem credencial — buscar por termos presentes no objeto real não localiza o registro nem altera as contagens da lista. A busca pelo número formal (número SEI do processo ou número do contrato) localiza o item normalmente, exibindo o resultado com o rótulo mascarado.
+3. **Bloqueio em contratos sigilosos:** se você tentar acessar o detalhe ou os itens de um contrato sigiloso sem credencial ativa no processo de origem, o sistema bloqueia a visualização com aviso de acesso negado (código 403) e registra a tentativa na trilha de auditoria.
+4. **Acesso do controle registrado:** servidores com perfil auditor ou controle interno possuem prerrogativa legal (`sigilo:controle`) de visualizar os objetos reais e acessar o detalhe de processos e contratos; cada consulta realizada é gravada na trilha de auditoria para fins de transparência interna.
 
 **Etapa 5 — Controle jurídico e publicação.**
 
@@ -759,6 +789,7 @@ A tela **Notificações (RF-26)**, no menu **Carteira**, centraliza a comunicaç
 - **Alertas operacionais:** notificações sobre prazos de defesa em processos sancionatórios, renovação de garantias, medições pendentes do IMR e reajustes devidos.
 - **Canais de entrega oficiais:** as mensagens são transmitidas por e-mail institucional (servidor SMTP próprio do órgão), registro oficial no processo do SEI ou via Login Único gov.br, com fila assíncrona durável e controle de novas tentativas.
 - **Preferências de notificação:** em **Minhas preferências**, cada usuário pode escolher os canais e tipos de aviso que deseja receber. Os avisos obrigatórios determinados por lei (como a notificação de encerramento em 30 dias) possuem bloqueio contra desativação.
+- **Comunicação transversal e novos destinatários:** a central contempla avisos do tipo **manifestação** para o papel **cidadão** (com e-mail mascarado e texto público tarjado) e avisos sobre garantias para o papel **emitente da garantia** (pelo processo SEI).
 
 ## 14. Linhas de defesa e controle externo
 
@@ -799,6 +830,18 @@ Em atendimento ao art. 174, § 3º, VI, da Lei 14.133/2021, o portal oferece can
 3. **Respostas e prazos:** a Administração e a empresa contratada dispõem de 30 dias (prorrogáveis por igual período) para apresentar esclarecimentos públicos. O gestor ou o fiscal usa **Responder manifestação** na manifestação publicada.
 4. **Acompanhamento e relatório final:** na seção **Acompanhamento da execução** do contrato, o fiscal usa **Publicar foto ou vídeo da execução**. Ao término da vigência, o gestor publica o **Relatório final** sobre a consecução dos objetivos da contratação.
 
+### Avisos ao cidadão na gestão compartilhada
+
+Perfis: cidadão (recebe notificações por e-mail) e gestor de contratos e fiscal de contrato (acompanham envios na central).
+
+Ao registrar uma manifestação sobre a execução de um contrato na página pública, você (cidadão) recebe avisos automáticos por e-mail a cada etapa:
+
+1. **Moderação da manifestação:** você é notificado por e-mail quando sua manifestação for avaliada pela moderação (aprovada para publicação ou recusada com a respectiva justificativa).
+2. **Resposta à manifestação:** assim que a Administração ou o preposto da contratada registrar uma resposta, você recebe um aviso por e-mail com a comunicação oficial.
+3. **Texto público tarjado:** o e-mail encaminhado ao cidadão contém exclusivamente a versão pública tarjada da resposta, garantindo que termos internos ou dados pessoais de terceiros não sejam expostos externamente.
+4. **Privacidade na central interna:** quando gestores ou fiscais consultam os envios na central de notificações, o e-mail do cidadão aparece mascarado (só a primeira letra e o domínio ficam visíveis), resguardando sua identidade perante a equipe interna.
+5. **Aviso obrigatório:** por decorrer do art. 174, § 3º, VI, da Lei 14.133/2021 e da LGPD, o aviso de manifestação possui caráter obrigatório e não pode ser desativado nas preferências de notificação.
+
 ### Catálogo de dados abertos (RF-38)
 
 A página pública **Dados abertos** disponibiliza, sem necessidade de cadastro ou login:
@@ -818,6 +861,18 @@ CPF, e-mail e telefone aparecem **mascarados** em todas as telas. Só o auditor 
 O acesso, com seu nome, data, hora e finalidade, aparece em **Auditoria › Acessos a dados pessoais** (LGPD, art. 37).
 
 ![Janela de revelação de dado pessoal: a finalidade é obrigatória.](manual/capturas/m24-revelar.jpg)
+
+### Relatório unificado de acessos LGPD
+
+Perfis: administrador e auditor.
+
+O relatório fica no menu **Auditoria › Acessos a dados pessoais** (`/auditoria/lgpd`) e consolida em consulta única as consultas e operações com dados protegidos, integrando três origens de registros:
+
+1. **Dado pessoal revelado:** ocorrências em que um dado mascarado (CPF, e-mail, telefone de fornecedores, usuários ou credores) foi revelado por servidor mediante justificativa formal.
+2. **Documento com dado pessoal:** visualizações e downloads de arquivos e peças do processo identificados com dados de titulares.
+3. **Informação sigilosa:** acessos, downloads do cofre e emissões de PDFs marcados de processos e contratos classificados pela LAI ou orçamentos sob sigilo, indicando se a ação foi permitida ou negada e a respectiva base legal.
+
+Em conformidade com a LGPD (arts. 6º, III, e 37), o relatório não exibe CPFs em texto claro. A coluna **Origem** indica de onde vem cada registro (**Dado pessoal revelado**, **Documento com dado pessoal** ou **Informação sigilosa**), do mais recente para o mais antigo. Para recortes por usuário ou por origem, a API aceita os filtros `usuario` e `origem` em `GET /api/v1/lgpd/acessos`.
 
 ## 17. Auditoria e carimbo do tempo
 

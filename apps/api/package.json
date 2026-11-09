@@ -1,6 +1,6 @@
 {
   "name": "@agora/api",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "API e servidor da Ágora (Fastify + PostgreSQL/PGlite).",
   "type": "module",
@@ -19,8 +19,8 @@
     "carga": "node src/cli/carga.ts"
   },
   "dependencies": {
-    "@agora/contratos": "2.0.0",
-    "@agora/dominio": "2.0.0",
+    "@agora/contratos": "2.0.1",
+    "@agora/dominio": "2.0.1",
     "@electric-sql/pglite": "^0.3.16",
     "@fastify/cookie": "^11.1.5",
     "@fastify/helmet": "^13.2.0",

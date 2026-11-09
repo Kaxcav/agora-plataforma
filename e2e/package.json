@@ -1,6 +1,6 @@
 {
   "name": "@agora/e2e",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Testes ponta a ponta e de acessibilidade da Ágora (Playwright + axe).",
   "type": "module",

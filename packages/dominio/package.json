@@ -1,6 +1,6 @@
 {
   "name": "@agora/dominio",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Regras de negócio puras da Lei 14.133/2021 (sem dependências de runtime).",
   "type": "module",

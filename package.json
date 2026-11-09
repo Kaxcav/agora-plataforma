@@ -1,6 +1,6 @@
 {
   "name": "agora-plataforma",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Ágora — Plataforma Integrada de Contratações Públicas (Lei 14.133/2021). Auto-hospedável, sem dependência de nuvem estrangeira.",
   "license": "UNLICENSED",

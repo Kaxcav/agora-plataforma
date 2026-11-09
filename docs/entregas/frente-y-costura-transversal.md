@@ -9,7 +9,7 @@ Migração associada: `apps/api/migracoes/033_costura_transversal.sql`.
 ### a) Avisos ao cidadão na gestão compartilhada
 - **Disparo automático pela central de notificações:** Tanto a decisão da moderação (aprovação com publicação ou recusa com justificativa) quanto o registro de resposta à manifestação (emitida pela Administração ou pelo preposto do contratado) geram e enviam automaticamente avisos por e-mail ao cidadão autor (`notificarCidadaoManifestacao`).
 - **Versão tarjada no e-mail (LGPD):** O e-mail encaminhado ao cidadão contém a versão pública tarjada da resposta (`resposta.textoPublico`), nunca o texto interno em claro (`resposta.texto`), assegurando que dados de terceiros ou termos internos protegidos não sejam vazados na comunicação externa.
-- **Endereço mascarado na central:** No detalhe da notificação exibido na central interna (`/api/v1/notificacoes/:id`), o e-mail do cidadão aparece mascarado (`c***@agora.demo`), preservando a privacidade do titular perante os operadores do sistema.
+- **Endereço mascarado na central:** No detalhe da notificação exibido na central interna (`/api/v1/notificacoes/:id`), o e-mail do cidadão aparece mascarado (só a primeira letra e o domínio ficam visíveis), preservando a privacidade do titular perante os operadores do sistema.
 - **Base legal e natureza obrigatória:** O envio registra na trilha e no registro de envios o fundamento legal da Lei 13.709/2018 (LGPD) e do art. 174, § 3º, VI, da Lei 14.133/2021. No domínio (`notificacoes.ts`), o tipo `manifestacao` com papel `cidadao` é classificado como aviso obrigatório (`avisoObrigatorio`), que não pode ser desativado nas preferências de notificação.
 
 ### b) Sigilo nas telas internas (LAI e segurança pública)
@@ -109,7 +109,7 @@ Esta seção está pronta para inclusão direta no Manual do Usuário da platafo
 ##### 1. Avisos ao Cidadão na Gestão Compartilhada
 - Ao enviar uma manifestação sobre a execução de um contrato, o cidadão receberá notificações automáticas em seu e-mail sempre que a manifestação for avaliada pela moderação (aprovada ou recusada com motivo) ou quando uma resposta oficial for registrada.
 - O e-mail recebido conterá apenas o texto público tarjado, resguardando dados pessoais e informações sensíveis.
-- Os servidores autorizados que consultam o histórico de notificações verão o endereço de e-mail do cidadão mascarado (`c***@agora.demo`), protegendo a identidade do titular.
+- Os servidores autorizados que consultam o histórico de notificações verão o endereço de e-mail do cidadão mascarado, protegendo a identidade do titular.
 
 ##### 2. Sigilo nas Listagens e Detalhe de Contratos
 - Servidores sem credencial ativa em processo classificado pela Lei de Acesso à Informação verão o texto `"Informação classificada (grau)"` no lugar do título ou objeto nas listas de processos e contratos.
@@ -128,4 +128,4 @@ Esta seção está pronta para inclusão direta no Manual do Usuário da platafo
   1. *Dado pessoal revelado:* operações em que um dado mascarado (CPF, e-mail, telefone) foi revelado por um servidor mediante justificativa.
   2. *Documento com dado pessoal:* consultas e downloads de documentos do processo classificados com presença de dados de titulares.
   3. *Informação sigilosa:* acessos e tentativas de acesso a informações e contratos classificados pela LAI ou orçamentos sob sigilo, indicando se foram permitidos ou negados e a respectiva base legal.
-- Em conformidade com o art. 37 da LGPD, o relatório não exibe CPFs em texto claro, disponibilizando filtros por usuário e por origem com paginação cronológica.
+- Em conformidade com o art. 37 da LGPD, o relatório não exibe CPFs em texto claro, com paginação cronológica; os filtros por usuário e por origem estão na API.
