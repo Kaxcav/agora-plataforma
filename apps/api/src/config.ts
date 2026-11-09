@@ -10,6 +10,8 @@ export interface Config {
   segredoSessao: string | null;
   cookieSeguro: boolean;
   seedDemonstracao: boolean;
+  /** Marca da recarga única da demonstração (AGORA_SEED_RECRIAR); null = sem recarga. */
+  seedRecriar: string | null;
   integracoes: 'offline' | 'online';
   ia: { provedor: 'nenhum' | 'openai_compativel'; url: string | null; modelo: string | null; chave: string | null };
   govbr: { clientId: string; clientSecret: string; emissor: string; redirect: string } | null;
@@ -182,6 +184,7 @@ const esquemaAmbiente = z.object({
   AGORA_SEGREDO_SESSAO: textoOpcional,
   AGORA_COOKIE_SEGURO: booleanoOpcional,
   AGORA_SEED_DEMONSTRACAO: booleanoOpcional,
+  AGORA_SEED_RECRIAR: textoOpcional,
   AGORA_INTEGRACOES: z.enum(['offline', 'online']).default('offline'),
   AGORA_IA_PROVEDOR: z.enum(['nenhum', 'openai_compativel']).default('nenhum'),
   AGORA_IA_URL: textoOpcional,
@@ -426,6 +429,12 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     problemas.push('AGORA_CARIMBO_TEMPO_POLITICA: informe o OID da política (ex.: 2.16.76.1.6.2)');
   }
   if (!urlValida(e.AGORA_PNCP_CONSULTA_URL)) problemas.push('AGORA_PNCP_CONSULTA_URL: URL inválida (ex.: https://pncp.gov.br/api/consulta)');
+  if (e.AGORA_SEED_RECRIAR !== null && e.AGORA_AMBIENTE !== 'demonstracao') {
+    problemas.push('AGORA_SEED_RECRIAR: só é aceita com AGORA_AMBIENTE=demonstracao (apaga e recria a carga sintética)');
+  }
+  if (e.AGORA_SEED_RECRIAR !== null && !/^[A-Za-z0-9._-]{1,100}$/.test(e.AGORA_SEED_RECRIAR)) {
+    problemas.push('AGORA_SEED_RECRIAR: use de 1 a 100 letras, dígitos, ponto, hífen ou sublinhado (ex.: 2026-11-08-v2)');
+  }
   if (problemas.length > 0) throw new ErroConfiguracao(problemas);
 
   return {
@@ -437,6 +446,7 @@ export function carregarConfig(env: Record<string, string | undefined> = process
     segredoSessao: e.AGORA_SEGREDO_SESSAO,
     cookieSeguro: e.AGORA_COOKIE_SEGURO ?? producao,
     seedDemonstracao: e.AGORA_SEED_DEMONSTRACAO ?? e.AGORA_AMBIENTE === 'demonstracao',
+    seedRecriar: e.AGORA_SEED_RECRIAR,
     integracoes: e.AGORA_INTEGRACOES,
     ia: { provedor: e.AGORA_IA_PROVEDOR, url: e.AGORA_IA_URL, modelo: e.AGORA_IA_MODELO, chave: e.AGORA_IA_CHAVE },
     govbr,

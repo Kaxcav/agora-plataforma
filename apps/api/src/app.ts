@@ -5,7 +5,7 @@ import { hojeISO } from '@agora/dominio';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { abrirBanco } from './banco/abrir.ts';
-import { aplicarMigracoes } from './banco/migracoes.ts';
+import { apagarEsquema, aplicarMigracoes } from './banco/migracoes.ts';
 import type { Banco } from './banco/tipos.ts';
 import type { Config } from './config.ts';
 import type { ContextoApp, FuncaoFetch } from './http/contexto.ts';
@@ -115,6 +115,16 @@ export async function construirApp(config: Config, opcoes: OpcoesApp = {}): Prom
       await banco.fechar();
     });
 
+    // Recarga única da demonstração (AGORA_SEED_RECRIAR): atualiza um ambiente de demonstração já existente sem
+    // acesso direto ao banco. Apaga e recria a carga sintética uma vez por marca; nunca em homologação ou produção.
+    if (config.ambiente === 'demonstracao' && config.seedRecriar !== null && !(await recargaAplicada(banco, config.seedRecriar))) {
+      await apagarEsquema(banco);
+      await aplicarMigracoes(banco);
+      const contagens = await executarSeed(ctx);
+      await banco.executar('INSERT INTO recargas_demonstracao (marca) VALUES ($1) ON CONFLICT DO NOTHING', [config.seedRecriar]);
+      app.log.warn({ contagens, marca: config.seedRecriar }, 'demonstração recriada (AGORA_SEED_RECRIAR)');
+    }
+
     if (config.ambiente === 'demonstracao' && config.seedDemonstracao && (await bancoVazio(banco))) {
       const contagens = await executarSeed(ctx);
       app.log.info({ contagens }, 'banco vazio: dados sintéticos de demonstração carregados');
@@ -200,4 +210,10 @@ export async function construirApp(config: Config, opcoes: OpcoesApp = {}): Prom
     throw erro;
   }
   return app;
+}
+
+/** A marca de recarga da demonstração já foi aplicada neste banco? (tabela da migração 034) */
+async function recargaAplicada(banco: Banco, marca: string): Promise<boolean> {
+  const [linha] = await banco.consultar<{ aplicada: boolean }>('SELECT EXISTS (SELECT 1 FROM recargas_demonstracao WHERE marca = $1) AS aplicada', [marca]);
+  return linha?.aplicada ?? false;
 }

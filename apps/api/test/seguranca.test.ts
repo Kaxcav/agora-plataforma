@@ -6,6 +6,7 @@ import { after, before, describe, test } from 'node:test';
 import type { RespostaErro } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
 import { chamar, criarAppTeste, entrar } from './apoio.ts';
+import { lerVersao } from '../src/versao.ts';
 
 const CSP_DEMONSTRACAO =
   "default-src 'self';script-src 'self';style-src 'self' 'unsafe-inline';img-src 'self' data:;font-src 'self';connect-src 'self';" +
@@ -140,7 +141,7 @@ describe('cabeçalhos de segurança, CSRF, erros e front-end estático', () => {
     const corpo = pronto.json<{ situacao: string; banco: boolean; versao: string }>();
     assert.equal(corpo.situacao, 'ok');
     assert.equal(corpo.banco, true);
-    assert.equal(corpo.versao, '1.0.0');
+    assert.equal(corpo.versao, lerVersao()); // a do package.json da API
     assert.equal(pronto.headers['cache-control'], 'no-store');
   });
 });
