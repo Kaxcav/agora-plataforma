@@ -734,7 +734,7 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     tipo: 'RF',
     titulo: 'Adjudicação, homologação e divulgação dos documentos preparatórios',
     descricao:
-      'Exauridos os recursos, a autoridade competente designada no processo adjudica o objeto ao vencedor e homologa a licitação, em atos registrados na trilha de auditoria. Com a homologação, os documentos da fase preparatória que não integraram o edital (DFD, ETP, matriz de riscos, nota técnica de preços e checklist jurídico) passam a aparecer na página pública do edital, em PDF e sem login. A nota técnica de orçamento sigiloso não é divulgada.',
+      'Exauridos os recursos, a autoridade competente designada no processo adjudica o objeto ao vencedor e homologa a licitação, em atos registrados na trilha de auditoria. Com a homologação, os documentos da fase preparatória que não integraram o edital (DFD, ETP, matriz de riscos, nota técnica de preços e checklist jurídico) passam a aparecer na página pública do edital, em PDF e sem login. A nota técnica de preços passa a ser divulgada após a homologação mesmo quando o orçamento foi sigiloso (art. 24 e RF-02.2), exceto quando o processo tiver classificação de sigilo vigente pela LAI (art. 13).',
     fundamento: 'Lei 14.133/2021, art. 71, IV, e art. 54, § 3º',
     etapa: 6,
     telas: ['jornada.detalhe'],
@@ -1232,6 +1232,18 @@ export const CATALOGO_REGRAS: readonly RegraCatalogo[] = Object.freeze([
     telas: ['jornada.detalhe', 'jornada.rota', 'jornada.dispensa', 'jornada.adesao', 'sicx'],
     implementacao:
       'adaptacaoDaRota, validarEscolhaRota, validarInexigibilidade, avaliarAdesaoAta, prazoContratacaoAdesao; api: GET /processos/:id/rota; PUT /processos/:id/rota; PUT /processos/:id/inexigibilidade; POST /processos/:id/adesao; POST /atas/adesoes/:id/anuencia; POST /processos/:id/contratacao-direta/autorizacao',
+  },
+  {
+    id: 'RN-43',
+    tipo: 'RN',
+    titulo: 'Publicação mensal da ordem cronológica de pagamentos e de suas alterações',
+    descricao:
+      'A ordem cronológica de exigibilidade dos pagamentos por unidade gestora (UASG) e para cada fonte diferenciada de recursos, bem como as eventuais alterações e suas justificativas fundamentadas, são publicadas mensalmente na internet para acesso público sem login. Contratos com classificação de sigilo vigente pela LAI têm o objeto e o fornecedor protegidos sob a rotulagem de informação classificada, e pessoas físicas têm seu CPF mascarado nos termos da legislação de proteção de dados pessoais.',
+    fundamento: 'Lei 14.133/2021, art. 141, § 3º',
+    etapa: 7,
+    telas: ['ordem-cronologica'],
+    implementacao:
+      'mascararDocumento; api: GET /publico/ordem-cronologica',
   },
 ]);
 /** Regras associadas a um id de tela (correspondência exata, ex.: 'contratos.detalhe'). */

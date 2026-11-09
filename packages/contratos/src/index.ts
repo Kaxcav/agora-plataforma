@@ -5622,3 +5622,53 @@ export interface AtaDisponivelAdesao {
   vigenciaFim: DataISO;
   itens: ItemAtaDisponivelAdesao[];
 }
+
+// ───────────────────────── Publicação mensal da ordem cronológica (art. 141, § 3º) ─────────────────────────
+
+export interface FornecedorOrdemCronologicaPublica {
+  razaoSocial: string;
+  cnpj: string | null;
+  cpf: string | null;
+}
+
+export interface NotaOrdemCronologicaPublica {
+  id: Id;
+  numeroContrato: string;
+  objeto: string;
+  fornecedor: FornecedorOrdemCronologicaPublica;
+  valor: Centavos;
+  dataExigibilidade: DataISO;
+  situacao: string;
+  posicaoFila: number | null;
+  pagoEm: DataISO | null;
+}
+
+export interface AlteracaoOrdemCronologicaPublica {
+  id: Id;
+  pagamentoId: Id;
+  numeroContrato: string;
+  inciso: 'I' | 'II' | 'III' | 'IV' | 'V';
+  justificativa: string;
+  autoridade: string;
+  ato: string;
+  data: DataISO;
+}
+
+export interface GrupoFonteOrdemCronologicaPublica {
+  fonteRecurso: string;
+  notas: NotaOrdemCronologicaPublica[];
+  alteracoes: AlteracaoOrdemCronologicaPublica[];
+}
+
+export interface UasgOrdemCronologicaPublica {
+  uasg: string;
+  orgao: string;
+  fontes: GrupoFonteOrdemCronologicaPublica[];
+}
+
+/** GET /publico/ordem-cronologica?mes=AAAA-MM → OrdemCronologicaPublicaResposta (sem login; art. 141, § 3º) */
+export interface OrdemCronologicaPublicaResposta {
+  mes: string;
+  uasgs: UasgOrdemCronologicaPublica[];
+}
+

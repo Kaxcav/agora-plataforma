@@ -91,6 +91,7 @@ export const MENU: readonly SecaoMenu[] = [
       { rotulo: 'Pagamentos', caminho: '/financeiro/pagamentos', icone: Receipt, permissao: 'pagamentos:ler' },
       { rotulo: 'Previsão', caminho: '/financeiro/previsao', icone: ChartColumn, permissao: 'pagamentos:ler' },
       { rotulo: 'Prazos de pagamento', caminho: '/financeiro/prazos', icone: CalendarClock, permissao: 'pagamentos:ler' },
+      { rotulo: 'Ordem cronológica', caminho: '/ordem-cronologica', icone: CalendarClock },
     ],
   },
   {

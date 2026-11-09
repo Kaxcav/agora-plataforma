@@ -1,5 +1,5 @@
 import { CATALOGO_REGRAS, mascararDocumento } from '@agora/dominio';
-import type { ContratoPublico, EditalPublico, Pagina } from '@agora/contratos';
+import type { ContratoPublico, EditalPublico, OrdemCronologicaPublicaResposta, Pagina } from '@agora/contratos';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Executor } from '../../banco/tipos.ts';
@@ -10,6 +10,7 @@ import { camposPaginacao, deslocamento, idDaRota, pagina, textoBusca, uuid } fro
 import { nomeExibivel } from '../fornecedores/repositorio.ts';
 import { consultarEditais, DOCUMENTOS_PUBLICOS, pdfDocumentoPublico } from './editais.ts';
 import { comDocumentosPreparatorios, DOCUMENTOS_PREPARATORIOS, pdfPreparatorio } from './preparatorios.ts';
+import { consultarOrdemCronologicaPublica } from './ordem-cronologica.ts';
 import { documentoRetido } from '../sigilo/consultas.ts';
 import { aplicarSigiloContratos, aplicarSigiloEditais } from '../sigilo/publico.ts';
 import { SQL_CONTRATO_SEM_SIGILO } from '../sigilo/sql.ts';
@@ -131,6 +132,17 @@ export async function rotasPublico(app: FastifyInstance): Promise<void> {
       .header('content-type', 'application/pdf')
       .header('content-disposition', `inline; filename="${arquivo.nomeArquivo}"`)
       .send(arquivo.pdf);
+  });
+
+  // Ordem cronológica dos pagamentos (art. 141, § 3º; RN-43), sem login.
+  app.get('/publico/ordem-cronologica', async (request): Promise<OrdemCronologicaPublicaResposta> => {
+    const f = z
+      .object({
+        mes: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/, 'Mês deve estar no formato AAAA-MM.').optional(),
+      })
+      .parse(request.query);
+    const mes = f.mes ?? ctx.hoje().slice(0, 7);
+    return consultarOrdemCronologicaPublica(ctx.banco, mes, ctx.hoje());
   });
 
   app.get('/publico/catalogo-regras', async () => CATALOGO_REGRAS);

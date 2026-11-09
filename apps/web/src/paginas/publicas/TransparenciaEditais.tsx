@@ -68,7 +68,8 @@ export default function TransparenciaEditais() {
       <p className="texto-secundario">
         Os documentos são a última versão aprovada, em PDF, com os dados pessoais tarjados. Depois da homologação, os documentos da fase
         preparatória também ficam disponíveis no edital (art. 54, § 3º). Os contratos assinados estão em{' '}
-        <Link to="/transparencia">Transparência: contratos</Link>.
+        <Link to="/transparencia">Transparência: contratos</Link> e os pagamentos mensais em{' '}
+        <Link to="/ordem-cronologica">Ordem cronológica dos pagamentos</Link>.
       </p>
       {consulta.isError && consulta.data === undefined ? (
         <FalhaConsulta consulta={consulta} />

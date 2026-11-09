@@ -2,7 +2,8 @@
  * Divulgação pós-homologação dos documentos da fase preparatória (Lei 14.133/2021, art. 54, § 3º; RF-18): depois
  * da homologação, os documentos elaborados na fase preparatória que não integraram o edital e os anexos ficam
  * disponíveis na página pública do edital, sem login, em PDF gerado no servidor a partir da última versão aprovada e
- * com os dados pessoais tarjados. A nota técnica de preços de orçamento sigiloso (art. 24) não é divulgada.
+ * com os dados pessoais tarjados. A nota técnica de preços é divulgada após a homologação mesmo quando o orçamento
+ * foi sigiloso (art. 24 e RF-02.2), exceto quando o processo tiver classificação de sigilo vigente pela LAI (art. 13).
  */
 import type { DocumentoPreparatorioPublico, EditalPublico } from '@agora/contratos';
 import type { Executor } from '../../banco/tipos.ts';
@@ -17,7 +18,7 @@ interface LinhaHomologado {
   id: string;
   numero_sei: string;
   homologado_em: string;
-  sigiloso: boolean;
+  sigiloso_lai: boolean;
 }
 
 interface LinhaDocumento {
@@ -32,7 +33,12 @@ async function homologados(executor: Executor, processoIds: readonly string[]): 
   if (processoIds.length === 0) return [];
   return executor.consultar<LinhaHomologado>(
     `SELECT p.id, p.numero_sei, p.selecao->'homologacao'->>'data' AS homologado_em,
-            COALESCE((p.cesta->>'orcamentoSigiloso')::boolean, false) AS sigiloso
+            EXISTS (
+              SELECT 1 FROM sigilo_classificacoes s
+               WHERE s.processo_id = p.id
+                 AND s.tipo = 'lai'
+                 AND s.situacao = 'vigente'
+            ) AS sigiloso_lai
        FROM processos p
       WHERE p.id = ANY($1::uuid[])
         AND p.publicacao->>'pncp' = 'publicado'
@@ -53,8 +59,8 @@ async function documentosAprovados(executor: Executor, processoIds: readonly str
   );
 }
 
-function divulgavel(tipo: TipoDocumentoPreparatorio, sigiloso: boolean): boolean {
-  return !(sigiloso && tipo === 'nota_tecnica_precos');
+function divulgavel(tipo: TipoDocumentoPreparatorio, sigilosoLai: boolean): boolean {
+  return !(sigilosoLai && tipo === 'nota_tecnica_precos');
 }
 
 /** Data da homologação e documentos preparatórios divulgados de cada processo (ausente = ainda não homologado). */
@@ -71,7 +77,7 @@ export async function preparatoriosDivulgados(
   for (const p of processos) {
     const docs = DOCUMENTOS_PREPARATORIOS.flatMap((tipo): DocumentoPreparatorioPublico[] => {
       const d = documentos.find((x) => x.processo_id === p.id && x.tipo === tipo);
-      if (!d || !divulgavel(tipo, p.sigiloso)) return [];
+      if (!d || !divulgavel(tipo, p.sigiloso_lai)) return [];
       return [{ tipo, titulo: TITULOS_DOCUMENTO[tipo], versao: d.versao, url: `/api/v1/publico/editais/${p.id}/preparatorios/${tipo}` }];
     });
     resultado.set(p.id, { homologadoEm: p.homologado_em, documentos: docs });
@@ -98,7 +104,7 @@ export async function pdfPreparatorio(
   tipo: TipoDocumentoPreparatorio,
 ): Promise<{ pdf: Buffer; nomeArquivo: string } | null> {
   const [processo] = await homologados(executor, [processoId]);
-  if (!processo || !divulgavel(tipo, processo.sigiloso)) return null;
+  if (!processo || !divulgavel(tipo, processo.sigiloso_lai)) return null;
   const [documento] = (await documentosAprovados(executor, [processoId])).filter((d) => d.tipo === tipo);
   if (!documento) return null;
   const titulo = `${TITULOS_DOCUMENTO[tipo]} — processo ${processo.numero_sei}`;

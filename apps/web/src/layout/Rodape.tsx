@@ -41,6 +41,12 @@ export function Rodape() {
               <Link to="/transparencia">Transparência</Link>
             </li>
             <li>
+              <Link to="/transparencia/editais">Editais publicados</Link>
+            </li>
+            <li>
+              <Link to="/ordem-cronologica">Ordem cronológica</Link>
+            </li>
+            <li>
               <Link to="/dados-abertos">Dados abertos</Link>
             </li>
             <li>

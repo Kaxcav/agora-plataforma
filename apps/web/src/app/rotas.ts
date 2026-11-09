@@ -20,6 +20,7 @@ export const ROTAS: readonly DefinicaoRota[] = [
   { caminho: '/transparencia/contratos/:id', publica: true, pagina: lazy(() => import('../paginas/publicas/TransparenciaContrato')) },
   { caminho: '/transparencia/editais', publica: true, pagina: lazy(() => import('../paginas/publicas/TransparenciaEditais')) },
   { caminho: '/transparencia/editais/:id', publica: true, pagina: lazy(() => import('../paginas/publicas/TransparenciaEdital')) },
+  { caminho: '/ordem-cronologica', publica: true, pagina: lazy(() => import('../paginas/publicas/OrdemCronologica')) },
   { caminho: '/privacidade', publica: true, pagina: lazy(() => import('../paginas/publicas/Privacidade')) },
   { caminho: '/acessibilidade', publica: true, pagina: lazy(() => import('../paginas/publicas/Acessibilidade')) },
   { caminho: '/regras', publica: true, pagina: lazy(() => import('../paginas/publicas/CadernoRegras')) },

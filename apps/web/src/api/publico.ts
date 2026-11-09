@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import type { ContratoPublico, EditalPublico, Pagina, ParametrosLista } from '@agora/contratos';
+import type { ContratoPublico, EditalPublico, OrdemCronologicaPublicaResposta, Pagina, ParametrosLista } from '@agora/contratos';
 import { requisitar } from './cliente';
 
 /** Transparência: rotas públicas, sem sessão (401 aqui não redireciona). */
@@ -33,5 +33,18 @@ export function useContratoPublico(id: string) {
     queryKey: ['publico', 'contratos', 'detalhe', id],
     queryFn: ({ signal }) =>
       requisitar<ContratoPublico>(`/publico/contratos/${encodeURIComponent(id)}`, { sinal: signal, tratar401: false }),
+  });
+}
+
+/** Ordem cronológica dos pagamentos (art. 141, § 3º). */
+export function useOrdemCronologicaPublica(mes?: string) {
+  return useQuery({
+    queryKey: ['publico', 'ordem-cronologica', mes],
+    queryFn: ({ signal }) =>
+      requisitar<OrdemCronologicaPublicaResposta>('/publico/ordem-cronologica', {
+        parametros: mes ? { mes } : {},
+        sinal: signal,
+        tratar401: false,
+      }),
   });
 }
